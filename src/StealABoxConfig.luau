@@ -980,6 +980,44 @@ function Config.QuestText(id, goal)
 	if not q then return "Quest" end
 	return string.format(q.text, Config.FormatNum(goal or q.goals[1]))
 end
+-- SECRET ACHIEVEMENTS: nobody sees this list in the game - they pop up when you unlock them.
+-- reward = minutes of your income (at least `base` cash)
+Config.Achievements = {
+	{id = "FirstSteal",  name = "First Heist",        minutes = 2,  base = 300},    -- steal your first box
+	{id = "Steal25",     name = "Professional Thief", minutes = 5,  base = 2000},   -- steal 25 boxes
+	{id = "Steal100",    name = "Master Thief",       minutes = 15, base = 20000},  -- steal 100 boxes
+	{id = "Steal500",    name = "Legendary Robber",   minutes = 40, base = 200000}, -- steal 500 boxes
+	{id = "Bonk",        name = "BONK!",              minutes = 2,  base = 300},    -- get flung by a guard
+	{id = "Bonk25",      name = "Bouncy Castle",      minutes = 8,  base = 5000},   -- get flung 25 times
+	{id = "Deep5",       name = "Deep Diver",         minutes = 8,  base = 5000},   -- steal from area 5 or deeper
+	{id = "Deep10",      name = "To The Galaxy",      minutes = 25, base = 100000}, -- steal from area 10
+	{id = "Legendary",   name = "Legendary!",         minutes = 10, base = 10000},  -- unbox a Legendary item
+	{id = "Galaxy",      name = "Out Of This World",  minutes = 15, base = 20000},  -- get a Galaxy item
+	{id = "Million",     name = "Millionaire",        minutes = 5,  base = 0},      -- have $1M
+	{id = "Billion",     name = "Billionaire",        minutes = 10, base = 0},      -- have $1B
+	{id = "Speedy",      name = "Speed Demon",        minutes = 5,  base = 3000},   -- reach 10K speed
+	{id = "FullShelf",   name = "Shopkeeper",         minutes = 8,  base = 5000},   -- 20 items on your shelf
+	{id = "Crash",       name = "Oops!",              minutes = 2,  base = 500},    -- crash your bike
+	{id = "BikeChamp",   name = "Bike Champion",      minutes = 6,  base = 3000},   -- finish the bike obby
+}
+function Config.GetAchievement(id)
+	for _, a in ipairs(Config.Achievements) do if a.id == id then return a end end
+	return nil
+end
+function Config.AchievementReward(a, incomePerSec)
+	return math.max(a.base or 0, math.floor((incomePerSec or 0) * 60 * (a.minutes or 1)))
+end
+
+-- SURPRISE EVENTS: start at a random moment (no warning), for everybody in the server
+Config.Events = {
+	{id = "DoubleCash",   name = "DOUBLE CASH!",      text = "Every shop earns 2x cash!",           seconds = 90},
+	{id = "SpeedRush",    name = "SPEED RUSH!",       text = "Treadmills give 3x speed!",           seconds = 90},
+	{id = "SleepyGuards", name = "SLEEPY GUARDS!",    text = "The guards wake up slowly and run slower!", seconds = 60, warehouse = true},
+	{id = "GoldRain",     name = "GOLDEN BOX RAIN!",  text = "Golden boxes appeared in the warehouse!", seconds = 60, warehouse = true},
+	{id = "LuckyHour",    name = "LUCKY TIME!",       text = "2x mutation luck for everybody!",     seconds = 120},
+}
+Config.EventGap = {150, 360} -- seconds between events (random)
+
 -- (saves are already in this format: nothing to convert)
 Config.SaveVersion = 2
 Config.OldBoxToNew, Config.OldItemToNew = {}, {}

@@ -114,6 +114,7 @@ local box = ws.StealABox:FindFirstChild("BoxSpawns"):GetChildren()[1]
 fireClient("FX", "Spawn", roblox.Vector3.new(0, 3, -20), 3)
 fireClient("FX", "Grab", roblox.Vector3.new(0, 3, -20), 3)
 fireClient("FX", "StealSuccess", roblox.Vector3.new(0, 3, 20))
+fireClient("FX", "Achievement", roblox.Vector3.new(0, 0, 0), 0, "First Heist  +$300")
 fireClient("FX", "Stash", roblox.Vector3.new(0, 3, -20), 4)
 fireClient("FX", "Bonk", roblox.Vector3.new(0, 3, -20), 2)
 fireClient("FX", "Sale", roblox.Vector3.new(0, 3, -20), 1)

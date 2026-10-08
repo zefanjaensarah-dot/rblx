@@ -161,7 +161,8 @@ local function newProfile()
 	local p = {Cash = 0, Stolen = 0, Boxes = {}, Mutations = {}, ItemsFound = {},
 		Items = {}, Unboxing = {}, Upgrades = {}, Treadmill = 1, SpeedPoints = Config.StartSpeed, TutorialDone = false,
 		Trails = {}, Trail = nil, Customers = 1, SpeedBoost = 1, Receipts = {},
-		IndexClaimed = {}, Daily = {Streak = 0, Last = -1}, Codes = {}, Settings = {}, SaveVersion = 2, ExtraStands = 0}
+		IndexClaimed = {}, Daily = {Streak = 0, Last = -1}, Codes = {}, Settings = {}, SaveVersion = 2, ExtraStands = 0,
+		Achievements = {}, Flings = 0}
 	return p
 end
 
@@ -234,6 +235,20 @@ task.spawn(function()
 	end
 end)
 
+-- SECRET ACHIEVEMENTS: unlocked once, with a big popup and a cash reward
+local function achieve(player, id)
+	local prof = profiles[player]
+	local a = Config.GetAchievement(id)
+	if not prof or not a then return end
+	prof.Achievements = prof.Achievements or {}
+	if prof.Achievements[id] then return end
+	prof.Achievements[id] = true
+	local cash = Config.AchievementReward(a, player:GetAttribute("Income") or 0)
+	prof.Cash = prof.Cash + cash
+	sync(player)
+	FXEvent:FireClient(player, "Achievement", Vector3.zero, 0, a.name .. "  +$" .. Config.FormatNum(cash))
+end
+
 local slowMode = {} -- [player] = true while Slow Mode is on
 local function walkSpeedFor(player, c)
 	if player:GetAttribute("Biking") then return 70 end -- on the bike: FAST
@@ -263,6 +278,7 @@ local function cashMultiplier(player)
 	local m = Config.IndexCashMult(Config.CountClaimed(prof and prof.IndexClaimed))
 	if hasPass(player, "VIP") then m = m * Config.PassEffects.VIPCash end
 	if hasPass(player, "DoubleCash") then m = m * Config.PassEffects.DoubleCash end
+	if ReplicatedStorage:GetAttribute("EventId") == "DoubleCash" then m = m * 2 end -- (surprise event)
 	return m
 end
 
@@ -1071,6 +1087,8 @@ openBox = function(player, slot)
 		table.insert(prof.Items, item)
 		questProgress(player, "open")
 		if (Config.Items[item.id].tier or 1) >= 3 then questProgress(player, "rare") end
+		if (Config.Items[item.id].tier or 1) >= 4 then achieve(player, "Legendary") end
+		if item.mutation == "Galaxy" then achieve(player, "Galaxy") end
 		prof.ItemsFound[item.id] = (prof.ItemsFound[item.id] or 0) + 1
 		local itemDef = Config.Items[item.id]
 		if prof.ItemsFound[item.id] == 1 and itemDef and Config.AreaComplete(prof.ItemsFound, itemDef.area) then
@@ -1174,6 +1192,12 @@ local function placeBoxAt(player, worldPos)
 	prof.Stolen = prof.Stolen + 1
 	questProgress(player, "steal")
 	if def.area >= 3 then questProgress(player, "deep") end
+	if prof.Stolen >= 1 then achieve(player, "FirstSteal") end
+	if prof.Stolen >= 25 then achieve(player, "Steal25") end
+	if prof.Stolen >= 100 then achieve(player, "Steal100") end
+	if prof.Stolen >= 500 then achieve(player, "Steal500") end
+	if def.area >= 5 then achieve(player, "Deep5") end
+	if def.area >= 10 then achieve(player, "Deep10") end
 	prof.Boxes[def.id] = (prof.Boxes[def.id] or 0) + 1
 	prof.Mutations[c.mutation] = (prof.Mutations[c.mutation] or 0) + 1
 	if prof.Boxes[def.id] == 1 then
@@ -2302,6 +2326,7 @@ task.spawn(function()
 			-- no cap: your speed number keeps growing (into the millions); trails and Robux boosts multiply it
 			if on then
 				local rate = Config.TreadRate(prof.Treadmill) * trailMult(prof) * speedMult(prof)
+					* ((ReplicatedStorage:GetAttribute("EventId") == "SpeedRush") and 3 or 1)
 				prof.SpeedPoints = (prof.SpeedPoints or Config.StartSpeed) + rate * STEP
 				player:SetAttribute("TreadRate", rate)
 				applySpeed(player)
@@ -2675,6 +2700,12 @@ local function flingPlayer(player, guardPos, areaIndex)
 	local area = Config.Areas[areaIndex]
 	ragdolled[player] = true
 	immuneUntil[player] = os.clock() + RAGDOLL_TIME + 2
+	local fprof = profiles[player]
+	if fprof then
+		fprof.Flings = (fprof.Flings or 0) + 1
+		achieve(player, "Bonk")
+		if fprof.Flings >= 25 then achieve(player, "Bonk25") end
+	end
 
 	local away = Vector3.new(hrp.Position.X - guardPos.X, 0, hrp.Position.Z - guardPos.Z)
 	if away.Magnitude < 0.1 then away = Vector3.new(0, 0, 1) end
@@ -2754,7 +2785,8 @@ alertGuard = function(area, player)
 		if g.area == area and g.mode ~= "chase" then
 			setMode(g, "chase")
 			g.target = player
-			g.wakeUntil = os.clock() + 0.8 -- he needs a moment to get up
+			-- he needs a moment to get up (much longer during the Sleepy Guards event)
+			g.wakeUntil = os.clock() + ((ReplicatedStorage:GetAttribute("EventId") == "SleepyGuards") and 3 or 0.8)
 			setAwake(g, true)
 			setChased(player, true)
 			playSound(g.model.PrimaryPart, "rbxasset://sounds/electronicpingshort.wav", 1, 0.5)
@@ -2803,7 +2835,7 @@ RunService.Heartbeat:Connect(function(dt)
 					g.laughUntil = os.clock() + 2
 					keep = false
 				else
-					stepToward(g, hrp.Position, g.speed, dt)
+					stepToward(g, hrp.Position, g.speed * ((ReplicatedStorage:GetAttribute("EventId") == "SleepyGuards") and 0.6 or 1), dt)
 				end
 			end
 			if not keep then
@@ -2935,6 +2967,7 @@ do
 							setRagdoll(char, true)
 							-- (your own screen moves your character: it does the flying + "CRASH!")
 							FlingEvent:FireClient(p, -hum.MoveDirection * 55 + Vector3.new(0, 45, 0), 1.4, "CRASH")
+							achieve(p, "Crash")
 							task.delay(1.6, function()
 								ragdolled[p] = nil
 								if char.Parent then setRagdoll(char, false) end
@@ -2949,6 +2982,7 @@ do
 								prof.Cash = prof.Cash + cash
 								sync(p)
 								notify(p, "BIKE OBBY COMPLETE! +$" .. Config.FormatNum(cash), Color3.fromRGB(120, 255, 90))
+								achieve(p, "BikeChamp")
 								FXEvent:FireAllClients("LevelUp", hrp.Position, 3)
 							end
 						end
@@ -2977,6 +3011,70 @@ task.spawn(function()
 				end
 			end
 		end
+	end
+end)
+
+------------------------------------------------------------------
+-- ACHIEVEMENTS that depend on numbers (checked every couple of seconds)
+------------------------------------------------------------------
+task.spawn(function()
+	local nextCheck = os.clock()
+	while true do
+		task.wait(0.5)
+		if os.clock() >= nextCheck then
+			nextCheck = os.clock() + 2
+			for p, prof in pairs(profiles) do
+				if p.Parent then
+					if prof.Cash >= 1e6 then achieve(p, "Million") end
+					if prof.Cash >= 1e9 then achieve(p, "Billion") end
+					if (prof.SpeedPoints or 0) >= 10000 then achieve(p, "Speedy") end
+					local onShelf = 0
+					for _, it in ipairs(prof.Items) do if it.stand then onShelf = onShelf + 1 end end
+					if onShelf >= 20 then achieve(p, "FullShelf") end
+				end
+			end
+		end
+	end
+end)
+
+------------------------------------------------------------------
+-- SURPRISE EVENTS: at a random moment (no warning!) an event starts for the whole server
+------------------------------------------------------------------
+task.spawn(function()
+	local function now() return workspace:GetServerTimeNow() end
+	local function waitUntil(t) while now() < t do task.wait(1) end end
+	while true do
+		waitUntil(now() + math.random(Config.EventGap[1], Config.EventGap[2]))
+		-- warehouse events only make sense while the warehouse is open
+		local choices = {}
+		for _, e in ipairs(Config.Events) do
+			if not (e.warehouse and ReplicatedStorage:GetAttribute("IsNight")) then table.insert(choices, e) end
+		end
+		local e = choices[math.random(1, #choices)]
+		local ends = now() + e.seconds
+		ReplicatedStorage:SetAttribute("EventId", e.id)
+		ReplicatedStorage:SetAttribute("EventName", e.name)
+		ReplicatedStorage:SetAttribute("EventEndsAt", ends)
+		notifyAll(e.name .. " " .. e.text, Color3.fromRGB(255, 200, 60))
+		if e.id == "GoldRain" then
+			for _ = 1, 14 do
+				local sp = boxSpawns[math.random(1, #boxSpawns)]
+				local old = spawnFilled[sp]
+				if old then
+					boxSpawnOf[old] = nil
+					spawnFilled[sp] = nil
+					old:Destroy()
+				end
+				spawnBox(sp, (math.random() < 0.15) and "Rainbow" or "Gold")
+			end
+		elseif e.id == "LuckyHour" then
+			ReplicatedStorage:SetAttribute("ServerLuckUntil", math.max(ReplicatedStorage:GetAttribute("ServerLuckUntil") or 0, ends))
+		end
+		waitUntil(ends)
+		ReplicatedStorage:SetAttribute("EventId", nil)
+		ReplicatedStorage:SetAttribute("EventName", nil)
+		ReplicatedStorage:SetAttribute("EventEndsAt", nil)
+		notifyAll("The " .. e.name:gsub("!", "") .. " event is over.", Color3.fromRGB(200, 200, 220))
 	end
 end)
 
@@ -3266,7 +3364,8 @@ local function readSave(prof, data)
 	prof.UpgradesMigrated = true
 	-- the big speed number: old saves get the number that runs as fast as they did
 	prof.SpeedPoints = math.max(Config.StartSpeed, tonumber(data.SpeedPoints) or Config.WalkToPoints(16 + oldTread))
-	for _, key in ipairs({"Boxes", "Mutations", "ItemsFound", "Unboxing", "Codes", "Settings"}) do
+	prof.Flings = tonumber(data.Flings) or 0
+	for _, key in ipairs({"Boxes", "Mutations", "ItemsFound", "Unboxing", "Codes", "Settings", "Achievements"}) do
 		if type(data[key]) == "table" then
 			for k, v in pairs(data[key]) do prof[key][k] = v end
 		end

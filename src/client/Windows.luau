@@ -64,7 +64,9 @@ local function buildQuests(ctx)
 			end
 		end
 		local leftS = 86400 - (os.time() % 86400)
-		UI.setText(resetL, "New quests in " .. Config.FormatTime(leftS))
+		local found = 0
+		for _ in pairs(ctx.data and ctx.data.Achievements or {}) do found = found + 1 end
+		UI.setText(resetL, "New quests in " .. Config.FormatTime(leftS) .. "   |   Secret achievements: " .. found .. " / " .. #Config.Achievements)
 	end
 	win.onOpen = refresh
 	ctx.player:GetAttributeChangedSignal("Quests"):Connect(function() if UI.isOpen("Quests") then refresh() end end)

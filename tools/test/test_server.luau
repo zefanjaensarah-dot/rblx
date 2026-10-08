@@ -257,6 +257,7 @@ check((player:GetAttribute("SpeedPoints") or 0) > sp0, "treadmill gives speed: "
 -- index rewards: area 1 can't be claimed until all its items are found, then only once
 local Config = H.requireModule(game:GetService("ReplicatedStorage"):FindFirstChild("StealABoxConfig"))
 check(invoke(player, "Rebirth").ok ~= true, "rebirth is gone")
+check(invoke(player, "GetData").data.Achievements.FirstSteal == true, "secret achievement: First Heist")
 task.wait(0.15)
 local standsBefore = player:GetAttribute("Stands")
 prof = invoke(player, "GetData").data
@@ -287,7 +288,7 @@ local cashBefore = prof.Cash
 local incomeBefore = player:GetAttribute("Income") or 0
 task.wait(0.15)
 r = invoke(player, "ClaimIndex", 1)
-check(r.ok and prof.Cash == cashBefore + Config.IndexCash(1) and prof.IndexClaimed["1"] == true, "index reward claimed: " .. tostring(r.msg))
+check(r.ok and prof.Cash >= cashBefore + Config.IndexCash(1) and prof.IndexClaimed["1"] == true, "index reward claimed: " .. tostring(r.msg))
 check((player:GetAttribute("Income") or 0) >= incomeBefore, "index bonus keeps/raises income")
 task.wait(0.15)
 check(not invoke(player, "ClaimIndex", 1).ok, "index reward only once")

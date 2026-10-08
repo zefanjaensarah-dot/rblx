@@ -187,6 +187,9 @@ function Hud.init(ctx)
 	rainbowT.grad.Rotation = 0
 	local luckT = timerPill("clover", UI.rgb(120, 255, 120), UI.rgb(40, 175, 80), 0)
 	luckT.frame.Visible = false
+	-- a surprise event (takes the rainbow box timer's place while it runs)
+	local eventT = timerPill("bolt", UI.rgb(255, 230, 90), UI.rgb(255, 140, 30), -1)
+	eventT.frame.Visible = false
 
 	------------------------------------------------------------------
 	-- RIGHT: Home + Steal teleports, and the Speed offer
@@ -628,7 +631,8 @@ function Hud.init(ctx)
 		new("UIGradient", {Rotation = 90, Color = ColorSequence.new(UI.rgb(255, 250, 200), UI.rgb(255, 190, 40))}, big)
 		local sub = UI.label(splash, "", {Position = UDim2.fromOffset(0, 88), Size = UDim2.new(1, 0, 0, 40), Max = 30, Stroke = 3, TextWrapped = false})
 		local tok = 0
-		ctx.thanks = function(title)
+		ctx.thanks = function(title, bigText)
+			UI.setText(big, bigText or "THANK YOU!")
 			tok = tok + 1
 			local my = tok
 			UI.setText(sub, title or "")
@@ -744,6 +748,11 @@ function Hud.init(ctx)
 			local luckUntil = ReplicatedStorage:GetAttribute("ServerLuckUntil") or 0
 			luckT.frame.Visible = luckUntil > nowT
 			if luckUntil > nowT then UI.setText(luckT.label, Config.ServerLuck.mult .. "x LUCK  " .. Config.FormatTime(luckUntil - nowT)) end
+			local evEnds = ReplicatedStorage:GetAttribute("EventEndsAt")
+			local evOn = evEnds ~= nil and evEnds > nowT and ReplicatedStorage:GetAttribute("EventId") ~= "LuckyHour"
+			eventT.frame.Visible = evOn
+			rainbowT.frame.Visible = not evOn
+			if evOn then UI.setText(eventT.label, (ReplicatedStorage:GetAttribute("EventName") or "EVENT") .. " " .. Config.FormatTime(evEnds - nowT)) end
 			if ctx.updateClockBadges then ctx.updateClockBadges() end
 			task.wait(0.25)
 		end
