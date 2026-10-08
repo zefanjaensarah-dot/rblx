@@ -2582,7 +2582,26 @@ local function buildPlot(i, side, zc)
 			PP("StandTop" .. s, V(5.8, 0.5, 0.4), u, 1.6, w - 2.75, glow, M.Neon, NOHIT)
 		end
 	end
-	PP("GlowStrip", V(1, 0.2, 1), 0, -2, 50, glow, M.Neon, GHOST) -- (the server reads the empty-slot colour from this)
+	PP("GlowStrip", V(1, 0.2, 1), 0, -2, 50, glow, M.Neon, GHOST)
+	-- the green EXPAND PLOT pad: press E to buy the next podium slot (the server writes the price)
+	PP("ExpandPadRim", V(9, 0.3, 7), -38, 0.5, 44, RGB(150, 150, 165)).TopSurface = Enum.SurfaceType.Studs
+	local pad = PP("ExpandPad", V(7.6, 0.3, 5.6), -38, 0.62, 44, RGB(60, 235, 60), M.Neon, NOHIT)
+	prompt(pad, "ExpandPrompt", "Expand", "Plot", 0.3)
+	do
+		local bb = Instance.new("BillboardGui")
+		bb.Name = "ExpandGui"
+		bb.Size = UDim2.fromScale(10, 4)
+		bb.StudsOffset = V(0, 3.5, 0)
+		bb.MaxDistance = 90
+		bb.LightInfluence = 0
+		bb.Parent = pad
+		local t1 = textLabel(bb, "Expand Plot", WHITE, 4)
+		t1.Size = UDim2.fromScale(1, 0.55)
+		local t2 = textLabel(bb, "", RGB(120, 255, 90), 4)
+		t2.Name = "Price"
+		t2.Position = UDim2.fromScale(0, 0.55)
+		t2.Size = UDim2.fromScale(1, 0.45)
+	end -- (the server reads the empty-slot colour from this)
 	-- a wooden SHOP board at the back
 	for _, u in ipairs({-11, 11}) do PP("ShopSignPost", V(1.2, 9, 1.2), u, 4.5, 91, RGB(128, 80, 44)) end
 	local shopSign = PP("ShopSign", V(24, 5, 0.8), 0, 8.6, 91, RGB(170, 110, 62))

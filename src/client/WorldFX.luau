@@ -169,6 +169,28 @@ function WorldFX.init(ctx)
 		local plotName = player:GetAttribute("PlotName")
 		local plots = root:FindFirstChild("Plots")
 		local plot = plots and plotName and plots:FindFirstChild(plotName)
+		-- a big "Your Plot" label floats over your own plot (only you see it)
+		local anchor = plot and plot:FindFirstChild("TagAnchor", true)
+		if anchor and not anchor:FindFirstChild("YourPlotTag") then
+			local bb = Instance.new("BillboardGui")
+			bb.Name = "YourPlotTag"
+			bb.Size = UDim2.fromScale(26, 6)
+			bb.StudsOffset = Vector3.new(0, 9, 0)
+			bb.MaxDistance = 600
+			bb.LightInfluence = 0
+			local t = Instance.new("TextLabel")
+			t.BackgroundTransparency = 1
+			t.Size = UDim2.fromScale(1, 1)
+			t.Text = "Your Plot"
+			t.TextScaled = true
+			t.FontFace = UI.Font
+			t.TextColor3 = Color3.new(1, 1, 1)
+			local st = Instance.new("UIStroke")
+			st.Thickness = 4
+			st.Parent = t
+			t.Parent = bb
+			bb.Parent = anchor
+		end
 		local kiosk = plot and plot:FindFirstChild("CustomerKiosk", true)
 		if kiosk then
 			local level = data.Customers or 1

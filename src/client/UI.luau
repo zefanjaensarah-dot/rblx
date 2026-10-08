@@ -520,7 +520,23 @@ local EMOJI_ICON = {
 	calendar = "📅", rebirth = "🔄", ticket = "🎟️", shop = "🛒", plus = "➕",
 }
 UI.EMOJI_ICON = EMOJI_ICON
+-- PICTURE ICONS: upload an icon as an Image on Roblox (Creator Hub > Development Items > Images, or
+-- Studio's Asset Manager) and paste its id here, e.g. shop = "rbxassetid://1234567890".
+-- Any icon left empty keeps its emoji.
+local IMAGE_ICON = {
+	shop = "", book = "", gift = "", calendar = "", bag = "", box = "", home = "", boot = "", cash = "",
+	coin = "", star = "", crown = "", clover = "", clock = "", gear = "", trail = "", bolt = "", lock = "",
+	check = "", close = "", heart = "", skull = "", ticket = "", moon = "", sun = "", plus = "", arrow = "", down = "",
+}
+UI.IMAGE_ICON = IMAGE_ICON
 function UI.icon(name, parent, size, pos, color, anchor)
+	local image = IMAGE_ICON[name]
+	if image and image ~= "" then
+		local img = new("ImageLabel", {Name = "Icon_" .. name, BackgroundTransparency = 1, Size = size, Position = pos or UDim2.new(), AnchorPoint = anchor or Vector2.new(),
+			Image = image, ScaleType = Enum.ScaleType.Fit}, parent)
+		img.ZIndex = (parent and parent:IsA("GuiObject")) and parent.ZIndex + 1 or 1
+		return img
+	end
 	local emoji = EMOJI_ICON[name]
 	if not emoji then return ICON.new(name, parent, size, pos, color, anchor) end
 	local holder = new("Frame", {Name = "Icon_" .. name, BackgroundTransparency = 1, Size = size, Position = pos or UDim2.new(), AnchorPoint = anchor or Vector2.new()}, parent)

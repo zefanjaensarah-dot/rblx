@@ -926,6 +926,17 @@ local function shelfFolder(plot)
 	return f
 end
 
+-- the Expand Plot pad shows the price of the next slot
+local function refreshExpandPad(player)
+	local plot, prof = playerPlot[player], profiles[player]
+	local pad = plot and plot:FindFirstChild("ExpandPad", true)
+	local price = pad and pad:FindFirstChild("ExpandGui") and pad.ExpandGui:FindFirstChild("Price")
+	if price and prof then
+		local have = unlockedStands(prof)
+		price.Text = (have >= Config.MaxStands) and "MAXED" or ("$" .. Config.FormatNum(Config.StandCost(have)))
+	end
+end
+
 local function refreshStands(player)
 	local plot, prof = playerPlot[player], profiles[player]
 	if not plot or not prof then return end
@@ -935,6 +946,7 @@ local function refreshStands(player)
 		if item.stand then onStand[item.stand] = i end
 	end
 	local unlocked = unlockedStands(prof)
+	refreshExpandPad(player)
 	for s = 1, Config.MaxStands do
 		local stand = plot:FindFirstChild("Stand" .. s)
 		local top = plot:FindFirstChild("StandTop" .. s)
@@ -1125,7 +1137,7 @@ end
 
 -- where on a plot boxes may be placed (plot-local): open floor in front of the shop shelf
 local PLACE_U = Config.Court.plotWidth / 2 - 4
-local PLACE_W_MIN, PLACE_W_MAX = 5, 44 -- (the podium rows start at w 46)
+local PLACE_W_MIN, PLACE_W_MAX = 5, 40 -- (the Expand pad sits at w 44, the podium rows start at w 46)
 
 local function placeBoxAt(player, worldPos)
 	local prof, c, plot = profiles[player], carrying[player], playerPlot[player]
@@ -3567,4 +3579,41 @@ do
 			task.wait(60)
 		end
 	end)
+end
+
+------------------------------------------------------------------
+-- EXPAND PLOT pads: stand on your green pad and press E to buy the next podium slot
+------------------------------------------------------------------
+do
+	for _, plot in ipairs(plotsFolder:GetChildren()) do
+		local pad = plot:FindFirstChild("ExpandPad", true)
+		local pp = pad and pad:FindFirstChild("ExpandPrompt")
+		if pp then
+			pp.Triggered:Connect(function(who)
+				if playerPlot[who] ~= plot then
+					notify(who, "That's not your plot!", RED)
+					return
+				end
+				local prof = profiles[who]
+				if not prof then return end
+				local have = unlockedStands(prof)
+				if have >= Config.MaxStands then
+					notify(who, "Your plot is fully expanded!", YELLOW)
+					return
+				end
+				local cost = Config.StandCost(have)
+				if prof.Cash < cost then
+					notify(who, "You need $" .. Config.FormatNum(cost) .. " to expand your plot!", RED)
+					return
+				end
+				prof.Cash = prof.Cash - cost
+				prof.ExtraStands = (prof.ExtraStands or 0) + 1
+				refreshStands(who)
+				refreshIncome(who)
+				sync(who)
+				FXEvent:FireAllClients("LevelUp", pad.Position, 1)
+				notify(who, "Plot expanded! You now have " .. unlockedStands(prof) .. " slots.", GREEN)
+			end)
+		end
+	end
 end
