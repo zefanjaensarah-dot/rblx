@@ -186,7 +186,7 @@ H.step(10)
 local Client = client
 local UIm = H.requireModule(Client:FindFirstChild("UI"))
 local opened = 0
-for _, name in ipairs({"Shop", "Items", "Index", "Trails", "Gifts", "Daily", "Codes", "Settings", "Welcome", "Unboxing", "Quests"}) do
+for _, name in ipairs({"Shop", "Items", "Index", "Trails", "Gifts", "Daily", "Codes", "Settings", "Welcome", "Unboxing", "Quests", "Phone"}) do
 	UIm.open(name)
 	opened += 1
 	H.step(3)

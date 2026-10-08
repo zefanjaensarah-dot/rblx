@@ -2501,16 +2501,15 @@ local function buildPlot(i, side, zc)
 	fence(-HU, 0, -12, 0)
 	fence(12, 0, HU, 0)
 
-	-- AUTOMATIC REGISTERS (front left corner): two self-checkout machines
-	for k, u in ipairs({-39, -29}) do
-		local w = 8
-		PP("RegisterBase", V(6, 4, 3.4), u, 2.4, w, RGB(70, 74, 86), M.Metal):SetAttribute("Solid", true)
-		PP("RegisterTop", V(6.4, 0.4, 3.8), u, 4.6, w, RGB(235, 235, 240), nil, NOHIT)
-		PP("RegisterScanner", V(2.2, 0.12, 1.6), u, 4.85, w - 0.4, RGB(255, 60, 60), M.Neon, NOHIT)
-		PP("RegisterPole", V(0.4, 4, 0.4), u + 2, 6.6, w + 1.2, RGB(70, 74, 86), M.Metal, NOHIT)
-		local screen = PP("RegisterScreen", V(3.4, 2.4, 0.3), u + 2, 9, w + 1.1, RGB(40, 140, 255), M.Neon, NOHIT, CFrame.Angles(math.rad(-15), 0, 0))
-		signText(screen, Enum.NormalId.Back, "SELF\nCHECKOUT", 40, 2, 120)
-		PP("RegisterLight", V(0.8, 0.8, 0.8), u - 2.4, 7.4, w + 1.2, (k == 1) and RGB(80, 255, 90) or RGB(255, 200, 40), M.Neon, NOHIT)
+	-- THE BIG PHONE (front left corner): walk up and press E to play mini games on it
+	do
+		local u, w = -34, 9
+		PP("PhoneStand", V(7, 1, 4), u, 0.9, w, RGB(60, 60, 70)):SetAttribute("Solid", true)
+		PP("PhoneBody", V(9, 16, 1.2), u, 9.4, w, RGB(25, 25, 32)):SetAttribute("Solid", true)
+		local screen = PP("PhoneScreen", V(8, 14, 0.2), u, 9.6, w + 0.62, RGB(60, 150, 255), M.Neon, NOHIT)
+		PP("PhoneCamera", V(0.8, 0.8, 0.2), u, 17, w + 0.62, RGB(10, 10, 14), nil, NOHIT)
+		signText(screen, Enum.NormalId.Front, "GAMES\nPress E", 30, 3, 120)
+		prompt(screen, "PlayPhone", "Play", "Phone Games", 0)
 	end
 	PP("SpawnPoint", V(2, 0.2, 2), -18, 0.6, 10, RGB(0, 0, 0), nil, GHOST)
 

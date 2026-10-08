@@ -5,6 +5,7 @@
        Panels      the side panels on the right: Items (your shelf) and Unboxing
        Windows     Index, Quests, Trails, Gifts, Daily, Codes, Settings
        ShopWindow  the Robux shop
+       Phone       the big phone on your base with mini games (Snake, Block Blast, Archery)
        Tutorial    the step-by-step tutorial for new players
        WorldFX     everything that happens in the 3D world on your screen ]]
 
@@ -22,6 +23,7 @@ local Hud = require(script:WaitForChild("Hud"))
 local Panels = require(script:WaitForChild("Panels"))
 local Windows = require(script:WaitForChild("Windows"))
 local ShopWindow = require(script:WaitForChild("ShopWindow"))
+local Phone = require(script:WaitForChild("Phone"))
 local Tutorial = require(script:WaitForChild("Tutorial"))
 local WorldFX = require(script:WaitForChild("WorldFX"))
 
@@ -83,6 +85,7 @@ start("Hud", Hud)
 start("Panels", Panels)
 start("Windows", Windows)
 start("ShopWindow", ShopWindow)
+start("Phone", Phone)
 start("Tutorial", Tutorial)
 task.delay(3, function()
 	for _, e in ipairs(initErrors) do
