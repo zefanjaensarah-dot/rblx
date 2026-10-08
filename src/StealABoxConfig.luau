@@ -869,8 +869,6 @@ end
 -- the courtyard got a plaza at the back (spawn, Trails Shop, FREE gift, leaderboards)
 Config.Court.length = 360
 Config.LobbySpawnZ = 330
--- a guardian gives up the chase after this many seconds (and always at the warehouse door)
-Config.GuardChaseTime = 12
 -- every area is the same size (helpers used by the server / client)
 function Config.AreaLen(areaIndex) return Config.Layout.sectionLen end
 function Config.AreaHalfWidth(areaIndex) return Config.Layout.halfWidth end

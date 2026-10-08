@@ -2730,7 +2730,6 @@ alertGuard = function(area, player)
 		if g.area == area and g.mode ~= "chase" then
 			setMode(g, "chase")
 			g.target = player
-			g.chaseUntil = os.clock() + Config.GuardChaseTime -- he gives up after a while
 			g.wakeUntil = os.clock() + 0.8 -- he needs a moment to get up
 			setAwake(g, true)
 			setChased(player, true)
@@ -2769,10 +2768,8 @@ RunService.Heartbeat:Connect(function(dt)
 			local _, hrp = getChar(p)
 			-- they chase you into the next area, but not further
 			-- chase through this department and the one before it, never out into the courtyard
-			-- (and never out of the warehouse door, and never for longer than GuardChaseTime)
-			local leashZ = math.min(Config.AreaStartZ(g.area) + Config.AreaLen(math.max(1, g.area - 1)), L.frontZ)
-			local keep = hrp and carrying[p] and not isImmune(p) and hrp.Position.Z < leashZ and math.abs(hrp.Position.X) < Config.AreaHalfWidth(g.area) + 2
-				and os.clock() < (g.chaseUntil or math.huge)
+			-- he keeps chasing you through the whole warehouse - only the door stops him (steal successful!)
+			local keep = hrp and carrying[p] and not isImmune(p) and hrp.Position.Z < L.frontZ and math.abs(hrp.Position.X) < Config.AreaHalfWidth(g.area) + 2
 			if keep then
 				local flat = Vector3.new(hrp.Position.X - g.pos.X, 0, hrp.Position.Z - g.pos.Z)
 				if os.clock() < (g.wakeUntil or 0) then
