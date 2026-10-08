@@ -132,9 +132,18 @@ do
 	end)
 	local cc = Instance.new("ColorCorrectionEffect")
 	cc.Name = "StealABoxFX"
-	cc.Saturation = 0.15
-	cc.Contrast = 0.05
+	cc.Saturation = 0.28
+	cc.Contrast = 0.06
+	cc.TintColor = RGB(255, 252, 245)
 	cc.Parent = Lighting
+	local atm = Instance.new("Atmosphere")
+	atm.Density = 0.24
+	atm.Offset = 0.2
+	atm.Color = RGB(205, 228, 255)
+	atm.Decay = RGB(120, 170, 235)
+	atm.Glare = 0
+	atm.Haze = 0.6
+	atm.Parent = Lighting
 	local bloom = Instance.new("BloomEffect")
 	bloom.Name = "StealABoxFX"
 	bloom.Intensity = 0.35
@@ -166,12 +175,26 @@ do
 	end
 	-- red brick walls all around (they meet the store front at z -4)
 	local BRICK, CAP = RGB(186, 88, 66), RGB(240, 222, 196)
+	-- (now a low cream garden wall with a puffy hedge on top; an invisible wall keeps everyone in)
+	local STONE, HEDGE = RGB(245, 232, 205), RGB(60, 170, 65)
 	for _, sx in ipairs({-1, 1}) do
-		P(root, "CourtWall", V(4, 40, COURT_LEN + 8), C(sx * (MAPW + 2), 20, COURT_LEN / 2), BRICK, M.Brick)
-		P(root, "WallCap", V(5, 1.5, COURT_LEN + 8), C(sx * (MAPW + 2), 40.75, COURT_LEN / 2), CAP)
+		P(root, "CourtWall", V(4, 60, COURT_LEN + 8), C(sx * (MAPW + 2), 30, COURT_LEN / 2), BRICK, nil, {Transparency = 1})
+		P(root, "GardenWall", V(4, 5, COURT_LEN + 8), C(sx * (MAPW + 2), 2.5, COURT_LEN / 2), STONE, nil, NOHIT)
+		P(root, "WallTrim", V(4.8, 0.8, COURT_LEN + 8), C(sx * (MAPW + 2), 5.2, COURT_LEN / 2), CAP, nil, NOHIT)
+		P(root, "Hedge", V(4.6, 5, COURT_LEN + 8), C(sx * (MAPW + 2), 8, COURT_LEN / 2), HEDGE, nil, NOHIT)
+		for z = 2, COURT_LEN + 2, 9 do
+			local h = P(root, "HedgeBump", V(6, 6, 6), C(sx * (MAPW + 2), 10.2, z), HEDGE:Lerp(WHITE, (z % 2) * 0.08), nil, NOHIT)
+			h.Shape = Enum.PartType.Ball
+		end
 	end
-	P(root, "BackWall", V(MAPW * 2 + 8, 44, 4), C(0, 22, COURT_LEN + 2), BRICK, M.Brick)
-	P(root, "BackWallCap", V(MAPW * 2 + 9, 1.5, 5), C(0, 44.75, COURT_LEN + 2), CAP)
+	P(root, "BackWall", V(MAPW * 2 + 8, 60, 4), C(0, 30, COURT_LEN + 2), BRICK, nil, {Transparency = 1})
+	P(root, "GardenWall", V(MAPW * 2 + 8, 5, 4), C(0, 2.5, COURT_LEN + 2), STONE, nil, NOHIT)
+	P(root, "WallTrim", V(MAPW * 2 + 8.8, 0.8, 4.8), C(0, 5.2, COURT_LEN + 2), CAP, nil, NOHIT)
+	P(root, "Hedge", V(MAPW * 2 + 8.6, 5, 4.6), C(0, 8, COURT_LEN + 2), HEDGE, nil, NOHIT)
+	for x = -MAPW, MAPW, 9 do
+		local h = P(root, "HedgeBump", V(6, 6, 6), C(x, 10.2, COURT_LEN + 2), HEDGE:Lerp(WHITE, (math.abs(x) % 2) * 0.08), nil, NOHIT)
+		h.Shape = Enum.PartType.Ball
+	end
 	-- the "Warehouse" teleport lands here, right in front of the store door
 	P(root, "EntrancePoint", V(2, 0.2, 2), C(0, 0.5, 10), RGB(0, 0, 0), nil, GHOST)
 	-- the tutorial points here (inside the door) while you're still outside
@@ -2474,6 +2497,11 @@ local function buildPlot(i, side, zc)
 	-- a roof over the whole shop (the front stays open to walk in)
 	PP("Ceiling", V(CW + 2.4, 1, CD + 1.2), 0, 17.1, CD / 2, col:Lerp(WHITE, 0.55))
 	PP("RoofTrim", V(CW + 3, 0.6, 1.4), 0, 17.6, 0, col, nil, NOHIT)
+	for k = 0, 11 do
+		local stripe = PP("Awning", V(CW / 12, 0.4, 6), -HU + (k + 0.5) * CW / 12, 15.9, -2.6, (k % 2 == 0) and col or WHITE, nil, NOHIT, CFrame.Angles(math.rad(18), 0, 0))
+		stripe.CastShadow = false
+		PP("AwningEdge", V(CW / 12, 1.3, 0.3), -HU + (k + 0.5) * CW / 12, 14.4, -5.5, (k % 2 == 0) and WHITE or col, nil, NOHIT).CastShadow = false
+	end
 	-- a low wooden fence at the front (open in the middle for the door)
 	local function fence(u0, w0, u1, w1)
 		local a, b = W(u0, 0, w0).Position, W(u1, 0, w1).Position
@@ -2615,6 +2643,192 @@ for _, side in ipairs({-1, 1}) do
 	for _, zc in ipairs(PLOT_Z) do
 		plotIndex += 1
 		buildPlot(plotIndex, side, zc)
+	end
+end
+
+------------------------------------------------------------------
+-- LIFE: round cartoon trees, bushes, flowers, lamps with bunting, a fountain, crates at the
+-- door, hills and clouds outside. All decoration: you walk through it and it never blocks anything.
+------------------------------------------------------------------
+do
+	local deco = folder(root, "Decor")
+	local DECO = {CanCollide = false, CanQuery = false, CanTouch = false, CastShadow = false}
+	local BALL, CYL = Enum.PartType.Ball, Enum.PartType.Cylinder
+	local UP = CFrame.Angles(0, 0, math.rad(90)) -- a cylinder standing up
+	local function D(name, size, cf, color, shape, mat)
+		local p = P(deco, name, size, cf, color, mat, DECO)
+		if shape then p.Shape = shape end
+		return p
+	end
+	local LEAVES = {RGB(70, 190, 60), RGB(95, 210, 70), RGB(55, 165, 75), RGB(125, 220, 80)}
+	local BLOSSOM = RGB(255, 170, 205)
+	local FLOWERS = {RGB(255, 120, 170), RGB(255, 220, 60), RGB(255, 255, 255), RGB(180, 120, 255), RGB(255, 140, 60)}
+	local FLAGS = {RGB(255, 85, 85), RGB(255, 205, 50), RGB(80, 190, 255), RGB(120, 220, 90), RGB(200, 120, 255)}
+	local function pick(t) return t[math.random(1, #t)] end
+
+	local function tree(x, z, s, simple)
+		s = s or 1
+		local leaf = (math.random() < 0.15) and BLOSSOM or pick(LEAVES)
+		D("TreeTrunk", V(10 * s, 2.4 * s, 2.4 * s), C(x, 5 * s, z) * UP, RGB(140, 90, 50), CYL)
+		D("TreeTop", V(11 * s, 11 * s, 11 * s), C(x, 12 * s, z), leaf, BALL)
+		D("TreeTop", V(8 * s, 8 * s, 8 * s), C(x + 3.5 * s, 10 * s, z + 1.5 * s), leaf:Lerp(WHITE, 0.12), BALL)
+		if not simple then
+			D("TreeTop", V(7.5 * s, 7.5 * s, 7.5 * s), C(x - 3 * s, 10.5 * s, z - 2 * s), leaf:Lerp(RGB(0, 0, 0), 0.1), BALL)
+		end
+	end
+	local function bush(x, z, s)
+		s = s or 1
+		local c = pick(LEAVES)
+		D("Bush", V(5 * s, 5 * s, 5 * s), C(x, 1.6 * s, z), c, BALL)
+		D("Bush", V(3.6 * s, 3.6 * s, 3.6 * s), C(x + 2.4 * s, 1.2 * s, z + 0.8 * s), c:Lerp(WHITE, 0.1), BALL)
+		if math.random() < 0.7 then
+			D("BushFlower", V(1.1, 1.1, 1.1), C(x + 0.6 * s, 3.9 * s, z - 0.6 * s), pick(FLOWERS), BALL)
+		end
+	end
+	local function flowers(x0, z0, x1, z1, n)
+		for _ = 1, n do
+			D("Flower", V(1.3, 1.3, 1.3), C(x0 + math.random() * (x1 - x0), 0.5, z0 + math.random() * (z1 - z0)), pick(FLOWERS), BALL)
+		end
+	end
+	local LAMP = RGB(45, 60, 85)
+	local function lamp(x, z, light)
+		D("LampBase", V(1.2, 1.8, 1.8), C(x, 0.6, z) * UP, LAMP, CYL)
+		D("LampPole", V(14, 0.7, 0.7), C(x, 7, z) * UP, LAMP, CYL)
+		local globe = D("LampGlobe", V(2.6, 2.6, 2.6), C(x, 14.8, z), RGB(255, 236, 170), BALL, M.Neon)
+		D("LampCap", V(0.6, 3, 3), C(x, 16.3, z) * UP, LAMP, CYL)
+		if light then
+			local l = Instance.new("PointLight")
+			l.Color = RGB(255, 225, 160)
+			l.Range = 30
+			l.Brightness = 1
+			l.Shadows = false
+			l.Parent = globe
+		end
+	end
+	-- a string of little flags that sags in the middle
+	local function bunting(a, b, n, sag)
+		local mid = a:Lerp(b, 0.5) - V(0, sag, 0)
+		for k = 1, n do
+			local t = (k - 0.5) / n
+			local pos = a:Lerp(b, t) - V(0, sag * (1 - math.abs(2 * t - 1)), 0)
+			local cf = CFrame.lookAt(pos, pos + (b - a))
+			D("Flag", V(0.15, 1.8, 1.8), cf * CFrame.new(0, -1.27, 0) * CFrame.Angles(math.rad(45), 0, 0), FLAGS[(k - 1) % #FLAGS + 1])
+		end
+		for _, seg in ipairs({{a, mid}, {mid, b}}) do
+			D("FlagString", V(0.2, 0.2, (seg[2] - seg[1]).Magnitude), CFrame.lookAt((seg[1] + seg[2]) / 2, seg[2]), WHITE)
+		end
+	end
+
+	-- lamps on both sides of the street with bunting across it
+	local GAP1 = (PLOT_Z[1] + PLOT_Z[2]) / 2
+	local GAP2 = (PLOT_Z[2] + PLOT_Z[3]) / 2
+	local PLOTS_END = PLOT_Z[3] + CW / 2
+	for i, z in ipairs({SQUARE - 4, GAP1, GAP2, PLOTS_END + 3}) do
+		lamp(-18, z, i % 2 == 1)
+		lamp(18, z, i % 2 == 0)
+		bunting(V(-18, 15.2, z), V(18, 15.2, z), 14, 2.2)
+	end
+
+	-- bushes in the alleys between the bases
+	for _, z in ipairs({GAP1, GAP2}) do
+		for _, sx in ipairs({-1, 1}) do
+			for _, x in ipairs({30, 62, 94}) do bush(sx * x, z, 0.9) end
+		end
+	end
+
+	-- THE SQUARE: trees in the corners, bushes and flowers, a crosswalk to the door
+	tree(-104, 34, 1.2) tree(-74, 38, 1) tree(104, 36, 1.2) tree(104, 6, 1.1) tree(84, 40, 0.9)
+	bush(-46, 38) bush(-24, 30) bush(30, 38) bush(40, 6) bush(-102, 14)
+	flowers(-108, 12, -60, 44, 22)
+	flowers(24, 34, 108, 44, 18)
+	flowers(70, 2, 108, 12, 10)
+	for k = 0, 5 do
+		D("Crosswalk", V(3.2, 0.06, 7), C(-13.5 + k * 5.4, 0.33, 19), WHITE)
+	end
+
+	-- THE WAREHOUSE DOOR: a striped awning, barrels and crates, hanging banners
+	local WZ = FRONT_Z + 2 -- the outside face of the warehouse wall
+	for k = 0, 10 do
+		local x = -22 + (k + 0.5) * 4
+		local c = (k % 2 == 0) and RGB(235, 60, 60) or WHITE
+		D("DoorAwning", V(4, 0.4, 7), C(x, 28.6, WZ + 3) * CFrame.Angles(math.rad(20), 0, 0), c)
+		D("DoorAwningEdge", V(4, 1.3, 0.3), C(x, 26.8, WZ + 6.4), (k % 2 == 0) and WHITE or RGB(235, 60, 60))
+	end
+	local WOOD, BAND = RGB(170, 110, 60), RGB(90, 70, 60)
+	for _, sx in ipairs({-1, 1}) do
+		D("Barrel", V(4.4, 4, 4), C(sx * 24, 2.2, WZ + 3) * UP, WOOD, CYL, M.WoodPlanks)
+		D("BarrelBand", V(0.5, 4.2, 4.2), C(sx * 24, 3.4, WZ + 3) * UP, BAND, CYL)
+		D("Crate", V(4, 4, 4), C(sx * 27.6, 2, WZ + 6.5) * CFrame.Angles(0, math.rad(15 * sx), 0), RGB(200, 145, 80), nil, M.WoodPlanks)
+		D("Crate", V(3, 3, 3), C(sx * 27.4, 5.5, WZ + 6.4) * CFrame.Angles(0, math.rad(-20 * sx), 0), RGB(215, 160, 95), nil, M.WoodPlanks)
+	end
+	for i, x in ipairs({40, 74, 104}) do
+		local c = FLAGS[i]
+		D("BannerPole", V(8, 0.5, 0.5), C(x, 39, WZ + 0.6), LAMP, CYL)
+		D("Banner", V(6, 14, 0.3), C(x, 31.5, WZ + 0.6), c)
+		D("BannerTip", V(4.24, 4.24, 0.3), C(x, 24.5, WZ + 0.6) * CFrame.Angles(0, 0, math.rad(45)), c)
+		D("BannerStar", V(0.4, 3, 3), C(x, 33, WZ + 0.85) * CFrame.Angles(0, math.rad(90), 0), WHITE, CYL)
+	end
+
+	-- THE BACK (behind the spawn): a fountain at the end of the street, trees, benches, flowers
+	do
+		local fz = COURT_LEN - 11
+		local STONE = RGB(228, 222, 240)
+		D("FountainRim", V(1.6, 15, 15), C(0, 0.8, fz) * UP, STONE, CYL)
+		local water = D("FountainWater", V(1.7, 13, 13), C(0, 0.85, fz) * UP, RGB(90, 200, 255), CYL)
+		water.Transparency = 0.15
+		D("FountainPillar", V(6, 1.8, 1.8), C(0, 3, fz) * UP, STONE, CYL)
+		D("FountainBowl", V(0.8, 6.5, 6.5), C(0, 6, fz) * UP, STONE, CYL)
+		D("FountainWater", V(0.85, 5.5, 5.5), C(0, 6.05, fz) * UP, RGB(90, 200, 255), CYL)
+		local jet = D("FountainJet", V(2, 2, 2), C(0, 7.2, fz), RGB(170, 230, 255), BALL, M.Neon)
+		local splash = Instance.new("ParticleEmitter")
+		splash.Color = ColorSequence.new(RGB(200, 240, 255))
+		splash.Size = NumberSequence.new(0.5, 0.2)
+		splash.Transparency = NumberSequence.new(0.2, 1)
+		splash.Lifetime = NumberRange.new(0.8, 1.2)
+		splash.Rate = 18
+		splash.Speed = NumberRange.new(9, 12)
+		splash.SpreadAngle = Vector2.new(18, 18)
+		splash.Acceleration = V(0, -25, 0)
+		splash.Parent = jet
+		for _, sx in ipairs({-1, 1}) do
+			D("BenchSeat", V(2.2, 0.5, 7), C(sx * 12, 2, fz), WOOD, nil, M.WoodPlanks)
+			D("BenchBack", V(0.4, 2.2, 7), C(sx * 13.1, 3.3, fz), WOOD, nil, M.WoodPlanks)
+			for _, dz in ipairs({-3, 3}) do D("BenchLeg", V(1.8, 1.8, 0.5), C(sx * 12, 0.9, fz + dz), LAMP) end
+		end
+	end
+	for _, sx in ipairs({-1, 1}) do
+		for _, x in ipairs({26, 44, 62, 80, 98}) do tree(sx * x + math.random(-2, 2), COURT_LEN - 9 + math.random(-2, 2), 0.9 + math.random() * 0.3) end
+		for _, x in ipairs({34, 54, 72, 90}) do bush(sx * x, PLOTS_END + 7) end
+		flowers(sx * 20, PLOTS_END + 4, sx * 108, COURT_LEN - 4, 26)
+	end
+
+	-- OUTSIDE THE WALLS: grass, rows of big trees, rolling hills and clouds
+	local GRASS = RGB(100, 210, 45)
+	local OUT = 120
+	for _, sx in ipairs({-1, 1}) do
+		D("OuterGrass", V(OUT, 1, COURT_LEN + OUT + 8), C(sx * (MAPW + 4 + OUT / 2), -0.45, (COURT_LEN + OUT) / 2), GRASS, nil, M.Grass)
+	end
+	D("OuterGrass", V(MAPW * 2 + 8, 1, OUT), C(0, -0.45, COURT_LEN + 4 + OUT / 2), GRASS, nil, M.Grass)
+	for _, sx in ipairs({-1, 1}) do
+		for z = 4, COURT_LEN + 50, 19 do
+			tree(sx * (128 + math.random(-3, 3)), z + math.random(-4, 4), 1.3 + math.random() * 0.4, true)
+			tree(sx * (156 + math.random(-4, 4)), z + 9 + math.random(-4, 4), 1.6 + math.random() * 0.5, true)
+		end
+	end
+	for x = -110, 110, 22 do
+		tree(x + math.random(-4, 4), COURT_LEN + 18 + math.random(-3, 3), 1.3 + math.random() * 0.4, true)
+		tree(x + 11 + math.random(-4, 4), COURT_LEN + 44 + math.random(-4, 4), 1.7 + math.random() * 0.4, true)
+	end
+	local HILLS = {RGB(110, 200, 80), RGB(90, 185, 85), RGB(130, 210, 95)}
+	for _, h in ipairs({{-270, 60, 220}, {-260, 260, 260}, {270, 120, 240}, {265, 330, 200}, {-150, 520, 260}, {40, 540, 300}, {210, 500, 240}}) do
+		D("Hill", V(h[3], h[3], h[3]), C(h[1], -h[3] * 0.32, h[2]), pick(HILLS), BALL)
+	end
+	for _ = 1, 14 do
+		local x, y, z = math.random(-320, 320), math.random(115, 160), math.random(-60, 560)
+		local s = 16 + math.random() * 12
+		D("Cloud", V(s, s, s), C(x, y, z), WHITE, BALL)
+		D("Cloud", V(s * 0.75, s * 0.75, s * 0.75), C(x + s * 0.6, y - s * 0.12, z + 2), WHITE, BALL)
+		D("Cloud", V(s * 0.7, s * 0.7, s * 0.7), C(x - s * 0.6, y - s * 0.15, z - 2), RGB(245, 248, 255), BALL)
 	end
 end
 
