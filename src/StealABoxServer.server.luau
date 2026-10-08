@@ -1185,6 +1185,7 @@ local function placeBoxAt(player, worldPos)
 		end
 	end
 	local duration = unboxDuration(player, def, c.size)
+	if (prof.Stolen or 0) == 0 then duration = math.min(duration, 5) end -- the tutorial's first box is quick
 	prof.Unboxing[key] = {id = c.id, mutation = c.mutation, size = c.size, readyAt = now() + duration, duration = duration,
 		u = math.floor(u * 10) / 10, w = math.floor(w * 10) / 10, rot = math.random(-20, 20)}
 	prof.Stolen = prof.Stolen + 1
@@ -3491,8 +3492,11 @@ do
 			for i = 1, 10 do
 				local row = Instance.new("TextLabel")
 				row.Size = UDim2.new(1, 0, 0.09, 0)
-				row.BackgroundColor3 = Color3.fromRGB(40, 40, 52)
+				row.BackgroundColor3 = ({Color3.fromRGB(255, 190, 40), Color3.fromRGB(185, 195, 215), Color3.fromRGB(205, 125, 60)})[i] or Color3.fromRGB(50, 56, 80)
 				row.BackgroundTransparency = 0.15
+				local rc = Instance.new("UICorner")
+				rc.CornerRadius = UDim.new(0.25, 0)
+				rc.Parent = row
 				row.FontFace = Config.Font
 				row.TextScaled = true
 				row.TextColor3 = Color3.new(1, 1, 1)
@@ -3539,7 +3543,6 @@ do
 				for i, row in ipairs(b.rows) do
 					local e = list[i]
 					row.Text = e and ("  #" .. i .. "  " .. e.name .. "   " .. b.prefix .. Config.FormatNum(e.value)) or ""
-					row.TextColor3 = (i == 1) and Color3.fromRGB(255, 220, 70) or Color3.new(1, 1, 1)
 					row.BackgroundTransparency = e and 0.15 or 1
 				end
 			end

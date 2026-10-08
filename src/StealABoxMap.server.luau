@@ -101,8 +101,8 @@ root.Name = "StealABox"
 
 ------------------------------------------------------------------
 -- THE WORLD (everything inside walls, nothing outside)
---   z 0..300   : the street with the 6 bases (3 on each side)
---   z 300..360 : the plaza: spawn, Trails Shop, FREE gift, leaderboards
+--   z 0..44    : the square in front of the warehouse: leaderboards + Trails Shop
+--   z 44..332  : the street with the 6 bases (3 on each side), spawn at the far end
 --   z < -4     : the MEGA MART, 10 departments that get bigger + harder
 ------------------------------------------------------------------
 local L = Config.Layout
@@ -155,15 +155,14 @@ do
 	for _, sx in ipairs({-1, 1}) do
 		P(grass, "Tile", V(MAPW - SW, 0.2, COURT_LEN + 2), C(sx * (MAPW + SW) / 2, 0.1, COURT_LEN / 2 - 1), GRASS, M.Grass)
 	end
-	P(grass, "Tile", V(SW * 2, 0.2, COURT_LEN - 300), C(0, 0.1, (COURT_LEN + 300) / 2), GRASS, M.Grass)
 	-- the street from the spawn to the store door
-	local streetEnd = Config.LobbySpawnZ - 7
+	local streetEnd = COURT_LEN
 	P(root, "Street", V(SW * 2, 0.3, streetEnd), C(0, 0.15, streetEnd / 2), RGB(100, 104, 118), M.Concrete)
-	for z = 10, 290, 20 do
+	for z = 10, COURT_LEN - 10, 20 do
 		P(root, "LaneDash", V(1, 0.05, 8), C(0, 0.32, z), RGB(255, 225, 90), M.SmoothPlastic, NOHIT)
 	end
 	for _, sx in ipairs({-1, 1}) do
-		P(root, "Curb", V(1.4, 0.6, 300), C(sx * (SW - 0.7), 0.3, 150), RGB(235, 235, 240), M.SmoothPlastic, NOHIT)
+		P(root, "Curb", V(1.4, 0.6, COURT_LEN), C(sx * (SW - 0.7), 0.3, COURT_LEN / 2), RGB(235, 235, 240), M.SmoothPlastic, NOHIT)
 	end
 	-- red brick walls all around (they meet the store front at z -4)
 	local BRICK, CAP = RGB(186, 88, 66), RGB(240, 222, 196)
@@ -190,60 +189,72 @@ do
 end
 
 ------------------------------------------------------------------
--- THE PLAZA: two leaderboards on the back wall, the Trails Shop stall
--- and the FREE gift (the client draws the lists + the gift timer)
+-- THE SQUARE in front of the warehouse: two leaderboards on the warehouse wall (left)
+-- and the Trails Shop stall (right). Nothing else.
 ------------------------------------------------------------------
 do
 	local lobby = folder(root, "Lobby")
-	local BZ = COURT_LEN - 1.5 -- the boards hang on the brick back wall, facing the street (-Z)
+	local BZ = FRONT_Z + 2.6 -- on the warehouse front wall, facing the bases (+Z)
+	local TURN = CFrame.Angles(0, math.pi, 0)
+	local function B(x, y, d) return CFrame.new(x, y, BZ + d) * TURN end
 	local function leaderboard(name, x, title, color)
-		P(lobby, name, V(22, 30, 1), C(x, 18, BZ), RGB(40, 44, 56))
-		-- a chunky coloured frame
+		P(lobby, name, V(24, 30, 1), B(x, 19, 0), RGB(28, 32, 50))
+		local glow = color:Lerp(WHITE, 0.35)
+		-- a chunky coloured frame with a glowing inner edge
 		for _, sx in ipairs({-1, 1}) do
-			P(lobby, "BoardFrame", V(1.6, 33.2, 1.6), C(x + sx * 11.8, 18, BZ - 0.1), color)
+			P(lobby, "BoardFrame", V(1.8, 33.4, 1.8), B(x + sx * 12.9, 19, 0.1), color)
+			P(lobby, "BoardGlow", V(0.4, 30, 0.3), B(x + sx * 11.9, 19, 0.55), glow, M.Neon, NOHIT)
 		end
-		P(lobby, "BoardFrame", V(25.2, 1.6, 1.6), C(x, 2.2, BZ - 0.1), color)
-		-- the title ribbon on top, with pointed ends and a point down to the list
-		local banner = P(lobby, "BoardBanner", V(22, 5.6, 1.4), C(x, 37.2, BZ - 0.9), color)
+		P(lobby, "BoardFrame", V(27.6, 1.8, 1.8), B(x, 3.1, 0.1), color)
+		P(lobby, "BoardGlow", V(23.6, 0.4, 0.3), B(x, 4.1, 0.55), glow, M.Neon, NOHIT)
+		-- the title ribbon on top, with pointed ends
+		local banner = P(lobby, "BoardBanner", V(24, 6, 1.4), B(x, 38.4, 0.9), color)
 		local tip = color:Lerp(RGB(0, 0, 0), 0.2)
-		for _, ex in ipairs({-11, 11}) do
-			P(lobby, "BannerTip", V(4, 4, 1.2), C(x + ex, 37.2, BZ - 0.8) * CFrame.Angles(0, 0, math.rad(45)), tip)
+		for _, ex in ipairs({-12, 12}) do
+			P(lobby, "BannerTip", V(4.2, 4.2, 1.2), B(x + ex, 38.4, 0.8) * CFrame.Angles(0, 0, math.rad(45)), tip)
 		end
-		P(lobby, "BannerTip", V(3, 3, 1.2), C(x, 34.4, BZ - 0.8) * CFrame.Angles(0, 0, math.rad(45)), color)
+		P(lobby, "BannerTip", V(3, 3, 1.2), B(x, 35.4, 0.8) * CFrame.Angles(0, 0, math.rad(45)), color)
 		signText(banner, Enum.NormalId.Front, title, 30, 5, 300)
+		-- a gold star on top and a little stage in front
+		local star = P(lobby, "BoardStar", V(1.2, 4.4, 4.4), B(x, 43.2, 0.9) * CFrame.Angles(0, math.rad(90), 0), RGB(255, 210, 50), M.SmoothPlastic, NOHIT)
+		star.Shape = Enum.PartType.Cylinder
+		P(lobby, "BoardStage", V(30, 1.2, 8), B(x, 0.6, 4), color:Lerp(WHITE, 0.6))
+		P(lobby, "BoardStageEdge", V(30.4, 0.3, 0.4), B(x, 1.3, 8), glow, M.Neon, NOHIT)
 	end
-	-- looking at the back wall: Top Money on the left, Top Speed on the right
-	leaderboard("BoardTopMoney", 15, "Top Money", RGB(80, 200, 60))
-	leaderboard("BoardTopSpeed", -15, "Top Speed", RGB(60, 135, 255))
+	-- facing the warehouse wall from the street: Top Money and Top Speed on the left side
+	leaderboard("BoardTopMoney", -46, "Top Money", RGB(80, 200, 60))
+	leaderboard("BoardTopSpeed", -80, "Top Speed", RGB(60, 135, 255))
 
 	-- TRAILS SHOP: a wooden market stall with a green + white striped awning (press E at the counter)
 	do
 		local stall = Instance.new("Model")
 		stall.Name = "TrailStall"
-		local SX, SZ = 46, COURT_LEN - 16
+		-- on the right side of the square, the counter faces the street (-X)
+		local base = CFrame.new(60, 0, 22) * CFrame.Angles(0, math.pi / 2, 0)
+		local function S(x, y, z) return base * CFrame.new(x, y, z) end
 		local wood, woodDark, woodTop = RGB(176, 112, 60), RGB(120, 74, 40), RGB(222, 168, 108)
-		local counter = solid(P(stall, "Counter", V(16, 4, 3.6), C(SX, 2.2, SZ - 2), wood, M.WoodPlanks))
-		P(stall, "CounterTop", V(17, 0.5, 4.4), C(SX, 4.45, SZ - 2), woodTop, M.WoodPlanks)
+		local counter = solid(P(stall, "Counter", V(16, 4, 3.6), S(0, 2.2, -2), wood, M.WoodPlanks))
+		P(stall, "CounterTop", V(17, 0.5, 4.4), S(0, 4.45, -2), woodTop, M.WoodPlanks)
 		for _, px in ipairs({-8, 8}) do
-			P(stall, "Post", V(0.8, 11.8, 0.8), C(SX + px, 6.1, SZ - 3.6), woodDark, M.WoodPlanks)
-			P(stall, "Post", V(0.8, 13.6, 0.8), C(SX + px, 7, SZ + 3.6), woodDark, M.WoodPlanks)
+			P(stall, "Post", V(0.8, 11.8, 0.8), S(px, 6.1, -3.6), woodDark, M.WoodPlanks)
+			P(stall, "Post", V(0.8, 13.6, 0.8), S(px, 7, 3.6), woodDark, M.WoodPlanks)
 		end
 		local tilt = CFrame.Angles(math.rad(-14), 0, 0) -- slopes down to the front
 		for k = 0, 7 do
-			local x = SX - 7.875 + k * 2.25
+			local x = -7.875 + k * 2.25
 			local c = (k % 2 == 0) and RGB(80, 205, 60) or WHITE
-			P(stall, "Awning", V(2.25, 0.4, 9.6), C(x, 12.9, SZ) * tilt, c)
-			P(stall, "Valance", V(2.25, 1.6, 0.3), C(x, 11, SZ - 4.75), c)
+			P(stall, "Awning", V(2.25, 0.4, 9.6), S(x, 12.9, 0) * tilt, c)
+			P(stall, "Valance", V(2.25, 1.6, 0.3), S(x, 11, -4.75), c)
 		end
 		-- a few trail samples on the counter
 		for k, t in ipairs({1, 3, 5}) do
 			local trail = Config.Trails[t]
 			if trail then
-				P(stall, "TrailSample", V(1.6, 1.2, 1.6), C(SX - 5 + (k - 1) * 5, 5.3, SZ - 2) * CFrame.Angles(0, math.rad(20 * k), 0), trail.colors[1], M.Neon, NOHIT)
+				P(stall, "TrailSample", V(1.6, 1.2, 1.6), S(-5 + (k - 1) * 5, 5.3, -2) * CFrame.Angles(0, math.rad(20 * k), 0), trail.colors[1], M.Neon, NOHIT)
 			end
 		end
 		-- the floating green "Trails Shop" title
-		local anchor = P(stall, "SignAnchor", V(1, 1, 1), C(SX, 18, SZ), RGB(0, 0, 0), nil, GHOST)
+		local anchor = P(stall, "SignAnchor", V(1, 1, 1), S(0, 18, 0), RGB(0, 0, 0), nil, GHOST)
 		local bb = Instance.new("BillboardGui")
 		bb.Name = "TrailsShopSign"
 		bb.Size = UDim2.fromScale(18, 4.5)
@@ -253,35 +264,6 @@ do
 		textLabel(bb, "Trails Shop", RGB(130, 235, 60), 4)
 		prompt(counter, "OpenTrailShop", "Trails", "Trails Shop")
 		stall.Parent = lobby
-	end
-
-	-- the FREE GIFT: a big red present with a yellow ribbon (claim it every few minutes)
-	do
-		local gift = Instance.new("Model")
-		gift.Name = "FreeGift"
-		local RED, YEL = RGB(230, 45, 55), RGB(255, 210, 40)
-		local box = P(gift, "Box", V(6, 5, 6), C(-44, 2.7, COURT_LEN - 18), RED, M.SmoothPlastic, {CanCollide = false})
-		-- everything else is glued to the Box, so the client can bob the whole gift by moving the Box
-		local function deco(name, size, offset, color, shape)
-			local p = P(gift, name, size, box.CFrame * offset, color, M.SmoothPlastic, NOHIT)
-			if shape then p.Shape = shape end
-			return Config.Attach(p, box)
-		end
-		deco("Ribbon", V(1.3, 5.04, 6.04), CFrame.new(), YEL)
-		deco("Ribbon", V(6.04, 5.04, 1.3), CFrame.new(), YEL)
-		deco("Lid", V(6.6, 1.2, 6.6), CFrame.new(0, 2.5, 0), RED)
-		deco("Ribbon", V(1.35, 1.24, 6.64), CFrame.new(0, 2.5, 0), YEL)
-		deco("Ribbon", V(6.64, 1.24, 1.35), CFrame.new(0, 2.5, 0), YEL)
-		deco("Bow", V(2.4, 1.6, 0.8), CFrame.new(-1.1, 3.7, 0) * CFrame.Angles(0, 0, math.rad(30)), YEL)
-		deco("Bow", V(2.4, 1.6, 0.8), CFrame.new(1.1, 3.7, 0) * CFrame.Angles(0, 0, math.rad(-30)), YEL)
-		deco("Knot", V(1.1, 1.1, 1.1), CFrame.new(0, 3.4, 0), YEL, Enum.PartType.Ball)
-		gift.PrimaryPart = box
-		prompt(box, "FreeGiftPrompt", "Claim", "FREE Gift")
-		local label = Instance.new("Attachment") -- the client hangs its "FREE!" / countdown billboard here
-		label.Name = "Label"
-		label.Position = V(0, 8, 0)
-		label.Parent = box
-		gift.Parent = lobby
 	end
 end
 
@@ -2416,7 +2398,8 @@ local plots = folder(root, "Plots")
 local PLOT_COLORS = {RGB(255, 170, 40), RGB(245, 245, 245), RGB(160, 90, 255), RGB(40, 200, 255), RGB(255, 90, 90), RGB(255, 220, 50)}
 local CW, CD = Config.Court.plotWidth, Config.Court.plotDepth
 local HU = CW / 2
-local PLOT_Z = {6 + CW / 2, 6 + CW * 1.5 + 6, 6 + CW * 2.5 + 12}
+local SQUARE = 44 -- the open square between the warehouse and the first bases
+local PLOT_Z = {SQUARE + CW / 2, SQUARE + CW * 1.5 + 6, SQUARE + CW * 2.5 + 12}
 
 local function buildPlot(i, side, zc)
 	local col = PLOT_COLORS[i]
