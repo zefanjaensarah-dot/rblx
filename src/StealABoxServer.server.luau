@@ -1596,6 +1596,8 @@ end)
 ------------------------------------------------------------------
 -- CUSTOMERS: shoppers walk in, pick a product off a stand, pay at the register, leave
 ------------------------------------------------------------------
+local loadTracks, playAnim, loadFriends, friendsOf -- (made in the CUSTOMERS block below, used later)
+do
 local customersFolder = Instance.new("Folder")
 customersFolder.Name = "Customers"
 customersFolder.Parent = world
@@ -1628,7 +1630,7 @@ task.spawn(function()
 end)
 
 -- classic R6 animations on any rig (guardians + customers)
-local function loadTracks(model)
+function loadTracks(model)
 	local hum = model:FindFirstChildOfClass("Humanoid")
 	local animator = hum and hum:FindFirstChildOfClass("Animator")
 	if not animator then return nil end
@@ -1645,7 +1647,7 @@ local function loadTracks(model)
 	return tracks
 end
 
-local function playAnim(obj, name, speed)
+function playAnim(obj, name, speed)
 	local tracks = obj.tracks
 	if not tracks then return end
 	if obj.anim ~= name then
@@ -1708,7 +1710,7 @@ end
 
 -- shoppers are classic Noobs or Bacon Hairs
 -- shoppers look like your Roblox connections (friends)!
-local friendsOf = {}   -- [player] = {{id, name}, ...}
+friendsOf = {}   -- [player] = {{id, name}, ...}
 local descCache = {}   -- [userId] = HumanoidDescription, or false while loading / if it failed
 local function fetchDescription(userId)
 	if descCache[userId] ~= nil then return descCache[userId] or nil end
@@ -1719,7 +1721,7 @@ local function fetchDescription(userId)
 	end)
 	return nil
 end
-local function loadFriends(player)
+function loadFriends(player)
 	task.spawn(function()
 		local list = {}
 		local ok, pages = pcall(function() return Players:GetFriendsAsync(player.UserId) end)
@@ -2091,6 +2093,7 @@ RunService.Heartbeat:Connect(function(frameDt)
 	end
 end)
 
+end
 ------------------------------------------------------------------
 -- SHOP / CRATES / HELPERS / HOME
 ------------------------------------------------------------------
@@ -2247,36 +2250,21 @@ local function refreshKiosk(player)
 	local level = prof and prof.Customers or 1
 	setSign(plot, "CustomerSign", "Lv " .. level .. "/" .. Config.CustomerMax, "x" .. string.format("%.1f", Config.CustomerRate(level)) .. " shoppers")
 end
-for _, plot in ipairs(plotsFolder:GetChildren()) do
-	local button = plot:FindFirstChild("CustomerKiosk", true)
-	local prompt = button and button:FindFirstChildOfClass("ProximityPrompt")
-	if prompt then
-		prompt.Triggered:Connect(function(who)
-			if playerPlot[who] ~= plot then
-				notify(who, "That's not your kiosk!", RED)
-				return
-			end
-			local prof = profiles[who]
-			if not prof then return end
-			local level = prof.Customers or 1
-			if level >= Config.CustomerMax then
-				notify(who, "Your customer kiosk is maxed!", YELLOW)
-				return
-			end
-			local cost = Config.CustomerCost(level)
-			if prof.Cash < cost then
-				notify(who, "Not enough cash! Kiosk level " .. (level + 1) .. " costs $" .. cost, RED)
-				return
-			end
-			prof.Cash = prof.Cash - cost
-			prof.Customers = level + 1
-			refreshKiosk(who)
-			sync(who)
-			FXEvent:FireAllClients("LevelUp", button.Position, 1)
-			playSound(button, "rbxasset://sounds/electronicpingshort.wav", 1, 1.4)
-			notify(who, "📣 More customers! Kiosk level " .. prof.Customers .. " (x" .. string.format("%.1f", Config.CustomerRate(prof.Customers)) .. " shoppers)", GREEN)
-		end)
-	end
+-- MORE SHOPPERS: upgraded from the Items panel (the kiosk on the plot is gone)
+local function upgradeShoppers(who)
+	local prof = profiles[who]
+	if not prof then return {ok = false, msg = "Still loading..."} end
+	local level = prof.Customers or 1
+	if level >= Config.CustomerMax then return {ok = false, msg = "Your shop is maxed!"} end
+	local cost = Config.CustomerCost(level)
+	if prof.Cash < cost then return {ok = false, msg = "Not enough cash! Shop level " .. (level + 1) .. " costs $" .. Config.FormatNum(cost)} end
+	prof.Cash = prof.Cash - cost
+	prof.Customers = level + 1
+	refreshKiosk(who)
+	sync(who)
+	local _, hrp = getChar(who)
+	if hrp then FXEvent:FireAllClients("LevelUp", hrp.Position, 1) end
+	return {ok = true, msg = "More shoppers! Shop level " .. prof.Customers .. " (x" .. string.format("%.1f", Config.CustomerRate(prof.Customers)) .. " shoppers)"}
 end
 
 -- earn speed while standing on your own belt
@@ -2531,6 +2519,9 @@ ActionFunc.OnServerInvoke = function(player, action, arg, expectedId)
 
 	elseif action == "BuyPass" then
 		return buyPass(player, arg)
+
+	elseif action == "UpgradeShoppers" then
+		return upgradeShoppers(player)
 
 	elseif action == "BuyStand" then
 		local have = unlockedStands(prof)

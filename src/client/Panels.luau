@@ -41,7 +41,7 @@ function Panels.init(ctx)
 		local data = ctx.data
 		if not data or not data.Items then return end
 		local unlocked = stands()
-		local sig = {tostring(unlocked)}
+		local sig = {tostring(unlocked), tostring(data.Customers), tostring((data.Cash or 0) >= Config.CustomerCost(data.Customers or 1))}
 		for _, it in ipairs(data.Items) do table.insert(sig, it.id .. it.mutation .. it.size .. tostring(it.stand)) end
 		sig = table.concat(sig, "|")
 		-- header: "3/8 Active" and the price of the next shelf spot
@@ -61,6 +61,26 @@ function Panels.init(ctx)
 		lastSig = sig
 		local page = items.page
 		clear(page)
+		-- more shoppers (this used to be the kiosk on your base)
+		do
+			local level = data.Customers or 1
+			local r = row(page, 0, 60)
+			r.BackgroundColor3 = UI.rgb(120, 200, 255)
+			UI.icon("star", r, UDim2.fromOffset(44, 44), UDim2.fromOffset(8, 8), C.yellow)
+			UI.label(r, "Shoppers  Lv " .. level .. "/" .. Config.CustomerMax, {Position = UDim2.fromOffset(60, 4), Size = UDim2.new(1, -190, 0, 28), Max = 21,
+				Stroke = 2.4, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false})
+			UI.label(r, "x" .. string.format("%.1f", Config.CustomerRate(level)) .. " cash from your shelf", {Position = UDim2.fromOffset(60, 32), Size = UDim2.new(1, -190, 0, 22),
+				Max = 17, Stroke = 2, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false, TextColor3 = C.money})
+			local maxed = level >= Config.CustomerMax
+			local cost = (not maxed) and Config.CustomerCost(level) or 0
+			local up = UI.button(r, {Text = maxed and "MAX" or ("$" .. fmt(cost)), Color = (maxed or (data.Cash or 0) < cost) and UI.rgb(120, 120, 130) or UI.rgb(70, 200, 50),
+				Size = UDim2.fromOffset(112, 44), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), TextSize = 20, Depth = 4})
+			up.Activated:Connect(function()
+				if maxed then return end
+				local res = ctx.invoke("UpgradeShoppers")
+				if res.msg and res.msg ~= "" then ctx.notify(res.msg, res.ok and C.green or C.red) end
+			end)
+		end
 		if #data.Items == 0 then
 			emptyText(page, "No items yet - steal a box from the Mega Mart and open it!")
 			return

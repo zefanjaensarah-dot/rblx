@@ -70,11 +70,25 @@ end
 -- BUILD THE UI
 ------------------------------------------------------------------
 UI.initRoot(playerGui)
-Hud.init(ctx)
-Panels.init(ctx)
-Windows.init(ctx)
-ShopWindow.init(ctx)
-Tutorial.init(ctx)
+-- every part starts on its own: if one breaks, the rest still works (and the error shows on screen)
+local initErrors = {}
+local function start(name, mod)
+	local ok, err = pcall(mod.init, ctx)
+	if not ok then
+		warn("[Steal a Box] " .. name .. " failed: " .. tostring(err))
+		table.insert(initErrors, name .. ": " .. tostring(err))
+	end
+end
+start("Hud", Hud)
+start("Panels", Panels)
+start("Windows", Windows)
+start("ShopWindow", ShopWindow)
+start("Tutorial", Tutorial)
+task.delay(3, function()
+	for _, e in ipairs(initErrors) do
+		if ctx.notify then ctx.notify("UI error - " .. e, Color3.fromRGB(255, 70, 70)) end
+	end
+end)
 task.spawn(WorldFX.init, ctx) -- waits for the map, so it starts on its own
 
 ctx.remotes.Notify.OnClientEvent:Connect(function(text, color)

@@ -1,19 +1,16 @@
---[[ STEAL A BOX - shared config (used by server, client AND the map builder). Tweak freely! ]]
+--[[ STEAL A BOX - shared config (used by server, client AND the builder). Tweak freely! ]]
 local Config = {}
 local M = Enum.Material
 local function rgb(r, g, b) return Color3.fromRGB(r, g, b) end
 
--- The MEGA MART is one long supermarket: department 1 is at the front door, department 10 at the very back.
--- Every department is a bit deeper and wider than the one before (see Config.AreaLen / AreaHalfWidth).
+-- The warehouse is one long lane: Area 1 starts at the front door, Area 10 is at the very back.
 Config.Layout = {
-	frontZ = -4,        -- inside face of the store's front wall (the store goes towards -Z)
+	frontZ = -4,        -- inside face of the warehouse front wall
+	sectionLen = 75,    -- each area is 75 studs deep
+	halfWidth = 63,     -- the warehouse is 126 studs wide (x -63..63)
 	floorY = 0.75,
-	wallHeight = 44,
-	scale = 1.5,        -- boxes are built 1.5x bigger
-	sectionLen = 64,    -- depth of department 1 (old callers; use Config.AreaLen(i))
-	halfWidth = 40,     -- half width of department 1 (old callers; use Config.AreaHalfWidth(i))
-	growLen = 10,       -- every next department is 10 studs deeper ...
-	growWidth = 4,      -- ... and 4 studs wider on each side
+	wallHeight = 45,
+	scale = 1.5,        -- the warehouse is built 1.5x the original size
 }
 
 -- ONE font everywhere: Fredoka One, the round bold font most big Roblox simulators use
@@ -49,16 +46,15 @@ function Config.RevealTime(tier)
 	return 0.55 + (Config.RevealHold[tier] or 2.4) + 0.8
 end
 
--- the lobby in front of the store: the street, the 6 shops and (at the far end) the plaza
+-- the courtyard in front of the warehouse, with the 6 big plots
 Config.Court = {
 	halfWidth = 112,    -- x -112..112
-	length = 360,       -- z 0..360 (z 300..360 is the plaza: spawn, Trails Shop, FREE gift, leaderboards)
+	length = 300,       -- z 0..300
 	plotWidth = 92,     -- along the street
 	plotDepth = 92,     -- away from the street
 }
-Config.LobbySpawnZ = 330 -- where you spawn (on the plaza, facing the store)
 
--- rarity rules for the 3 boxes in each department: [1]=common [2]=rare [3]=epic
+-- rarity rules for the 3 boxes in each area: [1]=common [2]=rare [3]=epic
 Config.Rarities = {
 	{name = "Common", weight = 60, slow = 1,   hold = 0.4, color = rgb(220, 220, 220)},
 	{name = "Rare",   weight = 30, slow = 2,   hold = 0.8, color = rgb(90, 170, 255)},
@@ -102,133 +98,84 @@ function Config.BoxLabel(def, mutationId, sizeId)
 	return table.concat(parts, " ")
 end
 
-------------------------------------------------------------------
--- THE DEPARTMENTS of the MEGA MART (easy at the door, scary at the back).
--- guard = the security guard of that department, guardSpeed = his chase speed,
--- fling = how hard he throws you out when he catches you.
--- Every department has exactly 3 boxes (common, rare, epic) and 4 items (see Config.AreaItems).
-------------------------------------------------------------------
+-- AREAS. guard = the guardian of that area (weak at the start, terrifying at the end).
+-- guardSpeed = chase speed, fling = how hard he flings you when he catches you.
 Config.Areas = {
-	{name = "Fruit & Veg", accent = rgb(110, 200, 70), guardSpeed = 12, fling = 60, guard = "Sleepy Stock Boy", boxes = {
-		{id = "AppleCrate",     name = "Apple Crate",     color = rgb(205, 150, 90),  material = M.Wood},
-		{id = "BananaBox",      name = "Banana Box",      color = rgb(250, 210, 60),  material = M.SmoothPlastic},
-		{id = "MelonCrate",     name = "Melon Crate",     color = rgb(90, 175, 75),   material = M.Wood},
+	{name = "Dusty Storage", face = "🙂", accent = rgb(200, 165, 110), guardSpeed = 12, fling = 60, recommended = 0,
+		guard = "Sleepy Watchman", boxes = {
+		{id = "OldBox",       name = "Old Box",        emoji = "📦", value = 5,     color = rgb(160, 130, 95),  material = M.SmoothPlastic},
+		{id = "DustyCrate",   name = "Dusty Crate",    emoji = "🕸️", value = 12,    color = rgb(125, 100, 75),  material = M.WoodPlanks},
+		{id = "AntiqueChest", name = "Antique Chest",  emoji = "🏺", value = 30,    color = rgb(120, 75, 40),   material = M.Wood},
 	}},
-	{name = "Bakery", accent = rgb(235, 160, 70), guardSpeed = 18, fling = 90, guard = "Grumpy Baker", boxes = {
-		{id = "BreadBox",       name = "Bread Box",       color = rgb(215, 165, 105), material = M.SmoothPlastic},
-		{id = "BagelBox",       name = "Bagel Box",       color = rgb(235, 135, 55),  material = M.SmoothPlastic},
-		{id = "CakeCrate",      name = "Cake Crate",      color = rgb(255, 165, 205), material = M.SmoothPlastic},
+	{name = "Farm Barn", face = "😐", accent = rgb(230, 80, 60), guardSpeed = 18, fling = 90, recommended = 0,
+		guard = "Rookie Guard", boxes = {
+		{id = "HayBox",       name = "Hay Box",        emoji = "🌾", value = 25,    color = rgb(235, 200, 90),  material = M.Fabric},
+		{id = "EggCrate",     name = "Egg Crate",      emoji = "🥚", value = 45,    color = rgb(245, 238, 220), material = M.SmoothPlastic},
+		{id = "GoldenEgg",    name = "Golden Egg Box", emoji = "🐣", value = 90,    color = rgb(255, 215, 90),  material = M.SmoothPlastic},
 	}},
-	{name = "Dairy", accent = rgb(120, 190, 255), guardSpeed = 22, fling = 120, guard = "Dairy Clerk", boxes = {
-		{id = "MilkCrate",      name = "Milk Crate",      color = rgb(70, 140, 255),  material = M.Plastic},
-		{id = "CheeseBox",      name = "Cheese Box",      color = rgb(255, 205, 60),  material = M.SmoothPlastic},
-		{id = "ButterCrate",    name = "Butter Crate",    color = rgb(255, 235, 150), material = M.SmoothPlastic},
+	{name = "Toy Factory", face = "😮", accent = rgb(90, 170, 255), guardSpeed = 22, fling = 120, recommended = 0,
+		guard = "Mall Cop", boxes = {
+		{id = "TeddyBox",     name = "Teddy Box",      emoji = "🧸", value = 60,    color = rgb(205, 145, 95),  material = M.Fabric},
+		{id = "RobotToyBox",  name = "Robot Toy Box",  emoji = "🤖", value = 100,   color = rgb(120, 200, 255), material = M.SmoothPlastic},
+		{id = "RocketToyBox", name = "Rocket Toy Box", emoji = "🚀", value = 180,   color = rgb(255, 90, 90),   material = M.SmoothPlastic},
 	}},
-	{name = "Butcher", accent = rgb(230, 80, 80), guardSpeed = 26, fling = 150, guard = "The Butcher", boxes = {
-		{id = "SausageBox",     name = "Sausage Box",     color = rgb(205, 95, 75),   material = M.SmoothPlastic},
-		{id = "FishCrate",      name = "Fish Crate",      color = rgb(90, 175, 230),  material = M.Plastic},
-		{id = "SteakBox",       name = "Steak Box",       color = rgb(165, 40, 50),   material = M.SmoothPlastic},
+	{name = "Candy Shop", face = "😬", accent = rgb(255, 110, 200), guardSpeed = 26, fling = 150, recommended = 0,
+		guard = "Candy Bouncer", boxes = {
+		{id = "CandyBox",     name = "Candy Box",      emoji = "🍬", value = 120,   color = rgb(255, 150, 210), material = M.SmoothPlastic},
+		{id = "CupcakeBox",   name = "Cupcake Box",    emoji = "🧁", value = 200,   color = rgb(255, 220, 150), material = M.SmoothPlastic},
+		{id = "ChocoBox",     name = "Chocolate Box",  emoji = "🍫", value = 350,   color = rgb(110, 60, 35),   material = M.SmoothPlastic},
 	}},
-	{name = "Frozen", accent = rgb(130, 220, 255), guardSpeed = 30, fling = 180, guard = "Freezer Guard", boxes = {
-		{id = "IcePopBox",      name = "Ice Pop Box",     color = rgb(150, 225, 255), material = M.SmoothPlastic},
-		{id = "PizzaBox",       name = "Pizza Box",       color = rgb(230, 80, 50),   material = M.SmoothPlastic},
-		{id = "IceCreamCrate",  name = "Ice Cream Crate", color = rgb(210, 240, 255), material = M.Ice},
+	{name = "Pirate Cove", face = "😟", accent = rgb(60, 170, 220), guardSpeed = 30, fling = 180, recommended = 0,
+		guard = "Pirate Brute", boxes = {
+		{id = "PirateCrate",  name = "Pirate Crate",   emoji = "⚓", value = 250,   color = rgb(140, 100, 60),  material = M.WoodPlanks},
+		{id = "TreasureChest",name = "Treasure Chest", emoji = "💰", value = 400,   color = rgb(185, 120, 40),  material = M.Wood},
+		{id = "CursedChest",  name = "Cursed Chest",   emoji = "💀", value = 700,   color = rgb(100, 45, 140),  material = M.SmoothPlastic},
 	}},
-	{name = "Snacks & Candy", accent = rgb(255, 110, 190), guardSpeed = 34.5, fling = 210, guard = "Candy Cop", boxes = {
-		{id = "ChipsBox",       name = "Chips Box",       color = rgb(255, 180, 40),  material = M.SmoothPlastic},
-		{id = "SweetsBox",      name = "Sweets Box",      color = rgb(255, 120, 200), material = M.SmoothPlastic},
-		{id = "ChocolateCrate", name = "Chocolate Crate", color = rgb(115, 62, 35),   material = M.Wood},
+	{name = "Dino Museum", face = "😰", accent = rgb(130, 200, 80), guardSpeed = 34.5, fling = 210, recommended = 0,
+		guard = "Riot Guard", boxes = {
+		{id = "FossilBox",    name = "Fossil Box",     emoji = "🦴", value = 500,   color = rgb(225, 212, 180), material = M.Sandstone},
+		{id = "DinoEggBox",   name = "Dino Egg Box",   emoji = "🦕", value = 800,   color = rgb(150, 205, 120), material = M.SmoothPlastic},
+		{id = "TRexBox",      name = "T-Rex Box",      emoji = "🦖", value = 1400,  color = rgb(60, 145, 60),   material = M.SmoothPlastic},
 	}},
-	{name = "Drinks", accent = rgb(60, 200, 200), guardSpeed = 39, fling = 240, guard = "Drinks Manager", boxes = {
-		{id = "SodaCrate",      name = "Soda Crate",      color = rgb(230, 45, 50),   material = M.Plastic},
-		{id = "JuiceBox",       name = "Juice Box",       color = rgb(255, 150, 30),  material = M.SmoothPlastic},
-		{id = "EnergyCrate",    name = "Energy Crate",    color = rgb(70, 220, 80),   material = M.SmoothPlastic},
+	{name = "Frozen Lab", face = "😨", accent = rgb(140, 220, 255), guardSpeed = 39, fling = 240, recommended = 0,
+		guard = "Yeti Guard", boxes = {
+		{id = "IceBox",       name = "Ice Box",        emoji = "❄️", value = 1000,  color = rgb(185, 230, 255), material = M.Ice},
+		{id = "PenguinBox",   name = "Penguin Box",    emoji = "🐧", value = 1600,  color = rgb(45, 45, 55),    material = M.SmoothPlastic},
+		{id = "MammothBox",   name = "Mammoth Box",    emoji = "🐘", value = 2800,  color = rgb(135, 95, 70),   material = M.Fabric},
 	}},
-	{name = "Toys", accent = rgb(255, 200, 60), guardSpeed = 44, fling = 270, guard = "Toy Store Guard", boxes = {
-		{id = "ToyBox",         name = "Toy Box",         color = rgb(80, 150, 255),  material = M.SmoothPlastic},
-		{id = "PlushBox",       name = "Plush Box",       color = rgb(255, 150, 190), material = M.Fabric},
-		{id = "RocketBox",      name = "Rocket Box",      color = rgb(235, 60, 60),   material = M.SmoothPlastic},
+	{name = "Tech Lab", face = "😱", accent = rgb(60, 150, 255), guardSpeed = 44, fling = 270, recommended = 0,
+		guard = "Security Mech", boxes = {
+		{id = "CircuitBox",   name = "Circuit Box",    emoji = "💾", value = 2000,  color = rgb(40, 165, 85),   material = M.SmoothPlastic},
+		{id = "RobotBox",     name = "Robot Box",      emoji = "🤖", value = 3200,  color = rgb(185, 195, 205), material = M.Metal},
+		{id = "AICoreBox",    name = "AI Core Box",    emoji = "🧠", value = 5500,  color = rgb(60, 200, 255),  material = M.Neon},
 	}},
-	{name = "Electronics", accent = rgb(90, 120, 255), guardSpeed = 49, fling = 300, guard = "Tech Security", boxes = {
-		{id = "GadgetBox",      name = "Gadget Box",      color = rgb(70, 75, 95),    material = M.SmoothPlastic},
-		{id = "ConsoleBox",     name = "Console Box",     color = rgb(235, 235, 245), material = M.SmoothPlastic},
-		{id = "TVBox",          name = "TV Box",          color = rgb(55, 60, 75),    material = M.Metal},
+	{name = "Alien Hangar", face = "💀", accent = rgb(90, 255, 90), guardSpeed = 49, fling = 300, recommended = 0,
+		guard = "Alien Enforcer", boxes = {
+		{id = "AlienBox",     name = "Alien Box",      emoji = "👽", value = 4000,  color = rgb(110, 230, 110), material = M.SmoothPlastic},
+		{id = "UFOBox",       name = "UFO Box",        emoji = "🛸", value = 6500,  color = rgb(175, 185, 205), material = M.Metal},
+		{id = "PlasmaBox",    name = "Plasma Core Box",emoji = "☢️", value = 11000, color = rgb(150, 255, 80),  material = M.Neon},
 	}},
-	{name = "Manager's Vault", accent = rgb(255, 195, 40), guardSpeed = 55, fling = 340, guard = "Store Manager", boxes = {
-		{id = "CoinBox",        name = "Coin Box",        color = rgb(255, 200, 50),  material = M.Metal},
-		{id = "SafeBox",        name = "Safe Box",        color = rgb(125, 130, 145), material = M.Metal},
-		{id = "VaultCrate",     name = "Vault Crate",     color = rgb(255, 215, 70),  material = M.Neon},
+	{name = "Galaxy Vault", face = "👿", accent = rgb(180, 90, 255), guardSpeed = 55, fling = 340, recommended = 0,
+		guard = "Void Warden", boxes = {
+		{id = "StarBox",      name = "Star Box",       emoji = "⭐", value = 8000,  color = rgb(255, 230, 80),  material = M.Neon},
+		{id = "GalaxyBox",    name = "Galaxy Box",     emoji = "🌌", value = 13000, color = rgb(95, 55, 185),   material = M.Glass},
+		{id = "BlackHoleBox", name = "Black Hole Box", emoji = "🕳️", value = 25000, color = rgb(20, 12, 30),    material = M.SmoothPlastic},
 	}},
 }
 
--- fill in the department sizes + lookups: Config.Boxes[id] = box def (with .area and .rarity)
+-- lookup: Config.Boxes[id] = box def (with .area and .rarity filled in)
 Config.Boxes = {}
-local areaStartZ, areaEndZ = {}, {} -- cached z range of every department
-do
-	local L = Config.Layout
-	local z = L.frontZ
-	for areaIndex, area in ipairs(Config.Areas) do
-		area.index = areaIndex
-		area.len = area.len or (L.sectionLen + (areaIndex - 1) * L.growLen)             -- 64, 74 ... 154
-		area.halfWidth = area.halfWidth or (L.halfWidth + (areaIndex - 1) * L.growWidth) -- 40, 44 ... 76
-		areaStartZ[areaIndex] = z
-		z -= area.len
-		areaEndZ[areaIndex] = z
-		for r, box in ipairs(area.boxes) do
-			box.area = areaIndex
-			box.rarity = r
-			box.emoji = box.emoji or ""
-			Config.Boxes[box.id] = box
-		end
+for areaIndex, area in ipairs(Config.Areas) do
+	area.index = areaIndex
+	for r, box in ipairs(area.boxes) do
+		box.area = areaIndex
+		box.rarity = r
+		Config.Boxes[box.id] = box
 	end
 end
 
-------------------------------------------------------------------
--- STORE GEOMETRY: department i covers x in [-AreaHalfWidth(i), AreaHalfWidth(i)]
--- and z in [AreaEndZ(i), AreaStartZ(i)] (the store grows towards -Z).
-------------------------------------------------------------------
-function Config.AreaLen(areaIndex)
-	local area = Config.Areas[areaIndex]
-	return area and area.len or Config.Layout.sectionLen
-end
-function Config.AreaHalfWidth(areaIndex)
-	local area = Config.Areas[areaIndex]
-	return area and area.halfWidth or Config.Layout.halfWidth
-end
--- z where a department starts (its entrance, the side closest to the front door)
-function Config.AreaStartZ(areaIndex)
-	if areaIndex <= 1 then return Config.Layout.frontZ end
-	return areaStartZ[areaIndex] or areaEndZ[#areaEndZ]
-end
--- z of the back of a department (where the next one starts)
-function Config.AreaEndZ(areaIndex)
-	return areaEndZ[math.clamp(areaIndex, 1, #areaEndZ)]
-end
--- z of the store's back wall
-function Config.StoreEndZ()
-	return areaEndZ[#areaEndZ]
-end
--- half width of the widest department
-function Config.StoreHalfWidth()
-	local hw = 0
-	for i = 1, #Config.Areas do hw = math.max(hw, Config.AreaHalfWidth(i)) end
-	return hw
-end
--- which department a position is in (1..10), or nil when outside the store
-function Config.ZoneAt(pos)
-	if not pos then return nil end
-	local z = pos.Z
-	if z >= areaStartZ[1] or z < areaEndZ[#areaEndZ] then return nil end
-	for i = 1, #areaEndZ do
-		if z >= areaEndZ[i] then
-			if math.abs(pos.X) <= Config.Areas[i].halfWidth + 1 then return i end
-			return nil
-		end
-	end
-	return nil
-end
-
--- speed you should have (while carrying) to escape a department's guard
+-- z where an area starts (its entrance arch)
+-- speed you should have (while carrying) to escape an area's guardian
 function Config.RecommendedSpeed(areaIndex)
 	return math.ceil(Config.Areas[areaIndex].guardSpeed * 0.88 + 2)
 end
@@ -254,7 +201,7 @@ local function niceUp(n)
 	local mag = 10 ^ math.max(0, math.floor(math.log10(n)) - 1)
 	return math.ceil(n / mag) * mag
 end
--- the speed number you should have to escape a department's guard
+-- the speed number you should have to escape an area's guardian
 function Config.RecommendedPoints(areaIndex)
 	return niceUp(Config.WalkToPoints(Config.RecommendedSpeed(areaIndex)))
 end
@@ -292,7 +239,21 @@ function Config.FormatTime(sec)
 	return string.format("%d:%02d", m, s)
 end
 
--- TRAILS sold at the TRAILS SHOP stall: a glowing trail behind you that makes
+function Config.AreaStartZ(areaIndex)
+	local L = Config.Layout
+	return L.frontZ - (areaIndex - 1) * L.sectionLen
+end
+
+-- which area a position is in (1..10), or nil when outside the warehouse
+function Config.ZoneAt(pos)
+	local L = Config.Layout
+	if math.abs(pos.X) > L.halfWidth + 1 then return nil end
+	local depth = L.frontZ - pos.Z
+	if depth < 0 or depth > #Config.Areas * L.sectionLen then return nil end
+	return math.min(#Config.Areas, math.floor(depth / L.sectionLen) + 1)
+end
+
+-- TRAILS sold at the TRAIL SHOP booth: a glowing trail behind you that makes
 -- your treadmill give more speed per second (buy once, equip your favourite)
 Config.Trails = {
 	{id = "Dust",     name = "Dust Trail",     mult = 1.25, price = 150,     colors = {rgb(235, 225, 200), rgb(255, 255, 255)}},
@@ -304,8 +265,9 @@ Config.Trails = {
 	{id = "Galaxy",   name = "Galaxy Trail",   mult = 9,    price = 900000,  colors = {rgb(120, 40, 255), rgb(255, 120, 255)}},
 	{id = "Rainbow",  name = "Rainbow Trail",  mult = 14,   price = 4000000, colors = {rgb(255, 80, 80), rgb(255, 220, 60), rgb(90, 230, 110), rgb(80, 170, 255), rgb(200, 110, 255)}},
 }
--- the VIP Trail comes with the VIP game pass (it isn't sold at the stall)
+-- the VIP Trail comes with the VIP game pass (it isn't sold at the booth)
 Config.VIPTrail = {id = "VIP", name = "VIP Trail", mult = 8, price = 0, vip = true, colors = {rgb(255, 215, 60), rgb(255, 250, 200), rgb(255, 170, 40)}}
+Config.Upgrades = {} -- (old upgrades were replaced by trails)
 function Config.GetTrail(id)
 	for _, t in ipairs(Config.Trails) do if t.id == id then return t end end
 	if id == Config.VIPTrail.id then return Config.VIPTrail end
@@ -317,7 +279,7 @@ function Config.TrailColor(t)
 	return ColorSequence.new(keys)
 end
 
--- TREADMILL on your base: stand on the belt and run to earn speed.
+-- TREADMILL on your plot: stand on the belt and run to earn speed.
 -- Upgrading it makes you earn speed faster.
 Config.Treadmill = {max = 10, beltSpeed = 10}
 function Config.TreadRate(level) -- speed earned per second of running (3/s at level 1, ~7.6K/s at level 10)
@@ -340,7 +302,7 @@ end
 Config.RobuxIcon = utf8.char(0xE002) -- the Robux symbol in Roblox fonts
 
 -- PLAYTIME GIFTS: the longer you stay, the better the gifts. Each gift is random:
--- cash or a free box (placed right on your base). After the last one the timer starts over.
+-- cash or a free box (placed right on your plot). After the last one the timer starts over.
 Config.Gifts = {
 	{minutes = 1,  boxChance = 0.35}, {minutes = 3,  boxChance = 0.4}, {minutes = 6,  boxChance = 0.45},
 	{minutes = 10, boxChance = 0.5},  {minutes = 15, boxChance = 0.55}, {minutes = 20, boxChance = 0.6},
@@ -350,69 +312,22 @@ function Config.GiftCash(index, incomePerSec) -- cash a gift is worth
 	local base = math.floor(40 * 1.75 ^ (index - 1))
 	return math.max(base, math.floor((incomePerSec or 0) * 20 * index))
 end
-function Config.GiftMaxArea(index) -- best department a gift box can come from
+function Config.GiftMaxArea(index) -- best warehouse a gift box can come from
 	return math.min(#Config.Areas, 1 + math.floor(index * 0.75))
 end
 
--- the FREE GIFT in the lobby plaza: claim it once every `minutes` (cash, or sometimes a box)
-Config.FreeGift = {minutes = 15, boxChance = 0.35}
-function Config.FreeGiftCash(incomePerSec)
-	return math.max(300, math.floor((incomePerSec or 0) * 120))
-end
-
--- CUSTOMER KIOSK on your base: more shoppers = more money
+-- CUSTOMER KIOSK on your plot: more shoppers = more money
 Config.CustomerMax = 10
 function Config.CustomerRate(level) return 1 + 0.3 * ((level or 1) - 1) end -- x shoppers
 function Config.CustomerCost(level) return math.floor(120 * 2.3 ^ ((level or 1) - 1)) end
 
 ------------------------------------------------------------------
--- DAILY QUESTS: 3 a day (the same 3 for everybody), new ones every UTC day.
--- text: %s is replaced by the goal. goals = {easy, normal, hard}: quest slot 1/2/3 uses goals[1]/[2]/[3].
-------------------------------------------------------------------
-Config.Quests = {
-	{id = "steal", text = "Steal %s boxes",                    goals = {3, 8, 15}},
-	{id = "open",  text = "Open %s boxes",                     goals = {3, 6, 12}},
-	{id = "sales", text = "Make %s sales in your shop",        goals = {20, 60, 150}},
-	{id = "run",   text = "Run %s seconds on your treadmill",  goals = {30, 90, 180}},
-	{id = "rare",  text = "Unbox %s Rare or better items",     goals = {1, 2, 4}},
-	{id = "deep",  text = "Steal %s boxes from department 3+", goals = {2, 5, 10}},
-}
-function Config.GetQuest(id)
-	for _, q in ipairs(Config.Quests) do if q.id == id then return q end end
-	return nil
-end
--- today's 3 quests: {{id = "steal", goal = 3}, ...} (3 different quests, picked from the day number)
-function Config.QuestsForDay(day)
-	day = math.floor(tonumber(day) or Config.DayNumber())
-	local pool = {}
-	for i = 1, #Config.Quests do pool[i] = i end
-	local seed = (day * 7919 + 1013) % 2147483647
-	local list = {}
-	for slot = 1, 3 do
-		seed = (seed * 48271) % 2147483647 -- a tiny random number generator (same result on every server)
-		local q = Config.Quests[table.remove(pool, seed % #pool + 1)]
-		list[slot] = {id = q.id, goal = q.goals[slot] or q.goals[#q.goals]}
-	end
-	return list
-end
--- cash for finishing quest `slot` (harder slot = bigger reward, grows with your income)
-function Config.QuestReward(slot, incomePerSec)
-	local base, minutes = ({500, 2000, 6000})[slot] or 500, ({5, 10, 20})[slot] or 5
-	return math.max(base, math.floor((incomePerSec or 0) * 60 * minutes))
-end
-function Config.QuestText(id, goal)
-	local q = Config.GetQuest(id)
-	if not q then return "Quest" end
-	return string.format(q.text, Config.FormatNum(goal or q.goals[1]))
-end
-
-------------------------------------------------------------------
--- INDEX REWARDS: find all 4 items of a department to complete its Index page.
--- Claim it once for a pile of cash and a PERMANENT cash bonus (every department adds more).
+-- INDEX REWARDS: find all 4 items of a warehouse area to complete that area's Index page.
+-- Claim it once for a pile of cash and a PERMANENT cash bonus (every area adds more).
 ------------------------------------------------------------------
 Config.IndexReward = {
-	seconds = 900,     -- the cash = 15 minutes of what that department's 4 items earn together
-	cashBonus = 0.1,   -- +10% cash forever for every completed department (all 10 = x2)
+	seconds = 900,     -- the cash = 15 minutes of what that area's 4 items earn together
+	cashBonus = 0.1,   -- +10% cash forever for every completed area (all 10 = x2)
 }
 function Config.IndexCash(areaIndex)
 	local total = 0
@@ -423,7 +338,7 @@ function Config.IndexCash(areaIndex)
 	return math.floor(total * Config.IndexReward.seconds)
 end
 function Config.IndexCashMult(claimedCount) return 1 + Config.IndexReward.cashBonus * (claimedCount or 0) end
--- true when every item of this department is in your Index
+-- true when every item of this area is in your Index
 function Config.AreaComplete(itemsFound, areaIndex)
 	for _, it in ipairs(Config.AreaItems[areaIndex] or {}) do
 		if not (itemsFound and (itemsFound[it[1]] or 0) > 0) then return false end
@@ -439,7 +354,7 @@ end
 ------------------------------------------------------------------
 -- DAILY REWARDS: log in every day for a 7-day streak (miss a day and it starts over).
 -- kind = "cash" (worth `minutes` of your income, at least `base`), "box" (a free box from
--- your best department) or "luckybox" (a guaranteed Rainbow box).
+-- your best warehouse area) or "luckybox" (a guaranteed Rainbow box).
 ------------------------------------------------------------------
 Config.Daily = {
 	{kind = "cash", minutes = 5, base = 500},
@@ -481,30 +396,23 @@ Config.PassEffects = {
 Config.ServerLuck = {minutes = 15, mult = 2}
 
 ------------------------------------------------------------------
--- UNBOXING + YOUR SHOP SHELVES
+-- UNBOXING + ITEMS
 ------------------------------------------------------------------
-Config.UnboxPads = 6          -- boxes you can have unboxing on your base at the same time
-Config.ShelfUnits = 5         -- shelves at the back of your shop
+Config.UnboxPads = 6          -- boxes you can have unboxing on your plot at the same time
+Config.ShelfUnits = 5         -- shelves at the back of your plot
 Config.ShelfLayers = 3        -- layers per shelf
 Config.ShelfCols = 3          -- products per layer
-Config.MaxStands = Config.ShelfUnits * Config.ShelfLayers * Config.ShelfCols -- 45 shelf slots
+Config.MaxStands = Config.ShelfUnits * Config.ShelfLayers * Config.ShelfCols -- 45 products on display
+Config.BaseStands = Config.MaxStands
 Config.MaxItems = 60          -- inventory size
 
--- SHELF SLOTS ("+1 Equip"): you start with BaseStands active slots and buy the rest with cash
-Config.BaseStands = 8
-function Config.StandCost(unlocked) -- price of the NEXT slot when you have `unlocked` slots
-	unlocked = math.max(Config.BaseStands, tonumber(unlocked) or Config.BaseStands)
-	return math.floor(2500 * 1.45 ^ (unlocked - Config.BaseStands))
-end
-
--- SHOPPERS: they walk from the street to one of your products and pay when they get there.
+-- CUSTOMERS: shoppers walk into your shop, take a product (stock never runs out) and pay on the spot.
 -- Your shop earns its full $/s all the time: each shopper pays everything the shop earned since
 -- the last sale, so you never lose money when the shop gets busy.
 Config.SaleSeconds = 6
-Config.MaxCustomers = 4       -- shoppers in one shop at the same time
+Config.MaxCustomers = 8       -- per shop at the same time (more = more lag for everyone)
 Config.MinCustomerGap = 1.2   -- a new shopper at most every 1.2 s per shop
-Config.CustomerSpeed = 16     -- walk speed of a shopper
-Config.CustomerWalk = 3.5     -- seconds from the street to the shelf (the sale happens when they arrive)
+Config.CustomerSpeed = 16
 
 -- how long a box takes to open (seconds)
 function Config.UnboxTime(def, sizeId, unboxLevel)
@@ -512,15 +420,7 @@ function Config.UnboxTime(def, sizeId, unboxLevel)
 	return math.floor(t * (1 - 0.08 * (unboxLevel or 0)) + 0.5)
 end
 
--- RESTOCK: seconds until an emptied box spot in the store gets a new box
-function Config.RestockTime(areaIndex, rarity)
-	return 8 + (areaIndex or 1) + (rarity or 1) * 4
-end
-
--- Events: every few minutes a guaranteed Rainbow or Galaxy box appears somewhere
-Config.SpecialBoxEvery = 120
-
--- item tiers: income multipliers and roll weights for [common, rare, epic] boxes
+-- item tiers: income/xp multipliers and roll weights for [common, rare, epic] boxes
 Config.ItemTiers = {
 	-- weights = drop chance in % for a {common, rare, epic} box (each column adds up to 100)
 	{name = "Common",    mult = 1,  color = rgb(220, 220, 220), weights = {79, 55, 35}},
@@ -529,23 +429,23 @@ Config.ItemTiers = {
 	{name = "Legendary", mult = 10, color = rgb(255, 190, 40),  weights = {1, 4, 10}},
 }
 
--- 4 products per department, from common to legendary: {id, name}
+-- 4 themed items per area, from common to legendary
 Config.AreaItems = {
-	{{"Apple", "Apple"},             {"Banana", "Banana"},           {"Watermelon", "Watermelon"},     {"GoldPineapple", "Golden Pineapple"}},
-	{{"BreadLoaf", "Bread Loaf"},    {"Croissant", "Croissant"},     {"Doughnut", "Doughnut"},         {"BirthdayCake", "Birthday Cake"}},
-	{{"MilkCarton", "Milk Carton"},  {"YogurtCup", "Yogurt"},        {"CheeseWheel", "Cheese Wheel"},  {"GoldEgg", "Golden Egg"}},
-	{{"Sausage", "Sausage"},         {"FreshFish", "Fresh Fish"},    {"HamLeg", "Ham"},                {"GoldSteak", "Golden Steak"}},
-	{{"IcePop", "Ice Pop"},          {"FrozenPizza", "Frozen Pizza"}, {"IceCreamTub", "Ice Cream Tub"}, {"FrozenTurkey", "Frozen Turkey"}},
-	{{"ChipsBag", "Chips"},          {"SwirlPop", "Swirl Lollipop"}, {"ChocolateBar", "Chocolate Bar"}, {"CandyJar", "Candy Jar"}},
-	{{"SodaCan", "Soda Can"},        {"OrangeJuice", "Orange Juice"}, {"EnergyDrink", "Energy Drink"}, {"GoldSoda", "Golden Soda"}},
-	{{"RubberDuck", "Rubber Duck"},  {"TeddyBear", "Teddy Bear"},    {"RobotToy", "Toy Robot"},        {"ToyRocket", "Toy Rocket"}},
-	{{"Headphones", "Headphones"},   {"Smartphone", "Smartphone"},   {"GameConsole", "Game Console"},  {"BigTV", "Big TV"}},
-	{{"GoldCoin", "Gold Coin"},      {"MoneyBag", "Money Bag"},      {"GoldBar", "Gold Bar"},          {"GoldenCart", "Golden Cart"}},
+	{{"OldSpoon", "Old Spoon", "🥄"}, {"RustyKey", "Rusty Key", "🗝️"}, {"PocketWatch", "Pocket Watch", "⌚"}, {"AntiqueVase", "Antique Vase", "🏺"}},
+	{{"Carrot", "Carrot", "🥕"}, {"Corn", "Golden Corn", "🌽"}, {"MilkJug", "Milk Jug", "🥛"}, {"GoldenEgg", "Golden Egg", "🥚"}},
+	{{"Teddy", "Teddy Bear", "🧸"}, {"Puzzle", "Puzzle", "🧩"}, {"Controller", "Game Controller", "🎮"}, {"ToyRobot", "Toy Robot", "🤖"}},
+	{{"Lollipop", "Lollipop", "🍭"}, {"Donut", "Donut", "🍩"}, {"Cake", "Party Cake", "🍰"}, {"CandyCrown", "Candy Crown", "👑"}},
+	{{"Shell", "Sea Shell", "🐚"}, {"Compass", "Compass", "🧭"}, {"Spyglass", "Spyglass", "🔭"}, {"TreasureMap", "Treasure Map", "🗺️"}},
+	{{"Bone", "Dino Bone", "🦴"}, {"Footprint", "Fossil Print", "🐾"}, {"DinoPlush", "Dino Plushie", "🦕"}, {"TRexSkull", "T-Rex Skull", "💀"}},
+	{{"Snowflake", "Snowflake", "❄️"}, {"FrozenFish", "Frozen Fish", "🐟"}, {"Snowman", "Snowman", "⛄"}, {"IceGem", "Ice Gem", "💎"}},
+	{{"Battery", "Battery", "🔋"}, {"Chip", "Memory Chip", "💾"}, {"Laptop", "Laptop", "💻"}, {"Satellite", "Satellite", "🛰️"}},
+	{{"Comet", "Comet Shard", "☄️"}, {"CrystalBall", "Crystal Ball", "🔮"}, {"UFOModel", "UFO Model", "🛸"}, {"AlienPlush", "Alien Plushie", "👽"}},
+	{{"Moon", "Moon Rock", "🌙"}, {"Shooting", "Shooting Star", "🌠"}, {"GalaxyOrb", "Galaxy Orb", "🌌"}, {"BlackHoleCore", "Black Hole Core", "🕳️"}},
 }
 Config.Items = {}
 for areaIndex, list in ipairs(Config.AreaItems) do
 	for tier, it in ipairs(list) do
-		Config.Items[it[1]] = {id = it[1], name = it[2], emoji = it[3] or "", area = areaIndex, tier = tier,
+		Config.Items[it[1]] = {id = it[1], name = it[2], emoji = it[3], area = areaIndex, tier = tier,
 			income = math.floor(2.2 ^ (areaIndex - 1) * Config.ItemTiers[tier].mult + 0.5)}
 	end
 end
@@ -565,39 +465,22 @@ function Config.ItemLabel(item)
 	return table.concat(parts, " ")
 end
 
-------------------------------------------------------------------
--- OLD SAVES: before the MEGA MART the game had other box/item ids. The server swaps them
--- for the new ids (same department + same slot, so incomes and Index pages stay the same).
--- Never edit these two lists.
-------------------------------------------------------------------
-Config.SaveVersion = 2
-Config.LegacyBoxIds = {
-	{"OldBox", "DustyCrate", "AntiqueChest"}, {"HayBox", "EggCrate", "GoldenEgg"}, {"TeddyBox", "RobotToyBox", "RocketToyBox"},
-	{"CandyBox", "CupcakeBox", "ChocoBox"}, {"PirateCrate", "TreasureChest", "CursedChest"}, {"FossilBox", "DinoEggBox", "TRexBox"},
-	{"IceBox", "PenguinBox", "MammothBox"}, {"CircuitBox", "RobotBox", "AICoreBox"}, {"AlienBox", "UFOBox", "PlasmaBox"},
-	{"StarBox", "GalaxyBox", "BlackHoleBox"},
-}
-Config.LegacyItemIds = {
-	{"OldSpoon", "RustyKey", "PocketWatch", "AntiqueVase"}, {"Carrot", "Corn", "MilkJug", "GoldenEgg"},
-	{"Teddy", "Puzzle", "Controller", "ToyRobot"}, {"Lollipop", "Donut", "Cake", "CandyCrown"},
-	{"Shell", "Compass", "Spyglass", "TreasureMap"}, {"Bone", "Footprint", "DinoPlush", "TRexSkull"},
-	{"Snowflake", "FrozenFish", "Snowman", "IceGem"}, {"Battery", "Chip", "Laptop", "Satellite"},
-	{"Comet", "CrystalBall", "UFOModel", "AlienPlush"}, {"Moon", "Shooting", "GalaxyOrb", "BlackHoleCore"},
-}
-Config.OldBoxToNew, Config.OldItemToNew = {}, {}
-for a, ids in ipairs(Config.LegacyBoxIds) do
-	for r, old in ipairs(ids) do Config.OldBoxToNew[old] = Config.Areas[a].boxes[r].id end
-end
-for a, ids in ipairs(Config.LegacyItemIds) do
-	for t, old in ipairs(ids) do Config.OldItemToNew[old] = Config.AreaItems[a][t][1] end
+function Config.UpgradeCost(u, level)
+	return math.floor(u.base * u.growth ^ level)
 end
 
+-- DAY / NIGHT (seconds): boxes only restock at night
+Config.DayLength = 240
+Config.NightLength = 120
+
+-- Events: every few minutes a guaranteed Rainbow or Galaxy box appears somewhere
+Config.SpecialBoxEvery = 120
+
 ------------------------------------------------------------------
--- CLASSIC R6 AVATAR used by the security guards (map) and the shoppers (client).
--- A real R6 rig (HumanoidRootPart + Motor6Ds) so the classic R6 animations can play on it.
--- opt = {name, scale, cframe (HumanoidRootPart), face = true/false, and Color3s:
---   skin, shirt, pants, sleeves = true (arms in the shirt colour),
---   or per part: head, torso, leftArm, rightArm, arms, leftLeg, rightLeg}
+-- CLASSIC R6 AVATAR (Noob / Bacon Hair) used by guardians and customers.
+-- A real R6 rig (HumanoidRootPart + Motor6Ds) so the classic R6
+-- animations can play on it. opt = {name, scale, cframe (HumanoidRootPart),
+-- head, torso, leftArm, rightArm, leftLeg, rightLeg (Color3s), face = true/false}
 ------------------------------------------------------------------
 Config.NoobColors = {
 	head = Color3.fromRGB(245, 205, 48),   -- Bright yellow
@@ -631,18 +514,15 @@ function Config.MakeR6(opt)
 		p.Parent = m
 		return p
 	end
-	local skin = opt.skin or opt.head or Config.NoobColors.head
-	local arms = opt.arms or (opt.sleeves and opt.shirt) or skin
-	local legs = opt.pants or Config.NoobColors.legs
 	local hrp = part("HumanoidRootPart", Vector3.new(2, 2, 1), Vector3.new(0, 0, 0))
 	hrp.Transparency = 1
 	hrp.Anchored = true
-	local torso = part("Torso", Vector3.new(2, 2, 1), Vector3.new(0, 0, 0), opt.torso or opt.shirt or Config.NoobColors.torso)
-	local head = part("Head", Vector3.new(2, 1, 1), Vector3.new(0, 1.5, 0), opt.head or skin)
-	local la = part("Left Arm", Vector3.new(1, 2, 1), Vector3.new(-1.5, 0, 0), opt.leftArm or arms)
-	local ra = part("Right Arm", Vector3.new(1, 2, 1), Vector3.new(1.5, 0, 0), opt.rightArm or arms)
-	local ll = part("Left Leg", Vector3.new(1, 2, 1), Vector3.new(-0.5, -2, 0), opt.leftLeg or legs)
-	local rl = part("Right Leg", Vector3.new(1, 2, 1), Vector3.new(0.5, -2, 0), opt.rightLeg or legs)
+	local torso = part("Torso", Vector3.new(2, 2, 1), Vector3.new(0, 0, 0), opt.torso or Config.NoobColors.torso)
+	local head = part("Head", Vector3.new(2, 1, 1), Vector3.new(0, 1.5, 0), opt.head or Config.NoobColors.head)
+	local la = part("Left Arm", Vector3.new(1, 2, 1), Vector3.new(-1.5, 0, 0), opt.leftArm or opt.head or Config.NoobColors.head)
+	local ra = part("Right Arm", Vector3.new(1, 2, 1), Vector3.new(1.5, 0, 0), opt.rightArm or opt.head or Config.NoobColors.head)
+	local ll = part("Left Leg", Vector3.new(1, 2, 1), Vector3.new(-0.5, -2, 0), opt.leftLeg or Config.NoobColors.legs)
+	local rl = part("Right Leg", Vector3.new(1, 2, 1), Vector3.new(0.5, -2, 0), opt.rightLeg or Config.NoobColors.legs)
 	local mesh = Instance.new("SpecialMesh")
 	mesh.MeshType = Enum.MeshType.Head
 	mesh.Scale = Vector3.new(1.25, 1.25, 1.25)
@@ -664,7 +544,7 @@ function Config.MakeR6(opt)
 	fa.Name = "FaceFrontAttachment"
 	fa.Position = Vector3.new(0, 0, -0.6 * s)
 	fa.Parent = head
-	-- the standard R6 attachment points, so accessories fit
+	-- the standard R6 attachment points, so real avatars' accessories fit (friend shoppers)
 	local function att(part, name, x, y, z)
 		local a = Instance.new("Attachment")
 		a.Name = name
@@ -761,201 +641,164 @@ function Config.FakeBaconHair(head, s)
 end
 
 ------------------------------------------------------------------
--- 3D PRODUCT MODELS: every item is a little model built from a few parts.
--- Each entry: {shape, sizeX, sizeY, sizeZ, x, y, z, color, material, rotX, rotY, rotZ, transparency}
---   shape: "B" block, "S" sphere/ellipsoid, "C" cylinder (axis = X; rotZ 90 = standing up, rotY 90 = facing you),
---          "W" wedge (full at the bottom and the back, the slope faces the front, like a WedgePart)
--- Models are about 2 studs tall, stand on y = -1 (the shelf) and face -Z (towards the shoppers).
+-- 3D ITEM MODELS: every item is a little model built from parts.
+-- Each entry: {shape, sizeX, sizeY, sizeZ, x, y, z, color, material, rotX, rotY, rotZ}
+--   shape: "B" block, "S" sphere/ellipsoid, "C" cylinder (axis = X; rotZ 90 = standing up, rotY 90 = facing you)
+-- Models are about 2 studs tall and face -Z (towards the viewer).
 ------------------------------------------------------------------
 local function B(...) return {"B", ...} end
 local function S(...) return {"S", ...} end
 local function C(...) return {"C", ...} end
-local function W(...) return {"W", ...} end
 local MAT = Enum.Material
-local SP, MET, NEON, GLASS, FAB = MAT.SmoothPlastic, MAT.Metal, MAT.Neon, MAT.Glass, MAT.Fabric
-local white, black, silver = rgb(250, 250, 250), rgb(30, 30, 36), rgb(195, 200, 210)
-local gold, goldDark, goldLight = rgb(255, 196, 45), rgb(215, 145, 25), rgb(255, 230, 130)
-local leaf, bone = rgb(75, 190, 65), rgb(245, 238, 220)
--- a little twinkle for the golden products (put it LAST in a model: it adds 2 parts)
-local function sparkle(x, y, z)
-	local c = rgb(255, 250, 200)
-	return S(0.1, 0.62, 0.04, x, y, z, c, NEON), S(0.62, 0.1, 0.04, x, y, z, c, NEON)
-end
-local yellow = rgb(255, 215, 60)
+local metal, gold, bone = rgb(175, 178, 188), rgb(235, 190, 60), rgb(242, 236, 215)
+local black, white = rgb(25, 25, 30), rgb(250, 250, 250)
 
--- (the camera looks at the front, so +X is on the viewer's LEFT)
 Config.ItemModels = {
-	-- 1 FRUIT & VEG
-	Apple = {S(1.7, 1.55, 1.7, 0, -0.15, 0, rgb(225, 35, 45)), S(0.3, 0.42, 0.1, 0.38, 0.12, -0.7, rgb(255, 160, 160)),
-		B(0.13, 0.5, 0.13, -0.04, 0.78, 0, rgb(105, 65, 30), SP, 0, 0, 12), S(0.55, 0.14, 0.3, -0.33, 0.8, 0, leaf, SP, 0, 0, -25)},
-	Banana = {C(0.47, 0.36, 0.36, -0.76, -0.59, 0, yellow, SP, 0, 0, -30), C(0.47, 0.46, 0.46, -0.39, -0.72, 0, yellow, SP, 0, 0, -10),
-		C(0.47, 0.52, 0.52, 0, -0.72, 0, yellow, SP, 0, 0, 10), C(0.47, 0.52, 0.52, 0.37, -0.59, 0, yellow, SP, 0, 0, 30),
-		C(0.47, 0.46, 0.46, 0.67, -0.33, 0, yellow, SP, 0, 0, 50), C(0.47, 0.38, 0.38, 0.87, 0.01, 0, yellow, SP, 0, 0, 70),
-		S(0.24, 0.24, 0.24, -0.97, -0.46, 0, rgb(90, 60, 30)), C(0.38, 0.17, 0.17, 0.97, 0.36, 0, rgb(130, 105, 50), SP, 0, 0, 80)},
-	Watermelon = {S(2.2, 1.75, 1.75, 0, -0.15, 0, rgb(85, 180, 65)), S(2.2, 1.85, 0.66, 0, -0.15, 0, rgb(35, 115, 45)),
-		S(2.2, 1.85, 0.66, 0, -0.15, 0, rgb(35, 115, 45), SP, 45, 0, 0), S(2.2, 1.85, 0.66, 0, -0.15, 0, rgb(35, 115, 45), SP, 90, 0, 0),
-		S(2.2, 1.85, 0.66, 0, -0.15, 0, rgb(35, 115, 45), SP, -45, 0, 0), B(0.12, 0.3, 0.12, 0.25, 0.8, 0, rgb(120, 95, 45), SP, 0, 0, -25)},
-	GoldPineapple = {S(1.25, 1.55, 1.25, 0, -0.35, 0, gold, MET),
-		S(0.2, 0.2, 0.12, -0.3, -0.05, -0.49, goldDark, MET), S(0.2, 0.2, 0.12, 0.3, -0.05, -0.49, goldDark, MET), S(0.2, 0.2, 0.12, 0, -0.35, -0.62, goldDark, MET),
-		S(0.2, 0.2, 0.12, -0.3, -0.65, -0.49, goldDark, MET), S(0.2, 0.2, 0.12, 0.3, -0.65, -0.49, goldDark, MET),
-		S(0.3, 0.95, 0.18, 0, 0.8, 0, leaf), S(0.28, 0.8, 0.16, -0.24, 0.7, 0, leaf, SP, 0, 0, 32), S(0.28, 0.8, 0.16, 0.24, 0.7, 0, leaf, SP, 0, 0, -32),
-		S(0.16, 0.75, 0.28, 0, 0.68, -0.22, leaf, SP, -32, 0, 0)},
-	-- 2 BAKERY
-	BreadLoaf = {B(1.5, 0.85, 1.7, 0, -0.575, 0, rgb(205, 130, 55)), C(1.7, 1.5, 1.5, 0, -0.15, 0, rgb(205, 130, 55), SP, 0, 90, 0),
-		B(1.32, 0.8, 0.04, 0, -0.58, -0.85, rgb(255, 235, 185)), C(0.04, 1.32, 1.32, 0, -0.15, -0.85, rgb(255, 235, 185), SP, 0, 90, 0),
-		S(0.7, 0.1, 0.16, 0, 0.56, -0.3, rgb(240, 180, 100)), S(0.7, 0.1, 0.16, 0, 0.56, 0.25, rgb(240, 180, 100))},
-	Croissant = {S(0.85, 0.95, 1.0, 0, -0.02, 0, rgb(225, 145, 55)), S(0.72, 0.75, 0.82, -0.5, -0.14, 0, rgb(245, 190, 105), SP, 0, 0, 26),
-		S(0.72, 0.75, 0.82, 0.5, -0.14, 0, rgb(245, 190, 105), SP, 0, 0, -26), S(0.6, 0.55, 0.6, -0.84, -0.42, 0, rgb(225, 145, 55), SP, 0, 0, 56),
-		S(0.6, 0.55, 0.6, 0.84, -0.42, 0, rgb(225, 145, 55), SP, 0, 0, -56), S(0.48, 0.34, 0.38, -0.95, -0.8, 0, rgb(245, 190, 105), SP, 0, 0, -87),
-		S(0.48, 0.34, 0.38, 0.95, -0.8, 0, rgb(245, 190, 105), SP, 0, 0, 87)},
-	Doughnut = {S(1.9, 1.9, 0.75, 0, -0.05, 0, rgb(215, 150, 80)), S(1.72, 1.72, 0.66, 0, -0.03, -0.08, rgb(255, 125, 185)),
-		C(0.9, 0.55, 0.55, 0, -0.05, 0, rgb(110, 65, 35), SP, 0, 90, 0),
-		B(0.24, 0.07, 0.07, -0.5, 0.25, -0.32, rgb(255, 235, 70), SP, 0, 0, 20), B(0.24, 0.07, 0.07, 0.38, 0.4, -0.32, rgb(90, 200, 255), SP, 0, 0, -40),
-		B(0.24, 0.07, 0.07, 0.52, -0.3, -0.32, rgb(120, 230, 110), SP, 0, 0, 60), B(0.24, 0.07, 0.07, -0.35, -0.5, -0.32, white, SP, 0, 0, -15),
-		B(0.24, 0.07, 0.07, 0.05, 0.6, -0.3, rgb(255, 90, 90), SP, 0, 0, 80)},
-	BirthdayCake = {C(0.75, 1.9, 1.9, 0, -0.6, 0, rgb(255, 240, 225), SP, 0, 0, 90), C(0.16, 1.96, 1.96, 0, -0.26, 0, rgb(255, 130, 185), SP, 0, 0, 90),
-		C(0.55, 1.3, 1.3, 0, 0.05, 0, rgb(255, 240, 225), SP, 0, 0, 90), C(0.12, 1.36, 1.36, 0, 0.32, 0, rgb(255, 130, 185), SP, 0, 0, 90),
-		C(0.55, 0.16, 0.16, 0, 0.65, 0, rgb(110, 190, 255), SP, 0, 0, 90), S(0.18, 0.3, 0.18, 0, 1.03, 0, rgb(255, 190, 40), NEON),
-		S(0.22, 0.22, 0.1, -0.5, -0.62, -0.82, rgb(255, 90, 90)), S(0.22, 0.22, 0.1, 0, -0.62, -0.96, rgb(90, 200, 255)),
-		S(0.22, 0.22, 0.1, 0.5, -0.62, -0.82, rgb(255, 220, 60))},
-	-- 3 DAIRY
-	MilkCarton = {B(1.1, 1.45, 1.1, 0, -0.275, 0, white), B(0.778, 0.778, 1.1, 0, 0.45, 0, rgb(70, 140, 255), SP, 0, 0, 45),
-		B(0.12, 0.2, 1.1, 0, 1.02, 0, white), B(1.12, 0.5, 1.12, 0, -0.3, 0, rgb(70, 140, 255)), S(0.36, 0.36, 0.08, 0, -0.3, -0.57, white)},
-	YogurtCup = {C(1.55, 1.35, 1.35, 0, -0.225, 0, white, SP, 0, 0, 90), C(0.62, 1.38, 1.38, 0, -0.25, 0, rgb(255, 140, 185), SP, 0, 0, 90),
-		C(0.1, 1.5, 1.5, 0, 0.57, 0, white, SP, 0, 0, 90), C(0.05, 1.46, 1.46, 0, 0.63, 0, silver, MET, 0, 0, 90),
-		B(0.32, 0.05, 0.3, 0, 0.63, -0.84, silver, MET), S(0.36, 0.42, 0.1, 0, -0.28, -0.69, rgb(230, 40, 60)),
-		S(0.28, 0.12, 0.08, 0, -0.06, -0.69, leaf)},
-	CheeseWheel = {C(0.75, 1.85, 1.85, -0.18, -0.07, 0.2, rgb(240, 175, 40), SP, 0, 90, 0), C(0.04, 1.62, 1.62, -0.18, -0.07, -0.19, rgb(255, 222, 105), SP, 0, 90, 0),
-		S(0.32, 0.32, 0.06, -0.45, 0.28, -0.21, rgb(225, 160, 35)), S(0.24, 0.24, 0.06, 0.12, -0.3, -0.21, rgb(225, 160, 35)),
-		S(0.2, 0.2, 0.06, -0.6, -0.4, -0.21, rgb(225, 160, 35)),
-		W(0.55, 0.85, 0.95, 0.6, -0.575, -0.45, rgb(255, 222, 105), SP, 0, 90, 0), B(0.08, 0.85, 0.55, 1.05, -0.575, -0.45, rgb(240, 175, 40)),
-		S(0.2, 0.2, 0.06, 0.82, -0.78, -0.73, rgb(225, 160, 35)), S(0.14, 0.14, 0.06, 0.55, -0.9, -0.73, rgb(225, 160, 35))},
-	GoldEgg = {S(1.3, 1.65, 1.3, 0, 0.1, 0, gold, MET), S(0.26, 0.4, 0.1, 0.3, 0.42, -0.53, rgb(255, 250, 215), NEON),
-		C(0.55, 1.0, 1.0, 0, -0.73, 0, white, SP, 0, 0, 90), C(0.1, 1.1, 1.1, 0, -0.47, 0, rgb(255, 120, 170), SP, 0, 0, 90),
-		sparkle(-0.62, 0.65, -0.3)},
-	-- 4 BUTCHER
-	Sausage = {S(1.35, 0.62, 0.62, -0.31, -0.63, 0, rgb(200, 95, 70), SP, 0, 0, -8), S(1.35, 0.62, 0.62, 0.61, -0.18, 0, rgb(200, 95, 70), SP, 0, 0, 60),
-		S(0.22, 0.26, 0.26, 0.3, -0.72, 0, rgb(170, 75, 55)), S(0.16, 0.2, 0.16, -0.99, -0.54, 0, rgb(170, 75, 55)), S(0.16, 0.2, 0.16, 0.96, 0.42, 0, rgb(170, 75, 55)),
-		S(0.24, 0.13, 0.06, -0.15, -0.44, -0.24, rgb(230, 140, 110)), S(0.24, 0.13, 0.06, 0.6, 0.02, -0.27, rgb(230, 140, 110))},
-	FreshFish = {S(1.8, 0.9, 0.55, 0, -0.25, 0, rgb(110, 165, 215), SP, 0, 0, -18), S(1.45, 0.42, 0.5, -0.11, -0.42, -0.03, rgb(225, 235, 245), SP, 0, 0, -18),
-		S(0.7, 0.32, 0.12, 1.03, -0.37, 0, rgb(80, 130, 195), SP, 0, 0, 17), S(0.7, 0.32, 0.12, 0.91, -0.76, 0, rgb(80, 130, 195), SP, 0, 0, -53),
-		S(0.75, 0.4, 0.08, 0.18, 0.13, 0, rgb(80, 130, 195), SP, 0, 0, -26), S(0.26, 0.26, 0.08, -0.49, 0.02, -0.21, white),
-		S(0.13, 0.13, 0.06, -0.52, 0.02, -0.25, black)},
-	HamLeg = {S(1.55, 1.2, 1.05, -0.28, -0.35, 0, rgb(195, 95, 60), SP, 0, 0, 40), S(0.4, 0.2, 0.08, -0.42, -0.2, -0.5, rgb(235, 150, 110), SP, 0, 0, 40),
-		C(0.12, 0.6, 0.6, 0.24, 0.09, 0, rgb(255, 175, 170), SP, 0, 0, 40), C(0.95, 0.3, 0.3, 0.5, 0.31, 0, bone, SP, 0, 0, 40),
-		S(0.38, 0.38, 0.38, 0.82, 0.75, 0, bone), S(0.38, 0.38, 0.38, 1.0, 0.54, 0, bone)},
-	GoldSteak = {S(1.95, 1.5, 0.32, 0.1, -0.2, 0, goldLight, MET), S(1.15, 1.0, 0.32, -0.55, -0.45, 0, goldLight, MET),
-		S(1.8, 1.35, 0.4, 0.1, -0.2, 0, gold, MET), S(1.0, 0.85, 0.4, -0.55, -0.45, 0, gold, MET),
-		C(0.12, 0.46, 0.46, -0.58, -0.45, -0.17, rgb(255, 248, 225), SP, 0, 90, 0), C(0.14, 0.2, 0.2, -0.58, -0.45, -0.17, goldDark, MET, 0, 90, 0),
-		S(0.55, 0.08, 0.06, 0.42, 0.05, -0.19, goldLight, MET, 0, 0, 20), S(0.45, 0.07, 0.06, 0.2, -0.45, -0.19, goldLight, MET, 0, 0, -15),
-		sparkle(0.75, 0.5, -0.3)},
-	-- 5 FROZEN
-	IcePop = {B(0.28, 0.8, 0.12, 0, -0.6, 0, rgb(225, 190, 135)), B(0.95, 0.5, 0.42, 0, 0.0, 0, rgb(80, 165, 255)),
-		B(0.95, 0.3, 0.42, 0, 0.4, 0, white), B(0.95, 0.25, 0.42, 0, 0.67, 0, rgb(240, 50, 60)),
-		C(0.42, 0.95, 0.95, 0, 0.75, 0, rgb(240, 50, 60), SP, 0, 90, 0)},
-	FrozenPizza = {B(1.8, 1.8, 0.3, 0, -0.1, 0, rgb(90, 170, 255)), B(1.82, 0.36, 0.32, 0, 0.6, 0, rgb(230, 50, 50)),
-		B(1.84, 0.1, 0.34, 0, 0.83, 0, white), C(0.04, 1.3, 1.3, 0, -0.2, -0.16, rgb(235, 175, 90), SP, 0, 90, 0),
-		C(0.04, 1.08, 1.08, 0, -0.2, -0.18, rgb(255, 205, 70), SP, 0, 90, 0), S(0.24, 0.24, 0.05, -0.25, 0.0, -0.2, rgb(205, 40, 40)),
-		S(0.24, 0.24, 0.05, 0.28, -0.12, -0.2, rgb(205, 40, 40)), S(0.24, 0.24, 0.05, -0.05, -0.45, -0.2, rgb(205, 40, 40))},
-	IceCreamTub = {C(1.05, 1.65, 1.65, 0, -0.475, 0, rgb(255, 245, 230), SP, 0, 0, 90), C(0.45, 1.68, 1.68, 0, -0.5, 0, rgb(255, 125, 175), SP, 0, 0, 90),
-		C(0.1, 1.75, 1.75, 0, 0.05, 0, rgb(255, 125, 175), SP, 0, 0, 90), S(0.85, 0.7, 0.85, -0.38, 0.25, 0.15, rgb(255, 160, 200)),
-		S(0.85, 0.7, 0.85, 0.38, 0.25, 0.15, rgb(140, 85, 50)), S(0.85, 0.7, 0.85, 0, 0.3, -0.3, rgb(255, 240, 200)),
-		S(0.28, 0.28, 0.28, 0.05, 0.7, -0.2, rgb(230, 30, 50)), B(0.12, 0.6, 0.25, 0.45, 0.6, 0, rgb(235, 190, 120), SP, 0, 0, -20)},
-	FrozenTurkey = {S(1.75, 1.15, 1.3, -0.2, -0.38, 0, rgb(225, 145, 60)), S(0.85, 0.5, 0.5, 0.48, -0.05, -0.3, rgb(205, 120, 50), SP, 0, 0, 40),
-		S(0.85, 0.5, 0.5, 0.48, -0.05, 0.3, rgb(205, 120, 50), SP, 0, 0, 40), C(0.32, 0.15, 0.15, 0.85, 0.26, -0.3, bone, SP, 0, 0, 40),
-		C(0.32, 0.15, 0.15, 0.85, 0.26, 0.3, bone, SP, 0, 0, 40), C(0.14, 0.28, 0.28, 0.97, 0.36, -0.3, white, SP, 0, 0, 40),
-		C(0.14, 0.28, 0.28, 0.97, 0.36, 0.3, white, SP, 0, 0, 40),
-		B(2.25, 1.75, 1.65, 0, -0.125, 0, rgb(185, 230, 255), GLASS, 0, 0, 0, 0.6), B(2.27, 0.12, 1.67, 0, 0.72, 0, white, SP, 0, 0, 0, 0.25)},
-	-- 6 SNACKS & CANDY
-	ChipsBag = {B(1.45, 1.6, 0.4, 0, -0.1, 0, rgb(230, 45, 45)), S(1.45, 1.55, 0.72, 0, -0.1, 0, rgb(230, 45, 45)),
-		B(1.5, 0.18, 0.16, 0, 0.78, 0, rgb(170, 25, 30)), B(1.5, 0.18, 0.16, 0, -0.98, 0, rgb(170, 25, 30)),
-		S(0.85, 0.85, 0.1, 0, -0.05, -0.35, rgb(255, 210, 50)), S(0.55, 0.36, 0.08, 0.04, -0.03, -0.4, rgb(235, 165, 60), SP, 0, 0, 20)},
-	SwirlPop = {B(0.14, 0.95, 0.14, 0, -0.52, 0, white), C(0.24, 1.55, 1.55, 0, 0.42, 0, rgb(255, 80, 170), SP, 0, 90, 0),
-		C(0.26, 1.2, 1.2, 0.06, 0.38, 0, rgb(255, 225, 70), SP, 0, 90, 0), C(0.28, 0.88, 0.88, -0.02, 0.45, 0, rgb(80, 190, 255), SP, 0, 90, 0),
-		C(0.3, 0.56, 0.56, 0.04, 0.4, 0, white, SP, 0, 90, 0), C(0.32, 0.26, 0.26, 0, 0.43, 0, rgb(255, 80, 170), SP, 0, 90, 0)},
-	ChocolateBar = {B(1.2, 1.9, 0.26, 0, -0.05, 0, rgb(105, 55, 30)),
-		B(0.5, 0.38, 0.08, -0.29, 0.66, -0.14, rgb(135, 75, 42)), B(0.5, 0.38, 0.08, 0.29, 0.66, -0.14, rgb(135, 75, 42)),
-		B(0.5, 0.38, 0.08, -0.29, 0.24, -0.14, rgb(135, 75, 42)), B(0.5, 0.38, 0.08, 0.29, 0.24, -0.14, rgb(135, 75, 42)),
-		B(1.28, 0.95, 0.34, 0, -0.55, 0, rgb(140, 60, 210)), B(1.26, 0.1, 0.32, 0, -0.03, 0, gold, MET), B(1.3, 0.24, 0.36, 0, -0.55, 0, gold)},
-	CandyJar = {C(1.5, 1.5, 1.5, 0, -0.25, 0, rgb(205, 235, 255), GLASS, 0, 0, 90, 0.55),
-		S(0.5, 0.5, 0.5, -0.35, -0.68, -0.2, rgb(255, 80, 150)), S(0.5, 0.5, 0.5, 0.3, -0.7, -0.25, rgb(255, 220, 60)),
-		S(0.5, 0.5, 0.5, 0, -0.3, -0.3, rgb(80, 190, 255)), S(0.5, 0.5, 0.5, -0.38, -0.2, 0.2, rgb(120, 230, 100)),
-		S(0.5, 0.5, 0.5, 0.35, -0.25, 0.15, rgb(255, 150, 60)), C(0.3, 1.2, 1.2, 0, 0.62, 0, rgb(230, 50, 70), SP, 0, 0, 90),
-		S(0.36, 0.26, 0.36, 0, 0.82, 0, rgb(230, 50, 70))},
-	-- 7 DRINKS
-	SodaCan = {C(1.7, 1.05, 1.05, 0, -0.15, 0, rgb(225, 35, 45), SP, 0, 0, 90), C(0.1, 0.95, 0.95, 0, 0.73, 0, silver, MET, 0, 0, 90),
-		C(0.1, 0.95, 0.95, 0, -0.97, 0, silver, MET, 0, 0, 90), C(0.26, 1.08, 1.08, 0, -0.15, 0, white, SP, 0, 0, 75),
-		B(0.24, 0.05, 0.36, 0, 0.8, -0.08, silver, MET)},
-	OrangeJuice = {C(1.2, 1.05, 1.05, 0, -0.4, 0, rgb(255, 160, 35), SP, 0, 0, 90), S(1.05, 0.7, 1.05, 0, 0.2, 0, rgb(255, 160, 35)),
-		C(0.35, 0.45, 0.45, 0, 0.6, 0, rgb(255, 160, 35), SP, 0, 0, 90), C(0.25, 0.55, 0.55, 0, 0.85, 0, rgb(70, 190, 70), SP, 0, 0, 90),
-		C(0.6, 1.08, 1.08, 0, -0.4, 0, white, SP, 0, 0, 90), S(0.42, 0.42, 0.12, 0, -0.4, -0.54, rgb(255, 140, 20)),
-		S(0.22, 0.1, 0.06, 0.1, -0.16, -0.54, leaf, SP, 0, 0, 20)},
-	EnergyDrink = {C(1.9, 0.85, 0.85, 0, -0.05, 0, rgb(35, 35, 45), SP, 0, 0, 90), C(0.08, 0.76, 0.76, 0, 0.92, 0, silver, MET, 0, 0, 90),
-		C(0.08, 0.76, 0.76, 0, -0.98, 0, silver, MET, 0, 0, 90), B(0.16, 0.55, 0.06, -0.06, 0.3, -0.41, rgb(120, 255, 60), NEON, 0, 0, 28),
-		B(0.34, 0.12, 0.06, 0, 0.06, -0.41, rgb(120, 255, 60), NEON), B(0.16, 0.55, 0.06, 0.06, -0.2, -0.41, rgb(120, 255, 60), NEON, 0, 0, 28),
-		B(0.2, 0.04, 0.3, 0, 0.97, -0.06, silver, MET)},
-	GoldSoda = {C(1.1, 0.95, 0.95, 0, -0.45, 0, gold, MET, 0, 0, 90), S(0.95, 0.9, 0.95, 0, 0.1, 0, gold, MET),
-		C(0.6, 0.4, 0.4, 0, 0.65, 0, gold, MET, 0, 0, 90), C(0.08, 0.48, 0.48, 0, 0.93, 0, goldLight, MET, 0, 0, 90),
-		C(0.12, 0.5, 0.5, 0, 1.0, 0, rgb(230, 50, 50), SP, 0, 0, 90), C(0.45, 0.98, 0.98, 0, -0.5, 0, rgb(230, 50, 50), SP, 0, 0, 90),
-		sparkle(-0.6, 0.5, -0.3)},
-	-- 8 TOYS
-	RubberDuck = {S(1.75, 1.05, 1.3, 0.12, -0.47, 0, rgb(255, 215, 40)), S(0.55, 0.38, 0.5, 0.9, -0.15, 0, rgb(255, 215, 40), SP, 0, 0, 40),
-		S(1.0, 1.0, 0.95, -0.38, 0.35, 0, rgb(255, 215, 40)), S(0.62, 0.26, 0.5, -0.92, 0.25, 0, rgb(255, 140, 30)),
-		S(0.15, 0.2, 0.1, -0.6, 0.5, -0.4, black), S(0.8, 0.5, 0.2, 0.25, -0.42, -0.58, rgb(255, 190, 30), SP, 0, 0, -12)},
-	TeddyBear = {S(1.15, 1.15, 0.95, 0, -0.45, 0, rgb(180, 115, 65)), S(1.0, 0.92, 0.85, 0, 0.42, 0, rgb(180, 115, 65)),
-		S(0.38, 0.38, 0.22, -0.38, 0.8, 0, rgb(180, 115, 65)), S(0.38, 0.38, 0.22, 0.38, 0.8, 0, rgb(180, 115, 65)),
-		S(0.45, 0.32, 0.3, 0, 0.3, -0.33, rgb(235, 195, 145)), S(0.17, 0.12, 0.1, 0, 0.38, -0.47, black),
-		S(0.11, 0.13, 0.06, -0.18, 0.55, -0.37, black), S(0.11, 0.13, 0.06, 0.18, 0.55, -0.37, black),
-		S(0.42, 0.36, 0.55, -0.32, -0.88, -0.25, rgb(180, 115, 65)), S(0.42, 0.36, 0.55, 0.32, -0.88, -0.25, rgb(180, 115, 65))},
-	RobotToy = {B(1.0, 0.9, 0.7, 0, -0.2, 0, rgb(70, 150, 255)), B(0.8, 0.62, 0.62, 0, 0.6, 0, silver),
-		S(0.18, 0.18, 0.06, -0.18, 0.62, -0.32, rgb(90, 240, 255), NEON), S(0.18, 0.18, 0.06, 0.18, 0.62, -0.32, rgb(90, 240, 255), NEON),
-		B(0.06, 0.2, 0.06, 0, 0.98, 0, black), S(0.2, 0.2, 0.2, 0, 1.12, 0, rgb(255, 60, 60), NEON),
-		B(0.24, 0.75, 0.3, -0.64, -0.2, 0, silver), B(0.24, 0.75, 0.3, 0.64, -0.2, 0, silver),
-		B(0.32, 0.4, 0.36, -0.25, -0.85, 0, rgb(255, 200, 50)), B(0.32, 0.4, 0.36, 0.25, -0.85, 0, rgb(255, 200, 50))},
-	ToyRocket = {C(1.25, 0.8, 0.8, 0, -0.05, 0, white, SP, 0, 0, 90), S(0.8, 1.0, 0.8, 0, 0.55, 0, rgb(235, 50, 50)),
-		C(0.1, 0.42, 0.42, 0, 0.12, -0.39, rgb(120, 210, 255), SP, 0, 90, 0), C(0.06, 0.52, 0.52, 0, 0.12, -0.37, rgb(235, 50, 50), SP, 0, 90, 0),
-		W(0.12, 0.75, 0.42, -0.58, -0.62, 0, rgb(235, 50, 50), SP, 0, 90, 0), W(0.12, 0.75, 0.42, 0.58, -0.62, 0, rgb(235, 50, 50), SP, 0, -90, 0),
-		C(0.15, 0.82, 0.82, 0, -0.45, 0, rgb(235, 50, 50), SP, 0, 0, 90), C(0.18, 0.5, 0.5, 0, -0.75, 0, silver, MET, 0, 0, 90),
-		S(0.34, 0.36, 0.34, 0, -0.88, 0, rgb(255, 160, 40), NEON)},
-	-- 9 ELECTRONICS
-	Headphones = {B(0.68, 0.2, 0.32, 0.7, 0.04, 0, rgb(50, 50, 60), SP, 0, 0, -67.5), B(0.68, 0.2, 0.32, 0.29, 0.45, 0, rgb(50, 50, 60), SP, 0, 0, -22.5),
-		B(0.68, 0.2, 0.32, -0.29, 0.45, 0, rgb(50, 50, 60), SP, 0, 0, 22.5), B(0.68, 0.2, 0.32, -0.7, 0.04, 0, rgb(50, 50, 60), SP, 0, 0, 67.5),
-		S(0.45, 0.85, 0.75, -0.85, -0.55, 0, rgb(255, 80, 130)), S(0.45, 0.85, 0.75, 0.85, -0.55, 0, rgb(255, 80, 130)),
-		C(0.14, 0.62, 0.62, -0.6, -0.55, 0, rgb(50, 50, 60)), C(0.14, 0.62, 0.62, 0.6, -0.55, 0, rgb(50, 50, 60))},
-	Smartphone = {B(1.05, 1.95, 0.14, 0, -0.025, 0, rgb(120, 70, 220)), B(0.92, 1.68, 0.02, 0, 0, -0.075, rgb(40, 140, 255), NEON),
-		B(0.22, 0.22, 0.02, -0.2, 0.5, -0.088, rgb(255, 90, 90)), B(0.22, 0.22, 0.02, 0.2, 0.5, -0.088, rgb(255, 220, 60)),
-		B(0.22, 0.22, 0.02, -0.2, 0.15, -0.088, rgb(90, 230, 110)), B(0.22, 0.22, 0.02, 0.2, 0.15, -0.088, white),
-		B(0.3, 0.06, 0.02, 0, 0.78, -0.088, black)},
-	GameConsole = {B(0.75, 1.75, 1.3, 0.35, -0.125, 0.25, white), B(0.25, 1.77, 1.32, 0.35, -0.125, 0.25, black),
-		B(0.05, 0.5, 0.02, 0.35, 0.35, -0.42, rgb(60, 160, 255), NEON),
-		B(0.9, 0.42, 0.3, -0.35, -0.55, -0.65, rgb(40, 40, 50)), S(0.42, 0.62, 0.36, -0.72, -0.72, -0.65, rgb(40, 40, 50), SP, 0, 0, 20),
-		S(0.42, 0.62, 0.36, 0.02, -0.72, -0.65, rgb(40, 40, 50), SP, 0, 0, -20), S(0.13, 0.13, 0.08, -0.6, -0.52, -0.8, rgb(110, 110, 120)),
-		S(0.11, 0.11, 0.06, -0.12, -0.48, -0.8, rgb(255, 70, 70)), S(0.11, 0.11, 0.06, -0.02, -0.6, -0.8, rgb(70, 220, 90))},
-	BigTV = {B(2.3, 1.45, 0.16, 0, 0.12, 0, rgb(35, 35, 42)), B(2.12, 1.28, 0.02, 0, 0.12, -0.085, rgb(110, 200, 255)),
-		B(2.12, 0.38, 0.02, 0, -0.33, -0.09, rgb(90, 210, 90)), S(0.36, 0.36, 0.02, 0.6, 0.45, -0.095, rgb(255, 225, 60), NEON),
-		S(0.55, 0.24, 0.02, -0.5, 0.48, -0.095, white), B(0.22, 0.35, 0.14, 0, -0.75, 0.02, rgb(35, 35, 42)),
-		B(1.0, 0.08, 0.55, 0, -0.96, 0.02, rgb(35, 35, 42))},
-	-- 10 MANAGER'S VAULT
-	GoldCoin = {C(0.26, 1.9, 1.9, 0, -0.05, 0, gold, MET, 0, 90, 0), C(0.28, 1.5, 1.5, 0, -0.05, 0, goldDark, MET, 0, 90, 0),
-		B(0.55, 0.12, 0.06, 0, 0.3, -0.16, goldLight, MET), B(0.55, 0.12, 0.06, 0, -0.05, -0.16, goldLight, MET),
-		B(0.55, 0.12, 0.06, 0, -0.4, -0.16, goldLight, MET), B(0.12, 0.47, 0.06, 0.215, 0.125, -0.16, goldLight, MET),
-		B(0.12, 0.47, 0.06, -0.215, -0.225, -0.16, goldLight, MET), B(0.09, 1.02, 0.06, 0, -0.05, -0.15, goldLight, MET),
-		sparkle(-0.75, 0.7, -0.3)},
-	MoneyBag = {S(1.65, 1.5, 1.45, 0, -0.3, 0, rgb(215, 175, 105), FAB), S(0.8, 0.6, 0.75, 0, 0.66, 0, rgb(215, 175, 105), FAB),
-		C(0.2, 0.55, 0.55, 0, 0.43, 0, rgb(150, 95, 45), SP, 0, 0, 90),
-		B(0.55, 0.12, 0.2, 0, 0.02, -0.62, rgb(50, 170, 70)), B(0.55, 0.12, 0.2, 0, -0.3, -0.68, rgb(50, 170, 70)),
-		B(0.55, 0.12, 0.2, 0, -0.62, -0.62, rgb(50, 170, 70)), B(0.12, 0.44, 0.2, 0.215, -0.14, -0.65, rgb(50, 170, 70)),
-		B(0.12, 0.44, 0.2, -0.215, -0.46, -0.65, rgb(50, 170, 70)), B(0.09, 0.95, 0.2, 0, -0.3, -0.66, rgb(50, 170, 70))},
-	GoldBar = {B(1.1, 0.5, 0.62, -0.58, -0.75, 0.08, gold, MET), W(1.1, 0.5, 0.2, -0.58, -0.75, -0.33, gold, MET),
-		B(1.1, 0.5, 0.62, 0.58, -0.75, 0.08, gold, MET), W(1.1, 0.5, 0.2, 0.58, -0.75, -0.33, gold, MET),
-		B(1.1, 0.5, 0.62, 0, -0.25, 0.12, gold, MET), W(1.1, 0.5, 0.2, 0, -0.25, -0.29, gold, MET),
-		sparkle(-0.5, 0.3, -0.3)},
-	GoldenCart = {B(1.3, 1.0, 1.05, 0.15, 0, 0, gold, MET), W(1.05, 1.0, 0.45, -0.725, 0, 0, gold, MET, 180, 90, 0),
-		B(1.8, 0.1, 1.1, -0.07, 0.53, 0, goldLight, MET), B(1.25, 0.06, 0.02, 0.15, 0.05, -0.535, goldDark, MET),
-		B(0.06, 0.9, 0.02, 0.35, 0, -0.535, goldDark, MET), B(0.1, 0.5, 0.9, 0.9, 0.72, 0, gold, MET, 0, 0, -27),
-		C(1.1, 0.16, 0.16, 1.02, 0.95, 0, rgb(230, 50, 50), SP, 0, 90, 0), B(1.2, 0.08, 0.9, 0.15, -0.55, 0, goldDark, MET),
-		C(0.18, 0.36, 0.36, -0.35, -0.78, -0.35, black, SP, 0, 90, 0), C(0.18, 0.36, 0.36, 0.65, -0.78, -0.35, black, SP, 0, 90, 0)},
+	-- 1 DUSTY STORAGE
+	OldSpoon = {B(0.25, 1.5, 0.1, 0, 0.35, 0, metal, MAT.Metal), S(0.75, 0.95, 0.28, 0, -0.65, 0, metal, MAT.Metal), S(0.2, 0.25, 0.12, 0.1, -0.5, -0.12, rgb(150, 95, 55), MAT.CorrodedMetal)},
+	RustyKey = {C(0.2, 1, 1, 0, 0.55, 0, rgb(150, 85, 45), MAT.CorrodedMetal, 0, 90, 0), C(0.22, 0.45, 0.45, 0, 0.55, 0, rgb(70, 40, 25), MAT.SmoothPlastic, 0, 90, 0),
+		B(0.2, 1.3, 0.2, 0, -0.35, 0, rgb(150, 85, 45), MAT.CorrodedMetal), B(0.42, 0.16, 0.2, 0.2, -0.85, 0, rgb(150, 85, 45), MAT.CorrodedMetal), B(0.32, 0.16, 0.2, 0.15, -0.58, 0, rgb(150, 85, 45), MAT.CorrodedMetal)},
+	PocketWatch = {C(0.35, 1.4, 1.4, 0, 0, 0, gold, MAT.Metal, 0, 90, 0), C(0.37, 1.15, 1.15, 0, 0, 0, white, MAT.SmoothPlastic, 0, 90, 0),
+		B(0.07, 0.45, 0.04, 0, 0.18, -0.2, black), B(0.35, 0.07, 0.04, 0.15, 0, -0.2, black), C(0.22, 0.25, 0.25, 0, 0.8, 0, gold, MAT.Metal, 0, 0, 90), C(0.12, 0.42, 0.42, 0, 1.02, 0, gold, MAT.Metal, 0, 90, 0)},
+	AntiqueVase = {S(1.25, 1.3, 1.25, 0, -0.2, 0, rgb(205, 110, 60)), C(0.6, 0.5, 0.5, 0, 0.6, 0, rgb(205, 110, 60), MAT.SmoothPlastic, 0, 0, 90), C(0.15, 0.78, 0.78, 0, 0.92, 0, rgb(205, 110, 60), MAT.SmoothPlastic, 0, 0, 90),
+		C(0.22, 0.75, 0.75, 0, -0.85, 0, rgb(170, 85, 45), MAT.SmoothPlastic, 0, 0, 90), C(0.18, 1.24, 1.24, 0, -0.1, 0, black, MAT.SmoothPlastic, 0, 0, 90), C(0.08, 1.2, 1.2, 0, -0.42, 0, black, MAT.SmoothPlastic, 0, 0, 90)},
+	-- 2 FARM BARN
+	Carrot = {C(0.45, 0.62, 0.62, 0, 0.3, 0, rgb(255, 140, 30), MAT.SmoothPlastic, 0, 0, 90), C(0.45, 0.47, 0.47, 0, -0.12, 0, rgb(255, 140, 30), MAT.SmoothPlastic, 0, 0, 90),
+		C(0.4, 0.32, 0.32, 0, -0.52, 0, rgb(255, 140, 30), MAT.SmoothPlastic, 0, 0, 90), C(0.3, 0.16, 0.16, 0, -0.85, 0, rgb(255, 140, 30), MAT.SmoothPlastic, 0, 0, 90),
+		B(0.13, 0.7, 0.13, -0.14, 0.92, 0, rgb(70, 190, 70), MAT.SmoothPlastic, 0, 0, 20), B(0.13, 0.8, 0.13, 0, 0.98, 0, rgb(70, 190, 70)), B(0.13, 0.7, 0.13, 0.14, 0.92, 0, rgb(70, 190, 70), MAT.SmoothPlastic, 0, 0, -20)},
+	Corn = {S(0.72, 1.8, 0.72, 0, 0.05, 0, rgb(255, 215, 60)), B(0.3, 1.3, 0.12, -0.36, -0.35, 0, rgb(90, 180, 70), MAT.SmoothPlastic, 0, 0, 15),
+		B(0.3, 1.3, 0.12, 0.36, -0.35, 0, rgb(90, 180, 70), MAT.SmoothPlastic, 0, 0, -15), B(0.12, 1.3, 0.3, 0, -0.35, 0.36, rgb(90, 180, 70), MAT.SmoothPlastic, -15, 0, 0)},
+	MilkJug = {B(1, 1.2, 0.8, 0, -0.3, 0, white), B(0.6, 0.45, 0.6, 0, 0.48, 0, white), C(0.22, 0.42, 0.42, 0, 0.8, 0, rgb(70, 140, 255), MAT.SmoothPlastic, 0, 0, 90),
+		B(0.15, 0.8, 0.25, 0.6, 0, 0, white), B(1.02, 0.42, 0.62, 0, -0.3, 0, rgb(70, 140, 255))},
+	GoldenEgg = {S(1.2, 1.6, 1.2, 0, 0, 0, gold, MAT.Metal), S(0.28, 0.32, 0.1, -0.25, 0.35, -0.55, white, MAT.Neon)},
+	-- 3 TOY FACTORY
+	Teddy = {S(1.1, 1.2, 0.9, 0, -0.35, 0, rgb(165, 105, 60)), S(0.92, 0.85, 0.8, 0, 0.55, 0, rgb(165, 105, 60)), S(0.36, 0.36, 0.2, -0.38, 0.95, 0, rgb(165, 105, 60)),
+		S(0.36, 0.36, 0.2, 0.38, 0.95, 0, rgb(165, 105, 60)), S(0.42, 0.3, 0.3, 0, 0.45, -0.38, rgb(230, 190, 140)), S(0.16, 0.12, 0.1, 0, 0.52, -0.53, black),
+		S(0.1, 0.1, 0.06, -0.17, 0.68, -0.38, black), S(0.1, 0.1, 0.06, 0.17, 0.68, -0.38, black), S(0.36, 0.6, 0.36, -0.6, -0.2, -0.1, rgb(165, 105, 60)),
+		S(0.36, 0.6, 0.36, 0.6, -0.2, -0.1, rgb(165, 105, 60)), S(0.4, 0.36, 0.5, -0.3, -0.9, -0.2, rgb(165, 105, 60)), S(0.4, 0.36, 0.5, 0.3, -0.9, -0.2, rgb(165, 105, 60)),
+		S(0.6, 0.6, 0.2, 0, -0.35, -0.4, rgb(230, 190, 140)), B(0.5, 0.12, 0.12, 0, 0.12, -0.4, rgb(230, 60, 80))},
+	Puzzle = {B(1.4, 1.4, 0.3, 0, 0, 0, rgb(80, 140, 255)), C(0.3, 0.46, 0.46, 0, 0.85, 0, rgb(80, 140, 255), MAT.SmoothPlastic, 0, 90, 0),
+		C(0.3, 0.46, 0.46, 0.85, 0, 0, rgb(80, 140, 255), MAT.SmoothPlastic, 0, 90, 0), C(0.32, 0.46, 0.46, -0.52, 0, 0, rgb(40, 80, 170), MAT.SmoothPlastic, 0, 90, 0)},
+	Controller = {B(1.8, 0.8, 0.42, 0, 0, 0, rgb(50, 50, 62)), S(0.72, 0.95, 0.46, -0.75, -0.25, 0, rgb(50, 50, 62)), S(0.72, 0.95, 0.46, 0.75, -0.25, 0, rgb(50, 50, 62)),
+		B(0.36, 0.11, 0.06, -0.55, 0.08, -0.23, rgb(20, 20, 25)), B(0.11, 0.36, 0.06, -0.55, 0.08, -0.23, rgb(20, 20, 25)),
+		S(0.15, 0.15, 0.08, 0.5, 0.2, -0.23, rgb(240, 60, 60)), S(0.15, 0.15, 0.08, 0.67, 0.04, -0.23, rgb(70, 220, 90)),
+		S(0.15, 0.15, 0.08, 0.33, 0.04, -0.23, rgb(70, 140, 255)), S(0.15, 0.15, 0.08, 0.5, -0.12, -0.23, rgb(255, 210, 50))},
+	ToyRobot = {B(1, 1, 0.7, 0, -0.2, 0, metal, MAT.Metal), B(0.75, 0.6, 0.6, 0, 0.6, 0, metal, MAT.Metal), S(0.16, 0.16, 0.06, -0.17, 0.65, -0.31, rgb(60, 230, 255), MAT.Neon),
+		S(0.16, 0.16, 0.06, 0.17, 0.65, -0.31, rgb(60, 230, 255), MAT.Neon), B(0.06, 0.35, 0.06, 0, 1.05, 0, black), S(0.18, 0.18, 0.18, 0, 1.25, 0, rgb(255, 60, 60), MAT.Neon),
+		B(0.25, 0.8, 0.25, -0.65, -0.2, 0, rgb(120, 125, 140), MAT.Metal), B(0.25, 0.8, 0.25, 0.65, -0.2, 0, rgb(120, 125, 140), MAT.Metal),
+		B(0.3, 0.5, 0.35, -0.25, -0.95, 0, rgb(120, 125, 140), MAT.Metal), B(0.3, 0.5, 0.35, 0.25, -0.95, 0, rgb(120, 125, 140), MAT.Metal), B(0.5, 0.35, 0.05, 0, -0.1, -0.36, rgb(230, 60, 60))},
+	-- 4 CANDY SHOP
+	Lollipop = {C(0.25, 1.25, 1.25, 0, 0.42, 0, rgb(255, 90, 170), MAT.SmoothPlastic, 0, 90, 0), C(0.27, 0.8, 0.8, 0, 0.42, 0, white, MAT.SmoothPlastic, 0, 90, 0),
+		C(0.29, 0.4, 0.4, 0, 0.42, 0, rgb(255, 90, 170), MAT.SmoothPlastic, 0, 90, 0), B(0.12, 1.2, 0.12, 0, -0.6, 0, white)},
+	Donut = {C(0.5, 1.6, 1.6, 0, 0, 0, rgb(220, 160, 90), MAT.SmoothPlastic, 0, 90, 0), C(0.1, 1.42, 1.42, 0, 0, -0.25, rgb(255, 120, 190), MAT.SmoothPlastic, 0, 90, 0),
+		C(0.62, 0.5, 0.5, 0, 0, 0, rgb(130, 85, 50), MAT.SmoothPlastic, 0, 90, 0), B(0.22, 0.06, 0.04, -0.45, 0.25, -0.31, rgb(255, 230, 60)),
+		B(0.22, 0.06, 0.04, 0.35, 0.4, -0.31, rgb(90, 200, 255), MAT.SmoothPlastic, 0, 0, 40), B(0.22, 0.06, 0.04, 0.45, -0.3, -0.31, rgb(120, 230, 110), MAT.SmoothPlastic, 0, 0, -30),
+		B(0.22, 0.06, 0.04, -0.3, -0.45, -0.31, white, MAT.SmoothPlastic, 0, 0, 70)},
+	Cake = {C(0.7, 1.6, 1.6, 0, -0.5, 0, rgb(255, 232, 205), MAT.SmoothPlastic, 0, 0, 90), C(0.15, 1.66, 1.66, 0, -0.1, 0, rgb(255, 130, 190), MAT.SmoothPlastic, 0, 0, 90),
+		C(0.5, 1.05, 1.05, 0, 0.2, 0, rgb(255, 232, 205), MAT.SmoothPlastic, 0, 0, 90), C(0.12, 1.1, 1.1, 0, 0.48, 0, rgb(255, 130, 190), MAT.SmoothPlastic, 0, 0, 90),
+		S(0.32, 0.32, 0.32, 0, 0.7, 0, rgb(230, 30, 50)), B(0.08, 0.35, 0.08, -0.3, 0.7, 0, rgb(120, 200, 255)), B(0.08, 0.35, 0.08, 0.3, 0.7, 0, rgb(255, 220, 80)),
+		S(0.1, 0.16, 0.1, -0.3, 0.95, 0, rgb(255, 200, 60), MAT.Neon), S(0.1, 0.16, 0.1, 0.3, 0.95, 0, rgb(255, 200, 60), MAT.Neon)},
+	CandyCrown = {C(0.6, 1.4, 1.4, 0, -0.35, 0, gold, MAT.Metal, 0, 0, 90), C(0.62, 1.15, 1.15, 0, -0.32, 0, rgb(170, 30, 60), MAT.Fabric, 0, 0, 90),
+		B(0.3, 0.6, 0.12, 0, 0.2, -0.62, gold, MAT.Metal), B(0.3, 0.6, 0.12, -0.59, 0.2, -0.19, gold, MAT.Metal, 0, 72, 0), B(0.3, 0.6, 0.12, 0.59, 0.2, -0.19, gold, MAT.Metal, 0, -72, 0),
+		B(0.3, 0.6, 0.12, -0.36, 0.2, 0.5, gold, MAT.Metal, 0, 144, 0), B(0.3, 0.6, 0.12, 0.36, 0.2, 0.5, gold, MAT.Metal, 0, -144, 0),
+		S(0.24, 0.24, 0.24, 0, 0.55, -0.62, rgb(255, 80, 170)), S(0.24, 0.24, 0.24, -0.59, 0.55, -0.19, rgb(90, 200, 255)), S(0.24, 0.24, 0.24, 0.59, 0.55, -0.19, rgb(120, 230, 110)),
+		S(0.2, 0.2, 0.12, 0, -0.35, -0.72, rgb(255, 80, 170))},
+	-- 5 PIRATE COVE
+	Shell = {S(1.5, 1.2, 0.5, 0, 0.05, 0, rgb(255, 190, 160)), B(0.08, 1.05, 0.52, -0.45, 0.05, 0, rgb(230, 140, 120), MAT.SmoothPlastic, 0, 0, 35),
+		B(0.08, 1.15, 0.54, -0.2, 0.08, 0, rgb(230, 140, 120), MAT.SmoothPlastic, 0, 0, 15), B(0.08, 1.15, 0.54, 0.2, 0.08, 0, rgb(230, 140, 120), MAT.SmoothPlastic, 0, 0, -15),
+		B(0.08, 1.05, 0.52, 0.45, 0.05, 0, rgb(230, 140, 120), MAT.SmoothPlastic, 0, 0, -35), B(0.5, 0.28, 0.4, 0, -0.6, 0, rgb(240, 160, 130))},
+	Compass = {C(0.3, 1.4, 1.4, 0, 0, 0, gold, MAT.Metal, 0, 90, 0), C(0.32, 1.18, 1.18, 0, 0, 0, rgb(245, 235, 210), MAT.SmoothPlastic, 0, 90, 0),
+		B(0.13, 0.55, 0.04, 0, 0.25, -0.18, rgb(230, 40, 40)), B(0.13, 0.55, 0.04, 0, -0.25, -0.18, white), S(0.14, 0.14, 0.06, 0, 0, -0.2, black),
+		C(0.12, 0.38, 0.38, 0, 0.86, 0, gold, MAT.Metal, 0, 90, 0)},
+	Spyglass = {C(1, 0.46, 0.46, -0.3, 0, 0, rgb(200, 150, 60), MAT.Metal, 0, 0, 20), C(0.8, 0.38, 0.38, 0.55, 0.31, 0, rgb(220, 180, 70), MAT.Metal, 0, 0, 20),
+		C(0.14, 0.52, 0.52, -0.75, -0.16, 0, rgb(110, 70, 40), MAT.Wood, 0, 0, 20), C(0.12, 0.5, 0.5, 0.1, 0.04, 0, rgb(110, 70, 40), MAT.Wood, 0, 0, 20),
+		C(0.04, 0.34, 0.34, 0.96, 0.46, 0, rgb(170, 220, 255), MAT.Glass, 0, 0, 20)},
+	TreasureMap = {B(1.5, 1.2, 0.05, 0, 0, 0, rgb(235, 215, 160)), C(1.65, 0.26, 0.26, 0, 0.62, 0, rgb(215, 190, 130)), C(1.65, 0.26, 0.26, 0, -0.62, 0, rgb(215, 190, 130)),
+		B(0.4, 0.09, 0.06, 0.32, -0.15, -0.04, rgb(220, 40, 40), MAT.SmoothPlastic, 0, 0, 45), B(0.4, 0.09, 0.06, 0.32, -0.15, -0.04, rgb(220, 40, 40), MAT.SmoothPlastic, 0, 0, -45),
+		B(0.14, 0.06, 0.05, -0.45, 0.25, -0.04, rgb(120, 80, 40)), B(0.14, 0.06, 0.05, -0.2, 0.15, -0.04, rgb(120, 80, 40)), B(0.14, 0.06, 0.05, 0.05, 0.02, -0.04, rgb(120, 80, 40)),
+		S(0.35, 0.25, 0.04, -0.4, -0.2, -0.04, rgb(110, 180, 110))},
+	-- 6 DINO MUSEUM
+	Bone = {C(1.5, 0.32, 0.32, 0, 0, 0, bone, MAT.SmoothPlastic, 0, 0, 30), S(0.42, 0.42, 0.42, -0.72, -0.27, 0.13, bone), S(0.42, 0.42, 0.42, -0.55, -0.55, -0.13, bone),
+		S(0.42, 0.42, 0.42, 0.55, 0.55, 0.13, bone), S(0.42, 0.42, 0.42, 0.72, 0.27, -0.13, bone)},
+	Footprint = {C(0.4, 1.7, 1.7, 0, 0, 0, rgb(150, 140, 125), MAT.Slate, 0, 90, 0), S(0.55, 0.65, 0.12, 0, -0.2, -0.2, rgb(90, 82, 72)),
+		S(0.2, 0.38, 0.1, -0.3, 0.35, -0.2, rgb(90, 82, 72), MAT.SmoothPlastic, 0, 0, 20), S(0.2, 0.4, 0.1, 0, 0.45, -0.2, rgb(90, 82, 72)),
+		S(0.2, 0.38, 0.1, 0.3, 0.35, -0.2, rgb(90, 82, 72), MAT.SmoothPlastic, 0, 0, -20)},
+	DinoPlush = {S(1, 0.9, 1.3, 0, -0.35, 0.1, rgb(110, 200, 90)), S(0.45, 0.9, 0.45, 0, 0.25, -0.42, rgb(110, 200, 90)), S(0.55, 0.5, 0.7, 0, 0.75, -0.55, rgb(110, 200, 90)),
+		S(0.1, 0.1, 0.06, -0.15, 0.85, -0.85, black), S(0.1, 0.1, 0.06, 0.15, 0.85, -0.85, black), S(0.3, 0.3, 0.9, 0, -0.45, 0.9, rgb(110, 200, 90)),
+		S(0.3, 0.45, 0.3, -0.3, -0.8, -0.3, rgb(90, 175, 70)), S(0.3, 0.45, 0.3, 0.3, -0.8, -0.3, rgb(90, 175, 70)), S(0.3, 0.45, 0.3, -0.3, -0.8, 0.45, rgb(90, 175, 70)),
+		S(0.3, 0.45, 0.3, 0.3, -0.8, 0.45, rgb(90, 175, 70)), B(0.12, 0.25, 0.25, 0, 0.12, 0.1, rgb(255, 160, 50), MAT.SmoothPlastic, 45, 0, 0),
+		B(0.12, 0.25, 0.25, 0, 0.05, 0.45, rgb(255, 160, 50), MAT.SmoothPlastic, 45, 0, 0)},
+	TRexSkull = {S(1, 0.95, 1.3, 0, 0.25, 0.2, bone), B(0.75, 0.55, 0.9, 0, 0.05, -0.55, bone), B(0.72, 0.28, 1.1, 0, -0.38, -0.3, rgb(225, 218, 195)),
+		S(0.3, 0.32, 0.1, -0.3, 0.4, -0.3, rgb(50, 40, 35)), S(0.3, 0.32, 0.1, 0.3, 0.4, -0.3, rgb(50, 40, 35)), S(0.12, 0.08, 0.05, -0.15, 0.25, -1.0, rgb(50, 40, 35)),
+		S(0.12, 0.08, 0.05, 0.15, 0.25, -1.0, rgb(50, 40, 35)), B(0.08, 0.2, 0.08, -0.25, -0.18, -0.95, white), B(0.08, 0.2, 0.08, 0, -0.18, -1.0, white),
+		B(0.08, 0.2, 0.08, 0.25, -0.18, -0.95, white), B(0.08, 0.2, 0.08, -0.33, -0.18, -0.6, white), B(0.08, 0.2, 0.08, 0.33, -0.18, -0.6, white)},
+	-- 7 FROZEN LAB
+	Snowflake = {B(0.16, 2, 0.12, 0, 0, 0, rgb(200, 240, 255), MAT.Ice), B(0.16, 2, 0.12, 0, 0, 0, rgb(200, 240, 255), MAT.Ice, 0, 0, 60), B(0.16, 2, 0.12, 0, 0, 0, rgb(200, 240, 255), MAT.Ice, 0, 0, -60),
+		S(0.4, 0.4, 0.2, 0, 0, 0, rgb(150, 220, 255), MAT.Neon), B(0.1, 0.45, 0.1, 0.15, 0.7, 0, rgb(200, 240, 255), MAT.Ice, 0, 0, -40), B(0.1, 0.45, 0.1, -0.15, 0.7, 0, rgb(200, 240, 255), MAT.Ice, 0, 0, 40),
+		B(0.1, 0.45, 0.1, 0.15, -0.7, 0, rgb(200, 240, 255), MAT.Ice, 0, 0, 40), B(0.1, 0.45, 0.1, -0.15, -0.7, 0, rgb(200, 240, 255), MAT.Ice, 0, 0, -40)},
+	FrozenFish = {S(1.1, 0.55, 0.32, -0.1, 0, 0, rgb(255, 150, 60)), B(0.35, 0.5, 0.1, 0.55, 0, 0, rgb(255, 120, 40), MAT.SmoothPlastic, 0, 0, 45), S(0.1, 0.1, 0.05, -0.45, 0.08, -0.15, black),
+		B(1.7, 1.15, 0.8, 0, 0, 0, rgb(170, 225, 255), MAT.Glass, 0, 0, 0, 0.45)},
+	Snowman = {S(1.1, 1.1, 1.1, 0, -0.55, 0, white, MAT.Snow), S(0.85, 0.85, 0.85, 0, 0.25, 0, white, MAT.Snow), S(0.62, 0.62, 0.62, 0, 0.88, 0, white, MAT.Snow),
+		C(0.4, 0.42, 0.42, 0, 1.3, 0, black, MAT.SmoothPlastic, 0, 0, 90), C(0.06, 0.66, 0.66, 0, 1.12, 0, black, MAT.SmoothPlastic, 0, 0, 90),
+		B(0.08, 0.08, 0.32, 0, 0.86, -0.42, rgb(255, 140, 30)), S(0.08, 0.08, 0.05, -0.12, 0.98, -0.28, black), S(0.08, 0.08, 0.05, 0.12, 0.98, -0.28, black),
+		C(0.16, 0.76, 0.76, 0, 0.6, 0, rgb(230, 40, 50), MAT.Fabric, 0, 0, 90), S(0.1, 0.1, 0.06, 0, 0.28, -0.42, black), S(0.1, 0.1, 0.06, 0, 0.05, -0.4, black)},
+	IceGem = {B(1, 1, 1, 0, 0, 0, rgb(120, 220, 255), MAT.Glass, 45, 0, 45, 0.15), B(0.55, 0.55, 0.55, 0, 0, 0, rgb(200, 245, 255), MAT.Neon, 45, 0, 45)},
+	-- 8 TECH LAB
+	Battery = {C(1.5, 0.8, 0.8, 0, -0.1, 0, rgb(35, 35, 40), MAT.SmoothPlastic, 0, 0, 90), C(0.6, 0.82, 0.82, 0, 0.35, 0, rgb(90, 230, 90), MAT.SmoothPlastic, 0, 0, 90),
+		C(0.15, 0.32, 0.32, 0, 0.72, 0, metal, MAT.Metal, 0, 0, 90), B(0.26, 0.07, 0.03, 0, 0.35, -0.42, white, MAT.Neon), B(0.07, 0.26, 0.03, 0, 0.35, -0.42, white, MAT.Neon)},
+	Chip = {B(1.5, 1.5, 0.12, 0, 0, 0, rgb(40, 140, 70)), B(0.8, 0.8, 0.16, 0, 0, -0.1, rgb(25, 25, 30)), B(0.06, 0.2, 0.06, -0.25, 0.48, -0.08, gold, MAT.Metal),
+		B(0.06, 0.2, 0.06, 0, 0.48, -0.08, gold, MAT.Metal), B(0.06, 0.2, 0.06, 0.25, 0.48, -0.08, gold, MAT.Metal), B(0.06, 0.2, 0.06, -0.25, -0.48, -0.08, gold, MAT.Metal),
+		B(0.06, 0.2, 0.06, 0, -0.48, -0.08, gold, MAT.Metal), B(0.06, 0.2, 0.06, 0.25, -0.48, -0.08, gold, MAT.Metal), B(0.2, 0.06, 0.06, -0.48, 0.2, -0.08, gold, MAT.Metal),
+		B(0.2, 0.06, 0.06, -0.48, -0.2, -0.08, gold, MAT.Metal), B(0.2, 0.06, 0.06, 0.48, 0.2, -0.08, gold, MAT.Metal), B(0.2, 0.06, 0.06, 0.48, -0.2, -0.08, gold, MAT.Metal),
+		B(0.6, 0.04, 0.02, -0.4, 0.62, -0.07, rgb(255, 215, 80), MAT.Neon), B(0.04, 0.5, 0.02, 0.6, -0.4, -0.07, rgb(255, 215, 80), MAT.Neon)},
+	Laptop = {B(1.7, 0.1, 1.15, 0, -0.55, -0.2, metal, MAT.Metal), B(1.35, 0.03, 0.55, 0, -0.49, -0.3, rgb(40, 40, 48)), B(1.7, 1.1, 0.08, 0, 0.0, 0.4, metal, MAT.Metal, -12, 0, 0),
+		B(1.5, 0.92, 0.02, 0, 0.0, 0.35, rgb(80, 170, 255), MAT.Neon, -12, 0, 0)},
+	Satellite = {B(0.6, 0.6, 0.8, 0, 0, 0, rgb(225, 180, 60), MAT.Foil), B(0.9, 0.55, 0.04, -0.8, 0, 0, rgb(40, 80, 210), MAT.SmoothPlastic), B(0.9, 0.55, 0.04, 0.8, 0, 0, rgb(40, 80, 210), MAT.SmoothPlastic),
+		B(0.4, 0.06, 0.06, -0.38, 0, 0, metal, MAT.Metal), B(0.4, 0.06, 0.06, 0.38, 0, 0, metal, MAT.Metal), C(0.1, 0.75, 0.75, 0, 0.45, 0, white, MAT.SmoothPlastic, 0, 0, 90),
+		B(0.05, 0.5, 0.05, 0, 0.75, 0, metal, MAT.Metal), S(0.12, 0.12, 0.12, 0, 1.0, 0, rgb(255, 60, 60), MAT.Neon)},
+	-- 9 ALIEN HANGAR
+	Comet = {S(0.85, 0.85, 0.85, -0.35, -0.35, 0, rgb(130, 120, 145), MAT.Slate), S(0.5, 0.5, 1.8, 0.25, 0.25, 0, rgb(90, 220, 255), MAT.Neon, 0, 45, 0, 0.35),
+		S(0.3, 0.3, 1.4, 0.3, 0.3, 0, white, MAT.Neon, 0, 45, 0, 0.2)},
+	CrystalBall = {S(1.3, 1.3, 1.3, 0, 0.25, 0, rgb(190, 140, 255), MAT.Glass, 0, 0, 0, 0.25), S(0.55, 0.55, 0.55, 0, 0.25, 0, rgb(255, 120, 230), MAT.Neon),
+		C(0.35, 1.05, 1.05, 0, -0.6, 0, rgb(120, 85, 40), MAT.Wood, 0, 0, 90), C(0.12, 1.25, 1.25, 0, -0.8, 0, gold, MAT.Metal, 0, 0, 90)},
+	UFOModel = {C(0.3, 1.9, 1.9, 0, -0.1, 0, metal, MAT.Metal, 0, 0, 90), S(0.95, 0.65, 0.95, 0, 0.2, 0, rgb(120, 230, 255), MAT.Glass, 0, 0, 0, 0.2),
+		C(0.12, 1.0, 1.0, 0, -0.3, 0, rgb(120, 255, 120), MAT.Neon, 0, 0, 90), S(0.14, 0.14, 0.14, -0.85, -0.1, 0, rgb(255, 230, 80), MAT.Neon),
+		S(0.14, 0.14, 0.14, 0.85, -0.1, 0, rgb(255, 230, 80), MAT.Neon), S(0.14, 0.14, 0.14, 0, -0.1, -0.85, rgb(255, 230, 80), MAT.Neon),
+		S(0.14, 0.14, 0.14, -0.6, -0.1, -0.6, rgb(255, 230, 80), MAT.Neon), S(0.14, 0.14, 0.14, 0.6, -0.1, -0.6, rgb(255, 230, 80), MAT.Neon)},
+	AlienPlush = {S(1, 0.92, 0.85, 0, 0.35, 0, rgb(120, 230, 110)), S(0.36, 0.22, 0.1, -0.22, 0.4, -0.38, rgb(15, 15, 20), MAT.Glass, 0, 0, -20),
+		S(0.36, 0.22, 0.1, 0.22, 0.4, -0.38, rgb(15, 15, 20), MAT.Glass, 0, 0, 20), S(0.7, 0.8, 0.6, 0, -0.45, 0, rgb(120, 230, 110)),
+		B(0.05, 0.38, 0.05, -0.22, 0.95, 0, rgb(90, 200, 90), MAT.SmoothPlastic, 0, 0, 20), B(0.05, 0.38, 0.05, 0.22, 0.95, 0, rgb(90, 200, 90), MAT.SmoothPlastic, 0, 0, -20),
+		S(0.15, 0.15, 0.15, -0.29, 1.15, 0, rgb(255, 120, 230), MAT.Neon), S(0.15, 0.15, 0.15, 0.29, 1.15, 0, rgb(255, 120, 230), MAT.Neon),
+		S(0.25, 0.5, 0.25, -0.45, -0.4, 0, rgb(110, 215, 100)), S(0.25, 0.5, 0.25, 0.45, -0.4, 0, rgb(110, 215, 100))},
+	-- 10 GALAXY VAULT
+	Moon = {S(1.45, 1.45, 1.45, 0, 0, 0, rgb(185, 185, 195), MAT.Slate), S(0.38, 0.38, 0.16, -0.3, 0.3, -0.62, rgb(140, 140, 150)),
+		S(0.26, 0.26, 0.12, 0.35, -0.2, -0.64, rgb(140, 140, 150)), S(0.2, 0.2, 0.1, 0.1, 0.45, -0.62, rgb(140, 140, 150)), S(0.3, 0.3, 0.12, -0.15, -0.4, -0.62, rgb(140, 140, 150))},
+	Shooting = {S(0.65, 0.65, 0.4, 0, 0, 0, rgb(255, 220, 60), MAT.Neon), B(0.36, 0.75, 0.3, 0, 0.5, 0, rgb(255, 220, 60), MAT.Neon),
+		B(0.36, 0.75, 0.3, 0.48, 0.15, 0, rgb(255, 220, 60), MAT.Neon, 0, 0, -72), B(0.36, 0.75, 0.3, 0.29, -0.4, 0, rgb(255, 220, 60), MAT.Neon, 0, 0, -144),
+		B(0.36, 0.75, 0.3, -0.29, -0.4, 0, rgb(255, 220, 60), MAT.Neon, 0, 0, 144), B(0.36, 0.75, 0.3, -0.48, 0.15, 0, rgb(255, 220, 60), MAT.Neon, 0, 0, 72),
+		S(0.35, 0.35, 1.7, 0.55, -0.55, 0.3, rgb(255, 120, 220), MAT.Neon, 0, -40, 0, 0.35)},
+	GalaxyOrb = {S(1.4, 1.4, 1.4, 0, 0, 0, rgb(140, 60, 255), MAT.Neon, 0, 0, 0, 0.1), S(0.6, 0.6, 0.6, 0, 0, 0, white, MAT.Neon),
+		C(0.06, 2.1, 2.1, 0, 0, 0, rgb(90, 220, 255), MAT.Neon, 0, 0, 70, 0.45)},
+	BlackHoleCore = {S(1.05, 1.05, 1.05, 0, 0, 0, rgb(8, 6, 12)), C(0.06, 2.3, 2.3, 0, 0, 0, rgb(255, 140, 30), MAT.Neon, 20, 0, 80, 0.3),
+		C(0.07, 1.5, 1.5, 0, 0, 0, rgb(255, 230, 120), MAT.Neon, 20, 0, 80, 0.1), S(1.35, 1.35, 1.35, 0, 0, 0, rgb(170, 60, 255), MAT.Neon, 0, 0, 0, 0.75)},
 }
+
+-- 3D models for the upgrades at the Upgrade Shop booth
+Config.ItemModels.UP_Speed = {B(0.95, 0.22, 2, 0, -0.62, 0.05, white), S(0.9, 0.8, 1.55, 0, -0.2, 0.2, rgb(60, 170, 255)), S(0.85, 0.55, 0.85, 0, -0.35, -0.6, rgb(60, 170, 255)),
+	B(0.8, 0.4, 0.65, 0, 0.18, 0.45, rgb(30, 110, 210)), B(0.5, 0.07, 0.09, 0, 0.12, -0.05, white), B(0.5, 0.07, 0.09, 0, 0.0, -0.3, white),
+	B(0.06, 0.18, 0.9, 0.46, -0.3, 0.15, white, MAT.SmoothPlastic, 15, 0, 0), B(0.06, 0.18, 0.9, -0.46, -0.3, 0.15, white, MAT.SmoothPlastic, 15, 0, 0),
+	B(0.3, 0.4, 0.12, 0, 0.32, 0.8, rgb(255, 90, 90))}
+Config.ItemModels.UP_Hands = {B(1.05, 1.1, 0.42, 0, -0.1, 0, rgb(235, 60, 60)), B(0.22, 0.65, 0.36, -0.38, 0.72, 0, rgb(235, 60, 60)), B(0.22, 0.72, 0.36, -0.13, 0.76, 0, rgb(235, 60, 60)),
+	B(0.22, 0.72, 0.36, 0.13, 0.76, 0, rgb(235, 60, 60)), B(0.22, 0.6, 0.36, 0.38, 0.68, 0, rgb(235, 60, 60)), B(0.26, 0.55, 0.36, -0.62, -0.05, 0, rgb(235, 60, 60), MAT.SmoothPlastic, 0, 0, 35),
+	B(1.15, 0.38, 0.5, 0, -0.82, 0, white), B(0.18, 0.5, 0.05, 0.05, 0, -0.23, rgb(255, 230, 70), MAT.Neon, 0, 0, -25), B(0.18, 0.4, 0.05, -0.08, -0.32, -0.23, rgb(255, 230, 70), MAT.Neon, 0, 0, 25)}
+Config.ItemModels.UP_Stands = {B(0.12, 1.9, 0.7, -0.85, 0, 0, rgb(200, 150, 95), MAT.WoodPlanks), B(0.12, 1.9, 0.7, 0.85, 0, 0, rgb(200, 150, 95), MAT.WoodPlanks),
+	B(1.7, 0.12, 0.7, 0, -0.9, 0, rgb(220, 170, 110), MAT.WoodPlanks), B(1.7, 0.12, 0.7, 0, 0, 0, rgb(220, 170, 110), MAT.WoodPlanks), B(1.7, 0.12, 0.7, 0, 0.9, 0, rgb(220, 170, 110), MAT.WoodPlanks),
+	B(1.7, 1.9, 0.08, 0, 0, 0.32, rgb(255, 200, 90)), B(0.42, 0.42, 0.42, -0.45, -0.62, 0, rgb(255, 90, 90)), B(0.42, 0.5, 0.42, 0.1, -0.58, 0, rgb(90, 200, 255)),
+	B(0.42, 0.42, 0.42, -0.2, 0.27, 0, rgb(120, 230, 110)), B(0.42, 0.36, 0.42, 0.45, 0.24, 0, rgb(255, 220, 70)),
+	B(0.55, 0.16, 0.1, 0.62, 1.25, -0.2, rgb(90, 255, 90), MAT.Neon), B(0.16, 0.55, 0.1, 0.62, 1.25, -0.2, rgb(90, 255, 90), MAT.Neon)}
+Config.ItemModels.UP_Unbox = {B(0.45, 1.5, 0.28, 0, -0.35, 0, rgb(255, 140, 30)), B(0.47, 0.12, 0.3, 0, -0.75, 0, rgb(40, 40, 45)), B(0.47, 0.12, 0.3, 0, -0.5, 0, rgb(40, 40, 45)),
+	B(0.47, 0.12, 0.3, 0, -0.25, 0, rgb(40, 40, 45)), B(0.16, 0.3, 0.34, 0, 0.1, 0, rgb(40, 40, 45)), B(0.3, 0.72, 0.06, 0, 0.75, 0, rgb(225, 230, 240), MAT.Metal),
+	B(0.3, 0.3, 0.06, 0.07, 1.12, 0, rgb(225, 230, 240), MAT.Metal, 0, 0, 45), B(0.05, 0.7, 0.07, -0.1, 0.75, 0, white, MAT.Neon)}
 
 -- mutations tint the model: Gold, Diamond, Lava, Rainbow, Galaxy
 local MUT_MATERIAL = {Gold = MAT.Metal, Diamond = MAT.Glass, Lava = MAT.Neon, Galaxy = MAT.Neon}
@@ -984,9 +827,9 @@ function Config.BuildItemModel(item, scale, cframe)
 		part.Color = color or white
 		part.Transparency = transp or 0
 		if shape == "C" then part.Shape = Enum.PartType.Cylinder end
-		if shape == "S" or shape == "W" then
+		if shape == "S" then
 			local mesh = Instance.new("SpecialMesh")
-			mesh.MeshType = (shape == "S") and Enum.MeshType.Sphere or Enum.MeshType.Wedge
+			mesh.MeshType = Enum.MeshType.Sphere
 			mesh.Parent = part
 		end
 		if mut.id ~= "Normal" and mut.color then
@@ -1019,5 +862,75 @@ end
 function Config.ShelfItemScale(item)
 	return 1.3 * math.min(1.15, math.sqrt(Config.GetSize(item.size).scale))
 end
+
+------------------------------------------------------------------
+-- NEW FEATURES (side panels, quests, free gift, lobby plaza)
+------------------------------------------------------------------
+-- the courtyard got a plaza at the back (spawn, Trails Shop, FREE gift, leaderboards)
+Config.Court.length = 360
+Config.LobbySpawnZ = 330
+-- every area is the same size (helpers used by the server / client)
+function Config.AreaLen(areaIndex) return Config.Layout.sectionLen end
+function Config.AreaHalfWidth(areaIndex) return Config.Layout.halfWidth end
+function Config.AreaEndZ(areaIndex) return Config.AreaStartZ(areaIndex) - Config.Layout.sectionLen end
+function Config.StoreEndZ() return Config.AreaEndZ(#Config.Areas) end
+function Config.StoreHalfWidth() return Config.Layout.halfWidth end
+-- an empty shelf spot gets a new box this many seconds after it was emptied
+function Config.RestockTime(areaIndex, rarity)
+	return 8 + (areaIndex or 1) + (rarity or 1) * 4
+end
+-- shelf spots ("+1 Equip"): you start with 8 and buy more with cash
+Config.BaseStands = 8
+function Config.StandCost(unlocked) -- price of the NEXT slot when you have `unlocked` slots
+	unlocked = math.max(Config.BaseStands, tonumber(unlocked) or Config.BaseStands)
+	return math.floor(2500 * 1.45 ^ (unlocked - Config.BaseStands))
+end
+-- shoppers at the same time per shop (fewer = less lag)
+Config.MaxCustomers = 4
+-- the FREE gift in the lobby: claim once every `minutes`
+Config.FreeGift = {minutes = 15, boxChance = 0.35}
+function Config.FreeGiftCash(incomePerSec)
+	return math.max(300, math.floor((incomePerSec or 0) * 120))
+end
+-- daily quests: 3 a day, the same for everybody
+Config.Quests = {
+	{id = "steal", text = "Steal %s boxes",                    goals = {3, 8, 15}},
+	{id = "open",  text = "Open %s boxes",                     goals = {3, 6, 12}},
+	{id = "sales", text = "Make %s sales in your shop",        goals = {20, 60, 150}},
+	{id = "run",   text = "Run %s seconds on your treadmill",  goals = {30, 90, 180}},
+	{id = "rare",  text = "Unbox %s Rare or better items",     goals = {1, 2, 4}},
+	{id = "deep",  text = "Steal %s boxes from department 3+", goals = {2, 5, 10}},
+}
+function Config.GetQuest(id)
+	for _, q in ipairs(Config.Quests) do if q.id == id then return q end end
+	return nil
+end
+-- today's 3 quests: {{id = "steal", goal = 3}, ...} (3 different quests, picked from the day number)
+function Config.QuestsForDay(day)
+	day = math.floor(tonumber(day) or Config.DayNumber())
+	local pool = {}
+	for i = 1, #Config.Quests do pool[i] = i end
+	local seed = (day * 7919 + 1013) % 2147483647
+	local list = {}
+	for slot = 1, 3 do
+		seed = (seed * 48271) % 2147483647 -- a tiny random number generator (same result on every server)
+		local q = Config.Quests[table.remove(pool, seed % #pool + 1)]
+		list[slot] = {id = q.id, goal = q.goals[slot] or q.goals[#q.goals]}
+	end
+	return list
+end
+-- cash for finishing quest `slot` (harder slot = bigger reward, grows with your income)
+function Config.QuestReward(slot, incomePerSec)
+	local base, minutes = ({500, 2000, 6000})[slot] or 500, ({5, 10, 20})[slot] or 5
+	return math.max(base, math.floor((incomePerSec or 0) * 60 * minutes))
+end
+function Config.QuestText(id, goal)
+	local q = Config.GetQuest(id)
+	if not q then return "Quest" end
+	return string.format(q.text, Config.FormatNum(goal or q.goals[1]))
+end
+-- (saves are already in this format: nothing to convert)
+Config.SaveVersion = 2
+Config.OldBoxToNew, Config.OldItemToNew = {}, {}
 
 return Config
