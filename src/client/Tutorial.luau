@@ -81,15 +81,23 @@ function Tutorial.init(ctx)
 	local beam = new("Beam", {Color = ColorSequence.new(UI.rgb(255, 230, 60), UI.rgb(120, 255, 80)), FaceCamera = true, Width0 = 0.5, Width1 = 0.5,
 		LightEmission = 1, Transparency = NumberSequence.new(0.2, 0.5), Segments = 1, Enabled = false}, pointerFolder)
 	local arrow = new("BillboardGui", {Size = UDim2.fromOffset(60, 60), AlwaysOnTop = true, LightInfluence = 0, Enabled = false}, pointerFolder)
-	UI.ICON.new("down", arrow, UDim2.fromScale(1, 1), nil, UI.rgb(255, 230, 60))
+	-- the tutorial points with a big cartoon mouse cursor (Roblox's own cursor image, tinted yellow).
+	-- Its tip is in the middle of the image and it points up-left, so it's turned +135 degrees
+	-- from the direction it should point at.
+	local function cursor(parent, size, anchor)
+		return new("ImageLabel", {Name = "Cursor", BackgroundTransparency = 1, Size = size, AnchorPoint = anchor or Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5), Image = "rbxasset://textures/Cursors/KeyboardMouse/ArrowFarCursor.png",
+			ImageColor3 = UI.rgb(255, 225, 60), ScaleType = Enum.ScaleType.Fit}, parent)
+	end
+	cursor(arrow, UDim2.fromScale(2, 2)).Rotation = 90 + 135 -- pointing down at the thing in the world
 	local cursorGui = new("ScreenGui", {Name = "TutorialCursor", IgnoreGuiInset = true, ResetOnSpawn = false, DisplayOrder = 8}, playerGui)
 	local ring = new("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(40, 40), BackgroundTransparency = 1, Visible = false}, cursorGui)
 	UI.corner(ring, true)
 	local ringStroke = new("UIStroke", {Thickness = 4, Color = UI.rgb(255, 230, 60)}, ring)
-	local hand = UI.ICON.new("arrow", cursorGui, UDim2.fromOffset(54, 54), nil, UI.rgb(255, 230, 60), Vector2.new(0.5, 0))
+	local hand = cursor(cursorGui, UDim2.fromOffset(110, 110))
 	hand.Visible = false
 	local edge = new("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(64, 64), BackgroundTransparency = 1, Visible = false}, cursorGui)
-	local edgeArrow = UI.ICON.new("arrow", edge, UDim2.fromScale(1, 1), nil, UI.rgb(255, 230, 60))
+	local edgeArrow = cursor(edge, UDim2.fromScale(1.6, 1.6))
 	local edgeDist = UI.label(edge, "", {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, -4), Size = UDim2.fromOffset(100, 22), Max = 18, Stroke = 2, TextWrapped = false})
 
 	local fromAttach, toAttach, currentTarget = nil, nil, nil
@@ -133,8 +141,9 @@ function Tutorial.init(ctx)
 			edge.Visible = false
 			hand.Visible, ring.Visible = true, true
 			local tap = math.abs(math.sin(t * 3.5))
-			hand.Position = UDim2.fromOffset(p.X + 8, p.Y + 6 + tap * 16)
-			hand.Rotation = -90 + math.sin(t * 3.5) * 8
+			-- the tip taps towards the target from the bottom-right
+			hand.Position = UDim2.fromOffset(p.X + 4 + tap * 14, p.Y + 4 + tap * 14)
+			hand.Rotation = math.sin(t * 3.5) * 6
 			local r = 26 + ((t * 1.4) % 1) * 46
 			ring.Size = UDim2.fromOffset(r, r)
 			ring.Position = UDim2.fromOffset(p.X, p.Y)
@@ -150,7 +159,7 @@ function Tutorial.init(ctx)
 			local pulse = 1 + math.sin(t * 6) * 0.08
 			edge.Position = UDim2.fromOffset(cx + dir.X * k, cy + dir.Y * k)
 			edge.Size = UDim2.fromOffset(64 * pulse, 64 * pulse)
-			edgeArrow.Rotation = math.deg(math.atan2(dir.Y, dir.X))
+			edgeArrow.Rotation = math.deg(math.atan2(dir.Y, dir.X)) + 135
 			local char = player.Character
 			local hrp = char and char:FindFirstChild("HumanoidRootPart")
 			UI.setText(edgeDist, hrp and (math.floor((hrp.Position - part.Position).Magnitude) .. " studs") or "")
