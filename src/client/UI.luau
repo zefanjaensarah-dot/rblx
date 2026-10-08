@@ -633,8 +633,8 @@ function UI.card(parent, color, props)
 	if props then
 		for k, v in pairs(props) do f[k] = v end
 	end
-	UI.corner(f, 14)
-	UI.stroke(f, 2.5)
+	UI.corner(f, 6)
+	UI.stroke(f, 3)
 	UI.shade(f, C.white, rgb(185, 182, 200))
 	return f
 end
@@ -769,14 +769,14 @@ end
 
 function UI.window(opt)
 	local docked = opt.Docked == true
-	local color = docked and rgb(255, 150, 30) or opt.Color or C.green
+	local color = rgb(255, 150, 30) -- every window has the same orange header (like the screenshots)
 	local size = opt.Size or Vector2.new(760, 470)
 	local frame = new("Frame", {Name = opt.Name, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(size.X, size.Y),
 		BackgroundColor3 = color:Lerp(C.panel, 0.45), Visible = false, ZIndex = 60}, UI.root)
-	UI.corner(frame, docked and 8 or 22)
+	UI.corner(frame, 8)
 	UI.stroke(frame, 4)
 	UI.shade(frame, C.white, rgb(175, 172, 192))
-	if docked then frame.BackgroundColor3 = rgb(44, 44, 48) end
+	frame.BackgroundColor3 = rgb(44, 44, 48)
 	local scale = new("UIScale", {}, frame)
 	-- title bar
 	local header = new("Frame", {Name = "Header", Size = UDim2.new(1, 0, 0, 58), BackgroundColor3 = color, BorderSizePixel = 0}, frame)
@@ -814,10 +814,10 @@ function UI.window(opt)
 			opt.HeaderButton.TextSize = opt.HeaderButton.TextSize or 18
 		end
 	else
-		close = new("TextButton", {Name = "Close", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -14, 0, 12), Size = UDim2.fromOffset(48, 48),
-			BackgroundColor3 = rgb(240, 60, 70), Text = "", AutoButtonColor = false}, frame)
-		UI.corner(close, true)
-		UI.stroke(close, 3)
+		close = new("TextButton", {Name = "Close", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0, 29), Size = UDim2.fromOffset(46, 46),
+			BackgroundColor3 = rgb(230, 30, 40), Text = "", AutoButtonColor = false}, frame)
+		UI.corner(close, 6)
+		UI.stroke(close, 3.5)
 		UI.shade(close, C.white, rgb(190, 190, 190))
 		UI.icon("close", close, UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), C.white, Vector2.new(0.5, 0.5))
 	end
@@ -827,20 +827,20 @@ function UI.window(opt)
 	UI.corner(body, 16)
 	UI.stroke(body, 2.5, color:Lerp(C.ink, 0.5))
 	local headerBtn, footerBtn
-	if docked then
-		-- dark charcoal body with a faint grid (two striped gradients, no hundreds of frames)
-		body.Position, body.Size = UDim2.fromOffset(6, 60), UDim2.new(1, -12, 1, -66)
-		body.BackgroundColor3 = rgb(50, 50, 55)
-		UI.corner(body, 4)
-		for _, rot in ipairs({0, 90}) do
-			local keys = {}
-			for k = 0, 18 do
-				table.insert(keys, NumberSequenceKeypoint.new(k / 18, (k % 2 == 0) and 0.93 or 1))
-			end
-			local grid = new("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.white, BorderSizePixel = 0, BackgroundTransparency = 0}, body)
-			UI.corner(grid, 4)
-			new("UIGradient", {Rotation = rot, Transparency = NumberSequence.new(keys)}, grid)
+	-- dark charcoal body with a faint grid (two striped gradients, no hundreds of frames)
+	body.Position, body.Size = UDim2.fromOffset(6, 60), UDim2.new(1, -12, 1, -66)
+	body.BackgroundColor3 = rgb(50, 50, 55)
+	UI.corner(body, 4)
+	for _, rot in ipairs({0, 90}) do
+		local keys = {}
+		for k = 0, 18 do
+			table.insert(keys, NumberSequenceKeypoint.new(k / 18, (k % 2 == 0) and 0.93 or 1))
 		end
+		local grid = new("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.white, BorderSizePixel = 0, BackgroundTransparency = 0}, body)
+		UI.corner(grid, 4)
+		new("UIGradient", {Rotation = rot, Transparency = NumberSequence.new(keys)}, grid)
+	end
+	if docked then
 		if opt.HeaderButton then headerBtn = UI.button(header, opt.HeaderButton) end
 		if opt.Footer then
 			opt.Footer.Size = UDim2.new(1, -40, 0, 62)
@@ -860,6 +860,7 @@ function UI.window(opt)
 		local tabW = math.min(170, math.floor((size.X - 40 - (#opt.Tabs - 1) * 8) / #opt.Tabs))
 		for i, t in ipairs(opt.Tabs) do
 			local b = UI.button(tabRow, {Text = t.Label, Color = C.cardLight, Size = UDim2.fromOffset(tabW, 42), LayoutOrder = i, Icon = t.Icon, IconSize = 26, TextSize = 20, Depth = 3})
+			b.setColor(rgb(110, 110, 122))
 			local page = makePage(pageHolder)
 			page.Visible = false
 			win.pages[t.Key] = page
@@ -870,7 +871,7 @@ function UI.window(opt)
 			win.tab = key
 			for k, page in pairs(win.pages) do
 				page.Visible = (k == key)
-				win.tabs[k].setColor((k == key) and color or C.cardLight)
+				win.tabs[k].setColor((k == key) and color or rgb(110, 110, 122))
 			end
 			if win.onTab then win.onTab(key) end
 		end

@@ -1490,6 +1490,29 @@ function WorldFX.init(ctx)
 	end
 
 	------------------------------------------------------------------
+	-- TREADMILL STEPS: "+123" pops fly up from you many times a second while you run
+	------------------------------------------------------------------
+	task.spawn(function()
+		while true do
+			task.wait(0.12)
+			if player:GetAttribute("OnTreadmill") then
+				local char = player.Character
+				local hrp = char and char:FindFirstChild("HumanoidRootPart")
+				local rate = player:GetAttribute("TreadRate") or 0
+				if hrp and rate > 0 then
+					local bb = new("BillboardGui", {Size = UDim2.fromOffset(130, 44), StudsOffset = Vector3.new((math.random() - 0.5) * 3.5, 2.2, 0),
+						AlwaysOnTop = true, LightInfluence = 0, MaxDistance = 80}, hrp)
+					local l = text(bb, "+" .. Config.FormatNum(math.max(1, math.floor(rate * 0.12 + 0.5))), {Size = UDim2.fromScale(1, 1),
+						TextColor3 = Color3.fromRGB(150, 215, 255), StrokeSize = 2.4})
+					TweenService:Create(bb, TweenInfo.new(0.8, Enum.EasingStyle.Quad), {StudsOffset = bb.StudsOffset + Vector3.new(0, 3.5, 0)}):Play()
+					TweenService:Create(l, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
+					Debris:AddItem(bb, 0.85)
+				end
+			end
+		end
+	end)
+
+	------------------------------------------------------------------
 	-- OTHER PEOPLE'S PROMPTS: "Take back", "Open!", "Upgrade" on someone else's plot only
 	-- clutter your screen (they don't work for you) - so they're hidden for you.
 	------------------------------------------------------------------

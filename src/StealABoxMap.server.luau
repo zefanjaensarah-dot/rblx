@@ -352,7 +352,7 @@ local WH = L.wallHeight / SC
 local HW = L.halfWidth / SC
 local SL = L.sectionLen / SC
 local NA = #Config.Areas
-local BACKZ = L.frontZ - NA * L.sectionLen
+local BACKZ = Config.StoreEndZ()
 
 local wh = folder(root, "Warehouse")
 local spawns = folder(root, "BoxSpawns")
@@ -2319,6 +2319,7 @@ local function buildCeiling(r, st, acc)
 end
 
 for areaIndex, area in ipairs(Config.Areas) do
+	SL = Config.AreaLen(areaIndex) / SC -- (this area's length: harder areas are longer)
 	local r = {index = areaIndex, z0 = Config.AreaStartZ(areaIndex), folder = Instance.new("Model")}
 	r.folder.Name = "Area" .. areaIndex .. "_" .. area.name:gsub(" ", "")
 	r.folder.Parent = wh
@@ -2370,9 +2371,11 @@ for areaIndex, area in ipairs(Config.Areas) do
 	buildShelf(r, 1, st, 6, 20, {{1, 9}, {1, 17}, {2, 13}})
 	buildShelf(r, -1, st, 30, 42, {{1, 33}, {1, 39}})
 	buildShelf(r, 1, st, 30, 42, {{1, 33}, {1, 39}})
-	-- the areas are longer now: one more pair of shelves at the back
-	buildShelf(r, -1, st, 54, 66, {{1, 57}, {2, 63}})
-	buildShelf(r, 1, st, 54, 66, {{1, 57}, {2, 63}})
+	-- longer areas get more shelves at the back
+	for d0 = 54, SL - 16, 26 do
+		buildShelf(r, -1, st, d0, d0 + 12, {{1, d0 + 3}, {2, d0 + 9}})
+		buildShelf(r, 1, st, d0, d0 + 12, {{1, d0 + 3}, {2, d0 + 9}})
+	end
 
 	-- 2 pallets in the open for the big ones (Huge / Giant boxes can only spawn here)
 	for _, x in ipairs({-12, 12}) do

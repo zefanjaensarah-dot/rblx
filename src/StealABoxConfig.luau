@@ -6,7 +6,7 @@ local function rgb(r, g, b) return Color3.fromRGB(r, g, b) end
 -- The warehouse is one long lane: Area 1 starts at the front door, Area 10 is at the very back.
 Config.Layout = {
 	frontZ = -4,        -- inside face of the warehouse front wall
-	sectionLen = 105,   -- each area is 105 studs deep
+	sectionLen = 90,    -- area 1 is 90 studs deep; every next area is longer (see AreaLen)
 	halfWidth = 63,     -- the warehouse is 126 studs wide (x -63..63)
 	floorY = 0.75,
 	wallHeight = 45,
@@ -487,9 +487,14 @@ Config.NoobColors = {
 	torso = Color3.fromRGB(13, 105, 172),  -- Bright blue
 	legs = Color3.fromRGB(164, 189, 71),   -- Br. yellowish green
 }
-Config.R6Anims = {
+Config.R6Anims = { -- Roblox's own R6 animations (every game can use them)
 	idle = "rbxassetid://180435571",
 	walk = "rbxassetid://180426354",
+	point = "rbxassetid://128853357",
+	cheer = "rbxassetid://129423030",
+	laugh = "rbxassetid://129423131",
+	wave = "rbxassetid://128777973",
+	dance = "rbxassetid://182435998",
 }
 Config.BaconHairId = 63690008 -- "Pal Hair", the classic bacon hair (made by Roblox)
 
@@ -903,9 +908,22 @@ end
 Config.Court.length = 360
 Config.LobbySpawnZ = 330
 -- every area is the same size (helpers used by the server / client)
-function Config.AreaLen(areaIndex) return Config.Layout.sectionLen end
+-- harder area = longer area: 90 studs for area 1, +14 for every area after it (216 for area 10)
+function Config.AreaLen(areaIndex) return Config.Layout.sectionLen + ((areaIndex or 1) - 1) * 14 end
+function Config.AreaStartZ(areaIndex)
+	local z = Config.Layout.frontZ
+	for k = 1, (areaIndex or 1) - 1 do z = z - Config.AreaLen(k) end
+	return z
+end
+function Config.ZoneAt(pos)
+	if math.abs(pos.X) > Config.Layout.halfWidth + 1 or pos.Z > Config.Layout.frontZ then return nil end
+	for i = 1, #Config.Areas do
+		if pos.Z >= Config.AreaStartZ(i) - Config.AreaLen(i) then return i end
+	end
+	return nil
+end
 function Config.AreaHalfWidth(areaIndex) return Config.Layout.halfWidth end
-function Config.AreaEndZ(areaIndex) return Config.AreaStartZ(areaIndex) - Config.Layout.sectionLen end
+function Config.AreaEndZ(areaIndex) return Config.AreaStartZ(areaIndex) - Config.AreaLen(areaIndex) end
 function Config.StoreEndZ() return Config.AreaEndZ(#Config.Areas) end
 function Config.StoreHalfWidth() return Config.Layout.halfWidth end
 -- an empty shelf spot gets a new box this many seconds after it was emptied

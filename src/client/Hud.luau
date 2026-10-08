@@ -332,151 +332,37 @@ function Hud.init(ctx)
 	ctx.notify = notify
 
 	------------------------------------------------------------------
-	-- AREA BANNER (top of the stack): entering a warehouse area pops a big ribbon with
-	-- the area's colour and number, then a small colourful banner stays while you're there.
+	-- AREA NAME: when you walk into an area, a big emoji pops up with the area's name under it
 	------------------------------------------------------------------
 	do
-		local holder = box(top, {Name = "AreaBanner", Size = UDim2.fromOffset(560, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 1, Visible = false})
-		UI.list(holder, 0, nil, Enum.HorizontalAlignment.Center)
+		local EMOJI = {"📦", "🐄", "🧸", "🍭", "🏴‍☠️", "🦖", "❄️", "🤖", "👽", "🌌"}
+		local holder = box(top, {Name = "AreaBanner", Size = UDim2.fromOffset(560, 150), LayoutOrder = 1, Visible = false})
 		hud.areaBanner = holder
-		local OFF = UI.rgb(45, 40, 70)
-		-- the big ribbon
-		local big = new("CanvasGroup", {Size = UDim2.fromOffset(560, 172), BackgroundTransparency = 1, LayoutOrder = 1, Visible = false}, holder)
-		local bigScale = new("UIScale", {}, big)
-		local tails = {}
-		for k, sx in ipairs({-1, 1}) do
-			local tail = new("Frame", {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, sx * 238, 0, 58), Size = UDim2.fromOffset(84, 62),
-				Rotation = sx * 8, ZIndex = 1}, big)
-			UI.corner(tail, 12)
-			UI.stroke(tail, 3.5)
-			tails[k] = tail
-		end
-		local band = new("Frame", {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 40), Size = UDim2.fromOffset(470, 80), ZIndex = 2}, big)
-		UI.corner(band, 20)
-		UI.stroke(band, 4)
-		local bandShine = new("Frame", {Position = UDim2.fromOffset(14, 6), Size = UDim2.new(1, -28, 0, 18), BackgroundColor3 = C.white, BackgroundTransparency = 0.6,
-			BorderSizePixel = 0, ZIndex = 3}, band)
-		UI.corner(bandShine, true)
-		local nameL = UI.label(band, "", {Position = UDim2.fromOffset(18, 20), Size = UDim2.new(1, -36, 0, 50), Max = 46, Min = 18, Stroke = 4, TextWrapped = false, ZIndex = 4})
-		-- the round number badge on top
-		local badge = new("Frame", {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.fromOffset(70, 70), BackgroundColor3 = C.white, ZIndex = 6}, big)
-		UI.corner(badge, true)
-		local badgeStroke = UI.stroke(badge, 4.5)
-		UI.shade(badge, C.white, UI.rgb(215, 215, 225))
-		local badgeArea = UI.label(badge, "AREA", {Position = UDim2.fromOffset(6, 10), Size = UDim2.new(1, -12, 0, 15), Max = 14, Stroke = 1.6, ZIndex = 7, TextWrapped = false})
-		local badgeNum = UI.label(badge, "1", {Position = UDim2.fromOffset(6, 24), Size = UDim2.new(1, -12, 0, 36), Max = 34, Stroke = 3, ZIndex = 7, TextWrapped = false})
-		-- danger diamonds on the bottom edge of the band
-		local function pips(parent, x, y, size, gap, z)
-			local list = {}
-			for k = 1, 5 do
-				local d = new("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(x.Scale, x.Offset + (k - 1) * gap, 0, y), Size = UDim2.fromOffset(size, size),
-					Rotation = 45, BorderSizePixel = 0, BackgroundColor3 = OFF, ZIndex = z or 1}, parent)
-				UI.stroke(d, 2.5)
-				list[k] = d
-			end
-			return list
-		end
-		local bigPips = pips(big, UDim.new(0.5, -48), 120, 18, 24, 8)
-		-- info pill under the ribbon: guardian + recommended speed
-		local info = new("Frame", {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 134), Size = UDim2.fromOffset(440, 34), ZIndex = 2}, big)
-		UI.corner(info, true)
-		UI.stroke(info, 3)
-		local infoL = UI.label(info, "", {Position = UDim2.fromOffset(14, 3), Size = UDim2.new(1, -28, 1, -6), Max = 20, Stroke = 2.2, TextWrapped = false, ZIndex = 3})
-
-		-- the small banner: number chip | name | danger diamonds (fixed columns: nothing overlaps)
-		local mini = new("Frame", {Size = UDim2.fromOffset(420, 52), LayoutOrder = 2}, holder)
-		UI.corner(mini, true)
-		UI.stroke(mini, 3.5)
-		local miniShine = new("Frame", {Position = UDim2.fromOffset(20, 4), Size = UDim2.new(1, -40, 0, 12), BackgroundColor3 = C.white, BackgroundTransparency = 0.62, BorderSizePixel = 0}, mini)
-		UI.corner(miniShine, true)
-		local miniChip = new("Frame", {AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 5, 0.5, 0), Size = UDim2.fromOffset(42, 42), BackgroundColor3 = C.white}, mini)
-		UI.corner(miniChip, true)
-		local miniChipStroke = UI.stroke(miniChip, 3)
-		local miniNum = UI.label(miniChip, "1", {Size = UDim2.new(1, -8, 1, -8), Position = UDim2.fromOffset(4, 4), Max = 26, Stroke = 2.4})
-		local miniName = UI.label(mini, "", {Position = UDim2.fromOffset(56, 6), Size = UDim2.new(1, -184, 1, -12), Max = 28, Min = 12, Stroke = 2.8, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false})
-		local miniPips = pips(mini, UDim.new(1, -110), 26, 12, 19)
-		local miniScale = new("UIScale", {}, mini)
-		local function setPips(list, n, color)
-			for k, d in ipairs(list) do d.BackgroundColor3 = (k <= n) and color or OFF end
-		end
-		local function paint(frame, color)
-			UI.vivid(frame, color)
-		end
+		local group = new("CanvasGroup", {Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, GroupTransparency = 1}, holder)
+		local gScale = new("UIScale", {}, group)
+		-- (a plain TextLabel: UI.label filters emoji out)
+		local emoji = new("TextLabel", {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0), Size = UDim2.fromOffset(120, 80), BackgroundTransparency = 1,
+			Text = "", TextSize = 72, FontFace = UI.Font}, group)
+		local nameL = UI.label(group, "", {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 82), Size = UDim2.new(1, 0, 0, 60), Max = 56,
+			Stroke = 4, TextWrapped = false})
 		local token = 0
-		local shownAt = {}
-		hud.bannerBits = {big = big, band = band, badge = badge, mini = mini}
 		local function showArea(zone)
 			token = token + 1
 			local tok = token
 			local area = Config.Areas[zone]
-			local accent = area.accent
-			local danger = math.clamp(math.ceil(zone / 2), 1, 5)
-			local dangerCol = UI.rgb(255, 230, 70):Lerp(UI.rgb(255, 50, 60), (danger - 1) / 4)
-			holder.Visible = not UI.isOpen()
-			UI.setText(miniNum, tostring(zone))
-			miniNum.TextColor3 = C.white
-			miniChip.BackgroundColor3 = accent:Lerp(C.black, 0.15)
-			miniChipStroke.Color = C.ink
-			UI.setText(miniName, string.upper(area.name))
-			paint(mini, accent)
-			setPips(miniPips, danger, dangerCol)
-			miniScale.Scale = 1.3
-			UI.tween(miniScale, 0.5, {Scale = 1}, Enum.EasingStyle.Back)
-			-- the big ribbon only if you haven't been here for a while (no spam while running through)
-			if os.clock() - (shownAt[zone] or -100) < 25 then
-				big.Visible = false
-				mini.Visible = true
-				return
-			end
-			shownAt[zone] = os.clock()
-			paint(band, accent)
-			for _, t in ipairs(tails) do paint(t, accent:Lerp(C.black, 0.3)) end
-			paint(info, accent:Lerp(C.black, 0.45))
-			badgeStroke.Color = C.ink
-			UI.setText(badgeNum, tostring(zone))
-			badgeNum.TextColor3 = accent
-			badgeArea.TextColor3 = accent:Lerp(C.black, 0.2)
+			emoji.Text = EMOJI[zone] or "📦"
 			UI.setText(nameL, string.upper(area.name))
-			local rec = Config.RecommendedPoints(zone)
-			local mine = player:GetAttribute("SpeedPoints") or Config.StartSpeed
-			if zone > 1 then
-				UI.setText(infoL, "Guardian: " .. area.guard .. "   |   Speed " .. fmt(rec) .. " (you: " .. fmt(mine) .. ")")
-				infoL.TextColor3 = (mine < rec) and UI.rgb(255, 170, 160) or UI.rgb(190, 255, 160)
-			else
-				UI.setText(infoL, "Guardian: " .. area.guard .. "   |   The easiest area!")
-				infoL.TextColor3 = UI.rgb(190, 255, 160)
-			end
-			setPips(bigPips, 0, dangerCol)
-			for k = 1, danger do
-				task.delay(0.35 + k * 0.09, function()
-					if tok ~= token then return end
-					bigPips[k].BackgroundColor3 = dangerCol
-					bigPips[k].Size = UDim2.fromOffset(26, 26)
-					UI.tween(bigPips[k], 0.3, {Size = UDim2.fromOffset(18, 18)}, Enum.EasingStyle.Back)
-				end)
-			end
-			mini.Visible = false
-			big.Visible = true
-			big.GroupTransparency = 1
-			bigScale.Scale = 0.35
-			big.Rotation = -7
-			badge.Rotation = -25
-			UI.tween(big, 0.2, {GroupTransparency = 0})
-			UI.tween(bigScale, 0.6, {Scale = 1}, Enum.EasingStyle.Back)
-			UI.tween(big, 0.9, {Rotation = 0}, Enum.EasingStyle.Elastic)
-			UI.tween(badge, 0.9, {Rotation = 0}, Enum.EasingStyle.Elastic)
+			nameL.TextColor3 = area.accent:Lerp(C.white, 0.35)
+			holder.Visible = not UI.isModalOpen()
+			group.GroupTransparency = 1
+			gScale.Scale = 0.6
+			UI.tween(group, 0.25, {GroupTransparency = 0})
+			UI.tween(gScale, 0.45, {Scale = 1}, Enum.EasingStyle.Back)
 			UI.SFX.play("open", 0.75, 0.35)
-			task.delay(3, function()
+			task.delay(2.4, function()
 				if tok ~= token then return end
-				UI.tween(big, 0.3, {GroupTransparency = 1})
-				UI.tween(bigScale, 0.3, {Scale = 0.8})
-				task.delay(0.3, function()
-					if tok ~= token then return end
-					big.Visible = false
-					mini.Visible = true
-					miniScale.Scale = 0.6
-					UI.tween(miniScale, 0.45, {Scale = 1}, Enum.EasingStyle.Back)
-				end)
+				UI.tween(group, 0.4, {GroupTransparency = 1})
+				task.delay(0.4, function() if tok == token then holder.Visible = false end end)
 			end)
 		end
 		local lastZone = nil
@@ -488,16 +374,11 @@ function Hud.init(ctx)
 				local zone = hrp and Config.ZoneAt(hrp.Position) or nil
 				if zone ~= lastZone then
 					lastZone = zone
-					if zone then
-						showArea(zone)
-					else
-						token = token + 1
-						holder.Visible = false
-					end
+					if zone then showArea(zone) end
 				end
 			end
 		end)
-		hud.inArea = function() return lastZone ~= nil end
+		hud.inArea = function() return false end -- (the name only shows for a moment)
 		hud.showArea = showArea
 	end
 

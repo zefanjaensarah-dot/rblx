@@ -1847,7 +1847,7 @@ local function poseCustomer(c, dt)
 	if c.moving then
 		playAnim(c, "walk", Config.CustomerSpeed / 14.5)
 	else
-		playAnim(c, "idle", 1)
+		playAnim(c, c.pose or "idle", 1) -- at your shelf: cheer, point, wave or dance
 	end
 end
 
@@ -1963,6 +1963,7 @@ local function spawnCustomer(player, plot, standIndex, item)
 	think:SetAttribute("Mutation", item.mutation)
 	think.Enabled = true
 	c.tracks = loadTracks(model)
+	c.pose = ({"cheer", "point", "wave", "dance"})[math.random(1, 4)]
 	table.insert(customers, c)
 	poseCustomer(c, 0)
 end
@@ -2799,6 +2800,7 @@ RunService.Heartbeat:Connect(function(dt)
 					if flat.Magnitude > 0.1 then g.facing = flat.Unit end -- turn and glare before running
 				elseif flat.Magnitude <= 2.5 + g.scale * 1.2 then
 					flingPlayer(p, g.pos, g.area)
+					g.laughUntil = os.clock() + 2
 					keep = false
 				else
 					stepToward(g, hrp.Position, g.speed, dt)
@@ -2826,8 +2828,13 @@ RunService.Heartbeat:Connect(function(dt)
 			cf = CFrame.lookAt(at, at + g.facing) * CFrame.Angles(math.rad(-4 + math.sin(g.t * 0.8) * 2), 0, 0)
 			playAnim(g, "idle", 0.4)
 		elseif g.mode == "chase" and os.clock() < (g.wakeUntil or 0) then
+			-- just woke up: points at the thief
 			cf = CFrame.lookAt(at, at + g.facing)
-			playAnim(g, "idle", 2)
+			playAnim(g, "point", 1.4)
+		elseif os.clock() < (g.laughUntil or 0) then
+			-- just flung someone: laughs about it
+			cf = CFrame.lookAt(at, at + g.facing)
+			playAnim(g, "laugh", 1)
 		else
 			-- classic R6 walk, sped up to match how fast he's running
 			local spd = (g.mode == "chase") and g.speed or GUARD_RETURN_SPEED

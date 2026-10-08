@@ -48,7 +48,9 @@ function ShopWindow.init(ctx)
 
 	-- a card with an icon in a coloured circle, a title and a description
 	local function card(parent, color, order, size)
-		local c = UI.card(parent, color:Lerp(UI.rgb(30, 26, 50), 0.65), {LayoutOrder = order, Size = size})
+		-- bright cards in the item's colour with a thick black outline
+		local c = UI.card(parent, color, {LayoutOrder = order, Size = size})
+		UI.vivid(c, color:Lerp(UI.rgb(30, 30, 40), 0.25))
 		return c
 	end
 	local function iconCircle(parent, iconName, color, y)
