@@ -1016,7 +1016,6 @@ end
 Config.Events = {
 	{id = "DoubleCash",   name = "DOUBLE CASH!",      text = "Every shop earns 2x cash!",           seconds = 90},
 	{id = "SpeedRush",    name = "SPEED RUSH!",       text = "Treadmills give 3x speed!",           seconds = 90},
-	{id = "SleepyGuards", name = "SLEEPY GUARDS!",    text = "The guards wake up slowly and run slower!", seconds = 60, warehouse = true},
 	{id = "GoldRain",     name = "GOLDEN BOX RAIN!",  text = "Golden boxes appeared in the warehouse!", seconds = 60, warehouse = true},
 	{id = "LuckyHour",    name = "LUCKY TIME!",       text = "2x mutation luck for everybody!",     seconds = 120},
 }

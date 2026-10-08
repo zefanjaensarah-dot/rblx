@@ -1696,6 +1696,7 @@ function playAnim(obj, name, speed)
 		end
 		if tracks[name] then pcall(function() tracks[name]:Play(0.2) end) end
 		obj.anim = name
+		obj.animSpeed = nil -- each track keeps its own speed: always set it on a switch
 	end
 	if speed and tracks[name] and obj.animSpeed ~= speed then
 		obj.animSpeed = speed
@@ -2779,8 +2780,9 @@ alertGuard = function(area, player)
 		if g.area == area and g.mode ~= "chase" then
 			setMode(g, "chase")
 			g.target = player
-			-- he needs a moment to get up (much longer during the Sleepy Guards event)
-			g.wakeUntil = os.clock() + ((ReplicatedStorage:GetAttribute("EventId") == "SleepyGuards") and 3 or 0.8)
+			-- he needs a moment to get up
+			g.wakeUntil = os.clock() + 0.8
+			g.laughUntil = nil
 			setAwake(g, true)
 			setChased(player, true)
 			playSound(g.model.PrimaryPart, "rbxasset://sounds/electronicpingshort.wav", 1, 0.5)
@@ -2829,7 +2831,7 @@ RunService.Heartbeat:Connect(function(dt)
 					g.laughUntil = os.clock() + 2
 					keep = false
 				else
-					stepToward(g, hrp.Position, g.speed * ((ReplicatedStorage:GetAttribute("EventId") == "SleepyGuards") and 0.6 or 1), dt)
+					stepToward(g, hrp.Position, g.speed, dt)
 				end
 			end
 			if not keep then
@@ -2840,7 +2842,8 @@ RunService.Heartbeat:Connect(function(dt)
 				if g.zzz then g.zzz.Enabled = false end
 			end
 		elseif g.mode == "return" then
-			if stepToward(g, g.post, GUARD_RETURN_SPEED, dt) < 0.3 then
+			-- he finishes laughing before he walks back (no sliding mid-laugh)
+			if os.clock() >= (g.laughUntil or 0) and stepToward(g, g.post, GUARD_RETURN_SPEED, dt) < 0.3 then
 				setMode(g, "sleep")
 				g.facing = g.postFacing
 				if g.zzz then g.zzz.Enabled = true end
