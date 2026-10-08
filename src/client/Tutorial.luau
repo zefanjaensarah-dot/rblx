@@ -81,15 +81,15 @@ function Tutorial.init(ctx)
 	local beam = new("Beam", {Color = ColorSequence.new(UI.rgb(255, 230, 60), UI.rgb(120, 255, 80)), FaceCamera = true, Width0 = 0.5, Width1 = 0.5,
 		LightEmission = 1, Transparency = NumberSequence.new(0.2, 0.5), Segments = 1, Enabled = false}, pointerFolder)
 	local arrow = new("BillboardGui", {Size = UDim2.fromOffset(60, 60), AlwaysOnTop = true, LightInfluence = 0, Enabled = false}, pointerFolder)
-	UI.icon("down", arrow, UDim2.fromScale(1, 1), nil, UI.rgb(255, 230, 60))
+	UI.ICON.new("down", arrow, UDim2.fromScale(1, 1), nil, UI.rgb(255, 230, 60))
 	local cursorGui = new("ScreenGui", {Name = "TutorialCursor", IgnoreGuiInset = true, ResetOnSpawn = false, DisplayOrder = 8}, playerGui)
 	local ring = new("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(40, 40), BackgroundTransparency = 1, Visible = false}, cursorGui)
 	UI.corner(ring, true)
 	local ringStroke = new("UIStroke", {Thickness = 4, Color = UI.rgb(255, 230, 60)}, ring)
-	local hand = UI.icon("arrow", cursorGui, UDim2.fromOffset(54, 54), nil, UI.rgb(255, 230, 60), Vector2.new(0.5, 0))
+	local hand = UI.ICON.new("arrow", cursorGui, UDim2.fromOffset(54, 54), nil, UI.rgb(255, 230, 60), Vector2.new(0.5, 0))
 	hand.Visible = false
 	local edge = new("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(64, 64), BackgroundTransparency = 1, Visible = false}, cursorGui)
-	local edgeArrow = UI.icon("arrow", edge, UDim2.fromScale(1, 1), nil, UI.rgb(255, 230, 60))
+	local edgeArrow = UI.ICON.new("arrow", edge, UDim2.fromScale(1, 1), nil, UI.rgb(255, 230, 60))
 	local edgeDist = UI.label(edge, "", {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, -4), Size = UDim2.fromOffset(100, 22), Max = 18, Stroke = 2, TextWrapped = false})
 
 	local fromAttach, toAttach, currentTarget = nil, nil, nil
