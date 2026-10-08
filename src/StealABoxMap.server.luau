@@ -174,6 +174,8 @@ do
 	P(root, "BackWallCap", V(MAPW * 2 + 9, 1.5, 5), C(0, 44.75, COURT_LEN + 2), CAP)
 	-- the "Warehouse" teleport lands here, right in front of the store door
 	P(root, "EntrancePoint", V(2, 0.2, 2), C(0, 0.5, 10), RGB(0, 0, 0), nil, GHOST)
+	-- the tutorial points here (inside the door) while you're still outside
+	P(root, "TutorialDoorPoint", V(2, 0.2, 2), C(0, 0.5, FRONT_Z - 20), RGB(0, 0, 0), nil, GHOST)
 	-- the spawn in the middle of the plaza, facing the street
 	local spawnLoc = Instance.new("SpawnLocation")
 	spawnLoc.Name = "LobbySpawn"

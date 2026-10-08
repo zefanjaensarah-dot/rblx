@@ -1,7 +1,7 @@
 --[[ STEAL A BOX - tutorial for new players
      One clear step at a time. A card in the top stack of the HUD shows a big icon, the
      step, what to do and the progress. The camera swoops over to show you where to go, a
-     glowing line + bouncing arrow point at it in the world, and an arrow points at it on
+     glowing line points at it in the world, and a cursor points at it on
      screen (or at the edge of your screen when it's behind you). It ends when you buy your
      first treadmill upgrade (or press Skip). Settings > "Show the tutorial again" replays it. ]]
 
@@ -74,13 +74,12 @@ function Tutorial.init(ctx)
 	end)
 
 	------------------------------------------------------------------
-	-- POINTERS: a glowing line from you to the target + a bouncing arrow above it,
-	-- and on screen an arrow at the target (or at the edge of your screen)
+	-- POINTERS: a glowing line from you to the target, and on screen a cursor at the target
+	-- (or at the edge of your screen)
 	------------------------------------------------------------------
 	local pointerFolder = new("Folder", {Name = "TutorialPointer"}, workspace)
 	local beam = new("Beam", {Color = ColorSequence.new(UI.rgb(255, 230, 60), UI.rgb(120, 255, 80)), FaceCamera = true, Width0 = 0.5, Width1 = 0.5,
 		LightEmission = 1, Transparency = NumberSequence.new(0.2, 0.5), Segments = 1, Enabled = false}, pointerFolder)
-	local arrow = new("BillboardGui", {Size = UDim2.fromOffset(60, 60), AlwaysOnTop = true, LightInfluence = 0, Enabled = false}, pointerFolder)
 	-- the tutorial points with a big cartoon mouse cursor (Roblox's own cursor image, tinted yellow).
 	-- Its tip is in the middle of the image and it points up-left, so it's turned +135 degrees
 	-- from the direction it should point at.
@@ -89,7 +88,6 @@ function Tutorial.init(ctx)
 			Position = UDim2.fromScale(0.5, 0.5), Image = "rbxasset://textures/Cursors/KeyboardMouse/ArrowFarCursor.png",
 			ImageColor3 = UI.rgb(255, 225, 60), ScaleType = Enum.ScaleType.Fit}, parent)
 	end
-	cursor(arrow, UDim2.fromScale(2, 2)).Rotation = 90 + 135 -- pointing down at the thing in the world
 	local cursorGui = new("ScreenGui", {Name = "TutorialCursor", IgnoreGuiInset = true, ResetOnSpawn = false, DisplayOrder = 8}, playerGui)
 	local ring = new("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(40, 40), BackgroundTransparency = 1, Visible = false}, cursorGui)
 	UI.corner(ring, true)
@@ -107,7 +105,6 @@ function Tutorial.init(ctx)
 		local hrp = char and char:FindFirstChild("HumanoidRootPart")
 		if not part or not hrp then
 			beam.Enabled = false
-			arrow.Enabled = false
 			return
 		end
 		if not fromAttach or fromAttach.Parent ~= hrp then
@@ -121,9 +118,6 @@ function Tutorial.init(ctx)
 		beam.Attachment0 = fromAttach
 		beam.Attachment1 = toAttach
 		beam.Enabled = true
-		arrow.Adornee = part
-		arrow.StudsOffset = Vector3.new(0, part.Size.Y / 2 + 3 + math.abs(math.sin(os.clock() * 4)) * 1.5, 0)
-		arrow.Enabled = true
 	end
 
 	local zooming = false
@@ -283,7 +277,7 @@ function Tutorial.init(ctx)
 	-- where each step points
 	local function targetFor(step, hrp, plot, root)
 		if step == 1 then
-			if hrp and hrp.Position.Z > Config.Layout.frontZ + 2 then return root and root:FindFirstChild("EntrancePoint", true) end
+			if hrp and hrp.Position.Z > Config.Layout.frontZ + 2 then return root and root:FindFirstChild("TutorialDoorPoint", true) end
 			return hrp and nearestStarterBox(hrp, root)
 		elseif step == 2 then
 			return plot and plot:FindFirstChild("PlotFloor")
