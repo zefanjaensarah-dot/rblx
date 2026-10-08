@@ -2404,6 +2404,43 @@ end
 
 
 ------------------------------------------------------------------
+-- BIKE OBBY: a floating course far behind the lobby (the phone on your base takes you here).
+-- Walls to crash into, ramps, gaps, a narrow bridge and a gold finish pad.
+------------------------------------------------------------------
+do
+	local ob = folder(root, "BikeObby")
+	local TRACK, EDGE = RGB(70, 80, 110), RGB(255, 210, 60)
+	local function floor(size, pos, color, tilt)
+		local cf = CFrame.new(pos) * CFrame.Angles(math.rad(tilt or 0), 0, 0)
+		P(ob, "Floor", size, cf, color or TRACK)
+		-- yellow edges so you can see where the track ends
+		for _, sx in ipairs({-1, 1}) do
+			P(ob, "Edge", V(0.6, 0.3, size.Z), cf * CFrame.new(sx * (size.X / 2 - 0.3), size.Y / 2 + 0.15, 0), EDGE, M.Neon, NOHIT)
+		end
+	end
+	local function wallBlock(x, y, z, w, color)
+		P(ob, "Wall", V(w or 10, 8, 2), C(x, y, z), color, M.SmoothPlastic)
+	end
+	floor(V(40, 2, 40), V(0, 49, 470), RGB(90, 100, 140))                       -- start pad
+	P(ob, "BikeStart", V(2, 0.2, 2), C(0, 51, 462), RGB(0, 0, 0), nil, GHOST)
+	local sign = P(ob, "ObbySign", V(30, 6, 1), C(0, 64, 486), RGB(230, 50, 60), nil, NOHIT)
+	signText(sign, Enum.NormalId.Back, "BIKE OBBY", 20, 4, 300)
+	floor(V(24, 2, 110), V(0, 49, 545))                                           -- straight with walls
+	for k, x in ipairs({-7, 7, -7, 7}) do wallBlock(x, 54, 515 + (k - 1) * 25, 10, ({RGB(255, 90, 90), RGB(90, 170, 255), RGB(255, 200, 60), RGB(120, 230, 90)})[k]) end
+	floor(V(24, 2, 32), V(0, 54.4, 615), nil, -18.4)                              -- ramp up
+	floor(V(24, 2, 60), V(0, 55, 670))                                            -- landing (after a gap)
+	floor(V(8, 2, 60), V(0, 55, 730))                                             -- narrow bridge
+	floor(V(24, 2, 50), V(0, 55, 785))                                            -- bumpers
+	wallBlock(-5, 60, 775, 14, RGB(255, 140, 40))
+	wallBlock(5, 60, 797, 14, RGB(200, 100, 255))
+	floor(V(24, 2, 30), V(0, 60.4, 824), nil, -19.6)                              -- final ramp
+	floor(V(40, 2, 40), V(0, 61, 870), RGB(255, 200, 40))                        -- finish pad
+	P(ob, "BikeFinish", V(2, 0.2, 2), C(0, 63, 870), RGB(0, 0, 0), nil, GHOST)
+	local fin = P(ob, "FinishSign", V(30, 6, 1), C(0, 74, 888), RGB(40, 180, 60), nil, NOHIT)
+	signText(fin, Enum.NormalId.Back, "FINISH!", 20, 4, 300)
+end
+
+------------------------------------------------------------------
 -- PLAYER BASES: 6 tidy little shops along the street (3 left, 3 right), facing the street.
 -- Plot-local coords: u = sideways (-46..46), w = depth from the street (0..92).
 -- Open floor (w 5..72): click it while carrying a box to place the box anywhere.

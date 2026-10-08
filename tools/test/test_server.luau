@@ -295,6 +295,12 @@ task.wait(0.15)
 check(invoke(player, "SetSetting", "Effects", false).ok and invoke(player, "GetData").data.Settings.Effects == false, "settings are stored")
 task.wait(0.15)
 check(invoke(player, "Warehouse").ok and invoke(player, "Home").ok ~= nil, "teleports")
+task.wait(0.15)
+r = invoke(player, "BikeObby")
+check(r.ok and player:GetAttribute("Biking") == true and player.Character:FindFirstChild("Bike") ~= nil, "bike obby: on the bike " .. tostring(r.msg))
+task.wait(0.4)
+check(invoke(player, "LeaveObby").ok and player:GetAttribute("Biking") == nil and player.Character:FindFirstChild("Bike") == nil, "bike obby: back to base")
+task.wait(0.15)
 
 -- guardian: grab a box next to the area 1 guard and let him catch you
 do

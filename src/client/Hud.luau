@@ -710,7 +710,8 @@ function Hud.init(ctx)
 		local bonk = UI.label(UI.over, "BONK!", {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.4), Size = UDim2.fromOffset(320, 96),
 			TextColor3 = UI.rgb(255, 220, 60), Visible = false, ZIndex = 51, Max = 90, Stroke = 4})
 		local bScale = new("UIScale", {}, bonk)
-		ctx.bonk = function()
+		ctx.bonk = function(text)
+			UI.setText(bonk, text or "BONK!")
 			bonk.Visible = true
 			bonk.Rotation = math.random(-12, 12)
 			bScale.Scale = 0.3 * UI.scale

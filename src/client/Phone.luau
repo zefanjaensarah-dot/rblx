@@ -66,10 +66,19 @@ function Phone.init(ctx)
 	-- HOME: the app icons
 	------------------------------------------------------------------
 	local HOME = page("Home")
-	for i, app in ipairs({{"Snake", UI.rgb(70, 200, 70)}, {"BlockBlast", UI.rgb(160, 90, 255)}, {"Archery", UI.rgb(255, 150, 40)}}) do
-		local b = UI.button(HOME.frame, {Text = (app[1] == "BlockBlast") and "Block Blast" or app[1], Color = app[2], Size = UDim2.new(0.8, 0, 0, 90),
-			AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.12 + (i - 1) * 0.27, 0), TextSize = 34, Depth = 6, ZIndex = 4})
-		b.Activated:Connect(function() show(app[1]) end)
+	for i, app in ipairs({{"Snake", UI.rgb(70, 200, 70)}, {"BlockBlast", UI.rgb(160, 90, 255)}, {"Archery", UI.rgb(255, 150, 40)}, {"Bike Obby", UI.rgb(230, 50, 60)}}) do
+		local b = UI.button(HOME.frame, {Text = (app[1] == "BlockBlast") and "Block Blast" or app[1], Color = app[2], Size = UDim2.new(0.8, 0, 0, 80),
+			AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.1 + (i - 1) * 0.21, 0), TextSize = 32, Depth = 6, ZIndex = 4})
+		b.Activated:Connect(function()
+			if app[1] == "Bike Obby" then
+				-- not a game on the phone: it takes you to the bike course
+				local r = ctx.invoke("BikeObby")
+				if r.msg and r.msg ~= "" then ctx.notify(r.msg, r.ok and C.green or C.red) end
+				if r.ok then UI.close() end
+				return
+			end
+			show(app[1])
+		end)
 	end
 	home.Activated:Connect(function() show("Home") end)
 
@@ -349,6 +358,14 @@ function Phone.init(ctx)
 	-- one loop runs the game on screen (only while the phone is open)
 	RunService.Heartbeat:Connect(function(dt)
 		if step and UI.isOpen("Phone") then step(math.min(dt, 0.1)) end
+	end)
+	-- while you're on the bike: a big "Back to base" button
+	local back = UI.button(UI.root, {Text = "Back to base", Color = UI.rgb(230, 50, 60), Size = UDim2.fromOffset(260, 64), AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -24), TextSize = 30, Depth = 6, ZIndex = 20, Icon = "home", IconSize = 36, IconColor = C.white})
+	back.holder.Visible = false
+	back.Activated:Connect(function() ctx.invoke("LeaveObby") end)
+	ctx.player:GetAttributeChangedSignal("Biking"):Connect(function()
+		back.holder.Visible = ctx.player:GetAttribute("Biking") == true
 	end)
 	win.onOpen = function() show("Home") end
 	game:GetService("ProximityPromptService").PromptTriggered:Connect(function(prompt)

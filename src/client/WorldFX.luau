@@ -201,7 +201,7 @@ function WorldFX.init(ctx)
 		shakeUntil = os.clock() + 0.6
 		shakePower = 6 + velocity.Magnitude / 25
 		if ctx.flash then ctx.flash(WHITE, 0.2, 0.4) end
-		if ctx.bonk then ctx.bonk() end
+		if ctx.bonk then ctx.bonk(guardName == "CRASH" and "CRASH!" or nil) end
 		task.delay(duration, function()
 			if hum.Parent and hum.Health > 0 then hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
 		end)
