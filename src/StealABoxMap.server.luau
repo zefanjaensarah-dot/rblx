@@ -2407,43 +2407,6 @@ end
 
 
 ------------------------------------------------------------------
--- BIKE OBBY: a floating course far behind the lobby (the phone on your base takes you here).
--- Walls to crash into, ramps, gaps, a narrow bridge and a gold finish pad.
-------------------------------------------------------------------
-do
-	local ob = folder(root, "BikeObby")
-	local TRACK, EDGE = RGB(70, 80, 110), RGB(255, 210, 60)
-	local function floor(size, pos, color, tilt)
-		local cf = CFrame.new(pos) * CFrame.Angles(math.rad(tilt or 0), 0, 0)
-		P(ob, "Floor", size, cf, color or TRACK)
-		-- yellow edges so you can see where the track ends
-		for _, sx in ipairs({-1, 1}) do
-			P(ob, "Edge", V(0.6, 0.3, size.Z), cf * CFrame.new(sx * (size.X / 2 - 0.3), size.Y / 2 + 0.15, 0), EDGE, M.Neon, NOHIT)
-		end
-	end
-	local function wallBlock(x, y, z, w, color)
-		P(ob, "Wall", V(w or 10, 8, 2), C(x, y, z), color, M.SmoothPlastic)
-	end
-	floor(V(40, 2, 40), V(0, 49, 470), RGB(90, 100, 140))                       -- start pad
-	P(ob, "BikeStart", V(2, 0.2, 2), C(0, 51, 462), RGB(0, 0, 0), nil, GHOST)
-	local sign = P(ob, "ObbySign", V(30, 6, 1), C(0, 64, 486), RGB(230, 50, 60), nil, NOHIT)
-	signText(sign, Enum.NormalId.Back, "BIKE OBBY", 20, 4, 300)
-	floor(V(24, 2, 110), V(0, 49, 545))                                           -- straight with walls
-	for k, x in ipairs({-7, 7, -7, 7}) do wallBlock(x, 54, 515 + (k - 1) * 25, 10, ({RGB(255, 90, 90), RGB(90, 170, 255), RGB(255, 200, 60), RGB(120, 230, 90)})[k]) end
-	floor(V(24, 2, 32), V(0, 54.4, 615), nil, -18.4)                              -- ramp up
-	floor(V(24, 2, 60), V(0, 55, 670))                                            -- landing (after a gap)
-	floor(V(8, 2, 60), V(0, 55, 730))                                             -- narrow bridge
-	floor(V(24, 2, 50), V(0, 55, 785))                                            -- bumpers
-	wallBlock(-5, 60, 775, 14, RGB(255, 140, 40))
-	wallBlock(5, 60, 797, 14, RGB(200, 100, 255))
-	floor(V(24, 2, 30), V(0, 60.4, 824), nil, -19.6)                              -- final ramp
-	floor(V(40, 2, 40), V(0, 61, 870), RGB(255, 200, 40))                        -- finish pad
-	P(ob, "BikeFinish", V(2, 0.2, 2), C(0, 63, 870), RGB(0, 0, 0), nil, GHOST)
-	local fin = P(ob, "FinishSign", V(30, 6, 1), C(0, 74, 888), RGB(40, 180, 60), nil, NOHIT)
-	signText(fin, Enum.NormalId.Back, "FINISH!", 20, 4, 300)
-end
-
-------------------------------------------------------------------
 -- PLAYER BASES: 6 tidy little shops along the street (3 left, 3 right), facing the street.
 -- Plot-local coords: u = sideways (-46..46), w = depth from the street (0..92).
 -- Open floor (w 5..72): click it while carrying a box to place the box anywhere.
@@ -2523,6 +2486,9 @@ local function buildPlot(i, side, zc)
 	wall(-HU, 0, -HU, CD, true)
 	wall(HU, 0, HU, CD, true)
 	wall(-HU, CD, HU, CD, false)
+	-- a roof over the whole shop (the front stays open to walk in)
+	PP("Ceiling", V(CW + 2.4, 1, CD + 1.2), 0, 17.1, CD / 2, col:Lerp(WHITE, 0.55))
+	PP("RoofTrim", V(CW + 3, 0.6, 1.4), 0, 17.6, 0, col, nil, NOHIT)
 	-- a low wooden fence at the front (open in the middle for the door)
 	local function fence(u0, w0, u1, w1)
 		local a, b = W(u0, 0, w0).Position, W(u1, 0, w1).Position
@@ -2541,16 +2507,6 @@ local function buildPlot(i, side, zc)
 	fence(-HU, 0, -12, 0)
 	fence(12, 0, HU, 0)
 
-	-- THE BIG PHONE (front left corner): walk up and press E to play mini games on it
-	do
-		local u, w = -34, 9
-		PP("PhoneStand", V(7, 1, 4), u, 0.9, w, RGB(60, 60, 70)):SetAttribute("Solid", true)
-		PP("PhoneBody", V(9, 16, 1.2), u, 9.4, w, RGB(25, 25, 32)):SetAttribute("Solid", true)
-		local screen = PP("PhoneScreen", V(8, 14, 0.2), u, 9.6, w + 0.62, RGB(60, 150, 255), M.Neon, NOHIT)
-		PP("PhoneCamera", V(0.8, 0.8, 0.2), u, 17, w + 0.62, RGB(10, 10, 14), nil, NOHIT)
-		signText(screen, Enum.NormalId.Front, "GAMES\nPress E", 30, 3, 120)
-		prompt(screen, "PlayPhone", "Play", "Phone Games", 0)
-	end
 	PP("SpawnPoint", V(2, 0.2, 2), -18, 0.6, 10, RGB(0, 0, 0), nil, GHOST)
 
 	-- THE SHOP: one long display shelf (5 units x 3 layers x 3 spots = 45 stands)
@@ -2608,6 +2564,16 @@ local function buildPlot(i, side, zc)
 			stripe:SetAttribute("Len", W1 - W0 - 1)
 			stripe:SetAttribute("Offset", k * (W1 - W0 - 1) / 7)
 			CS:AddTag(stripe, "TreadStripe")
+		end
+		-- THE PHONE stands at the front of the belt, so you can play while you run
+		do
+			local pw = W0 - 4.5
+			PP("PhoneStand", V(7, 1, 4), TU, 0.9, pw, RGB(60, 60, 70)):SetAttribute("Solid", true)
+			PP("PhoneBody", V(9, 16, 1.2), TU, 9.4, pw, RGB(25, 25, 32)):SetAttribute("Solid", true)
+			local screen = PP("PhoneScreen", V(8, 14, 0.2), TU, 9.6, pw + 0.62, RGB(60, 150, 255), M.Neon, NOHIT)
+			PP("PhoneCamera", V(0.8, 0.8, 0.2), TU, 17, pw + 0.62, RGB(10, 10, 14), nil, NOHIT)
+			signText(screen, Enum.NormalId.Front, "GAMES\nPress E", 30, 3, 120)
+			prompt(screen, "PlayPhone", "Play", "Phone Games", 0).MaxActivationDistance = 30
 		end
 		local console = PP("TreadConsole", V(7, 2.8, 1), TU, 7.1, W0 - 1.2, darkMetal, M.Metal, nil, CFrame.Angles(math.rad(25), 0, 0))
 		prompt(console, "ProximityPrompt", "Upgrade", "Treadmill", 0.3)

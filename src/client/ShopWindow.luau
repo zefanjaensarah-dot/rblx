@@ -13,9 +13,15 @@ function ShopWindow.init(ctx)
 	local UI, Config, Shop, player = ctx.UI, ctx.Config, ctx.Shop, ctx.player
 	local C, new, fmt = UI.C, UI.new, Config.FormatNum
 	local IS_STUDIO = RunService:IsStudio()
-	local win = UI.window({Name = "Shop", Title = "Shop", Icon = "shop", Color = C.yellow, Size = Vector2.new(800, 500),
+	local win = UI.window({Name = "Shop", Title = "Shop", Icon = "shop", Color = C.yellow, Size = Vector2.new(900, 520),
 		Tabs = {{Key = "Passes", Label = "Passes", Icon = "crown"}, {Key = "Cash", Label = "Cash", Icon = "cash"},
-			{Key = "Boosts", Label = "Boosts", Icon = "clover"}, {Key = "Speed", Label = "Speed", Icon = "bolt"}}})
+			{Key = "Boosts", Label = "Boosts", Icon = "clover"}, {Key = "Speed", Label = "Speed", Icon = "bolt"},
+			{Key = "Quests", Label = "Quests", Icon = "check"}, {Key = "Codes", Label = "Codes", Icon = "ticket"}, {Key = "Settings", Label = "Settings", Icon = "gear"}}})
+	-- Quests, Codes and Settings live in the shop now: their tabs open those windows
+	local LINKS = {Quests = true, Codes = true, Settings = true}
+	win.onTab = function(key)
+		if LINKS[key] then task.defer(function() UI.open(key) end) end
+	end
 	local refreshers = {}
 
 	-- the price button of a card: "R$ 99", "OWNED" or "SOON"
@@ -196,7 +202,10 @@ function ShopWindow.init(ctx)
 		for _, f in ipairs(refreshers) do f() end
 		drawSpeed()
 	end
-	win.onOpen = refreshAll
+	win.onOpen = function()
+		if LINKS[win.tab] then win.setTab("Passes") end
+		refreshAll()
+	end
 	player:GetAttributeChangedSignal("Income"):Connect(function() if UI.isOpen("Shop") then refreshAll() end end)
 
 	-- the Server Luck timer on its card

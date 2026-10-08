@@ -76,7 +76,8 @@ local function buildQuests(ctx)
 		for _, q in ipairs(parseQuests(ctx.player:GetAttribute("Quests"))) do
 			if not q.claimed and q.progress >= q.goal then n = n + 1 end
 		end
-		if ctx.badges.Quests then ctx.badges.Quests.set(n) end
+		local qb = ctx.badges.Quests or ctx.badges.Shop -- (quests live in the shop now)
+		if qb then qb.set(n) end
 		if UI.isOpen("Quests") then refresh() end
 	end
 end
@@ -606,7 +607,7 @@ function Windows.init(ctx)
 		for _, t in ipairs(ctx.Config.Trails) do
 			if not (data.Trails and data.Trails[t.id]) and (data.Cash or 0) >= t.price then canBuy = true end
 		end
-		ctx.badges.Trails.set(canBuy)
+		if ctx.badges.Trails then ctx.badges.Trails.set(canBuy) end
 		-- Index: a reward is waiting to be claimed
 		local claimable = 0
 		for areaIndex in ipairs(ctx.Config.Areas) do

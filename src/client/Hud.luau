@@ -87,13 +87,9 @@ function Hud.init(ctx)
 	local grid = box(menu, {Size = UDim2.fromOffset(MENU_W, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 1})
 	new("UIGridLayout", {CellSize = UDim2.fromOffset(CELL_W, CELL_H), CellPadding = UDim2.fromOffset(GAP, GAP), SortOrder = Enum.SortOrder.LayoutOrder}, grid)
 	local MENU = {
-		{"Quests", "Quests", "check", UI.rgb(255, 150, 30)},
 		{"Index", "Index", "book", UI.rgb(30, 190, 245)},
-		{"Trails", "Trails", "trail", UI.rgb(255, 140, 30)},
 		{"Gifts", "Gifts", "gift", UI.rgb(255, 80, 165)},
 		{"Daily", "Daily", "calendar", UI.rgb(80, 120, 255)},
-		{"Codes", "Codes", "ticket", UI.rgb(255, 70, 80)},
-		{"Settings", "Settings", "gear", UI.rgb(150, 110, 255)},
 	}
 	hud.menuIcons = {}
 	-- a square candy button with a big icon that pokes out over its top edge

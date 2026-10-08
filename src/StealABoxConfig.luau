@@ -477,7 +477,7 @@ end
 
 -- DAY / NIGHT (seconds): boxes only restock at night
 Config.DayLength = 240
-Config.NightLength = 120
+Config.NightLength = 30
 
 -- Events: every few minutes a guaranteed Rainbow or Galaxy box appears somewhere
 Config.SpecialBoxEvery = 120
@@ -1003,8 +1003,6 @@ Config.Achievements = {
 	{id = "Billion",     name = "Billionaire",        minutes = 10, base = 0},      -- have $1B
 	{id = "Speedy",      name = "Speed Demon",        minutes = 5,  base = 3000},   -- reach 10K speed
 	{id = "FullShelf",   name = "Shopkeeper",         minutes = 8,  base = 5000},   -- 20 items on your shelf
-	{id = "Crash",       name = "Oops!",              minutes = 2,  base = 500},    -- crash your bike
-	{id = "BikeChamp",   name = "Bike Champion",      minutes = 6,  base = 3000},   -- finish the bike obby
 }
 function Config.GetAchievement(id)
 	for _, a in ipairs(Config.Achievements) do if a.id == id then return a end end

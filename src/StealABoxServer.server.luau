@@ -55,7 +55,6 @@ local YELLOW = Color3.fromRGB(255, 230, 110)
 -- STATE + HELPERS
 ------------------------------------------------------------------
 local profiles = {}
-local bikeApi = {} -- the bike obby (filled in further down)
 local carrying = {}      -- [player] = {box, id, mutation, size}
 local buyUpgrade, refreshTreadmill, save, applyTrail -- defined further down
 local dontSave = {} -- [player] = true if their data failed to load (protects their real save)
@@ -251,7 +250,6 @@ end
 
 local slowMode = {} -- [player] = true while Slow Mode is on
 local function walkSpeedFor(player, c)
-	if player:GetAttribute("Biking") then return 70 end -- on the bike: FAST
 	local prof = profiles[player]
 	local speed = BASE_SPEED
 	if prof and not slowMode[player] then
@@ -2566,12 +2564,6 @@ ActionFunc.OnServerInvoke = function(player, action, arg, expectedId)
 	elseif action == "UpgradeShoppers" then
 		return upgradeShoppers(player)
 
-	elseif action == "BikeObby" then
-		return bikeApi.start(player)
-
-	elseif action == "LeaveObby" then
-		return bikeApi.stop(player)
-
 	elseif action == "BuyStand" then
 		local have = unlockedStands(prof)
 		if have >= Config.MaxStands then return {ok = false, msg = "Your shelves are full!"} end
@@ -2883,119 +2875,6 @@ RunService.Heartbeat:Connect(function(dt)
 end)
 
 ------------------------------------------------------------------
--- BIKE OBBY (from the phone): ride a bike over a floating course. Crash into a wall at full
--- speed and you go flying. Reach the finish for cash, press "Back to base" to go home.
-------------------------------------------------------------------
-do
-	local obby = world:FindFirstChild("BikeObby")
-	local lastSpeed, lastFinish = {}, {}
-	local function bikeOf(char) return char and char:FindFirstChild("Bike") end
-	-- a little bike welded under your character (just for looks; it doesn't collide)
-	local function addBike(char, hrp)
-		local bike = Instance.new("Model")
-		bike.Name = "Bike"
-		local function part(name, size, offset, color, shape)
-			local p = Instance.new("Part")
-			p.Name = name
-			p.Size = size
-			p.Color = color
-			p.Material = Enum.Material.SmoothPlastic
-			p.CanCollide, p.CanQuery, p.CanTouch, p.Massless = false, false, false, true
-			if shape then p.Shape = shape end
-			p.CFrame = hrp.CFrame * offset
-			local w = Instance.new("WeldConstraint")
-			w.Part0, w.Part1 = hrp, p
-			w.Parent = p
-			p.Parent = bike
-		end
-		part("Frame", Vector3.new(0.6, 0.6, 5), CFrame.new(0, -2.2, 0), Color3.fromRGB(230, 40, 50))
-		part("Seat", Vector3.new(1, 0.4, 1.6), CFrame.new(0, -1.7, 0.6), Color3.fromRGB(30, 30, 35))
-		part("Handlebar", Vector3.new(2.6, 0.3, 0.3), CFrame.new(0, -0.6, -2.2), Color3.fromRGB(40, 40, 45))
-		part("Fork", Vector3.new(0.3, 1.8, 0.3), CFrame.new(0, -1.5, -2.3), Color3.fromRGB(40, 40, 45))
-		for _, z in ipairs({-2.4, 2.4}) do
-			part("Wheel", Vector3.new(0.5, 2.6, 2.6), CFrame.new(0, -2.6, z), Color3.fromRGB(25, 25, 28), Enum.PartType.Cylinder)
-		end
-		bike.Parent = char
-	end
-	bikeApi.start = function(player)
-		if not obby then return {ok = false, msg = "The bike obby is closed."} end
-		if carrying[player] then return {ok = false, msg = "Put your box down first!"} end
-		local char, hrp = getChar(player)
-		if not char or not hrp then return {ok = false} end
-		local start = obby:FindFirstChild("BikeStart")
-		if not bikeOf(char) then addBike(char, hrp) end
-		player:SetAttribute("Biking", true)
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if hum then
-			hum.UseJumpPower = true
-			hum.JumpPower = 65
-		end
-		applySpeed(player)
-		sendTo(player, start and start.Position or Vector3.new(0, 60, 470))
-		return {ok = true, msg = "Ride to the finish! Don't crash into the walls..."}
-	end
-	bikeApi.stop = function(player)
-		local char = player.Character
-		local bike = bikeOf(char)
-		if bike then bike:Destroy() end
-		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		if hum then hum.JumpPower = 50 end
-		player:SetAttribute("Biking", nil)
-		applySpeed(player)
-		sendHome(player)
-		return {ok = true}
-	end
-	-- crashes + the finish line (10 times a second)
-	task.spawn(function()
-		local finish = obby and obby:FindFirstChild("BikeFinish")
-		while true do
-			task.wait(0.1)
-			for _, p in ipairs(Players:GetPlayers()) do
-				if p:GetAttribute("Biking") then
-					local char, hrp = getChar(p)
-					local hum = char and char:FindFirstChildOfClass("Humanoid")
-					if not hrp or not hum or not bikeOf(char) then
-						-- respawned (fell off): back to normal
-						p:SetAttribute("Biking", nil)
-						applySpeed(p)
-					else
-						local v = hrp.AssemblyLinearVelocity
-						local speed = Vector3.new(v.X, 0, v.Z).Magnitude
-						-- going fast, still pushing forward, and suddenly stopped = you hit a wall
-						if (lastSpeed[p] or 0) > 40 and speed < 12 and hum.MoveDirection.Magnitude > 0.5 and not ragdolled[p] then
-							ragdolled[p] = true
-							setRagdoll(char, true)
-							-- (your own screen moves your character: it does the flying + "CRASH!")
-							FlingEvent:FireClient(p, -hum.MoveDirection * 55 + Vector3.new(0, 45, 0), 1.4, "CRASH")
-							achieve(p, "Crash")
-							task.delay(1.6, function()
-								ragdolled[p] = nil
-								if char.Parent then setRagdoll(char, false) end
-							end)
-						end
-						lastSpeed[p] = speed
-						if finish and (hrp.Position - finish.Position).Magnitude < 22 and os.clock() - (lastFinish[p] or -999) > 60 then
-							lastFinish[p] = os.clock()
-							local prof = profiles[p]
-							if prof then
-								local cash = math.max(500, math.floor(totalIncome(p) * 90))
-								prof.Cash = prof.Cash + cash
-								sync(p)
-								notify(p, "BIKE OBBY COMPLETE! +$" .. Config.FormatNum(cash), Color3.fromRGB(120, 255, 90))
-								achieve(p, "BikeChamp")
-								FXEvent:FireAllClients("LevelUp", hrp.Position, 3)
-							end
-						end
-					end
-				else
-					lastSpeed[p] = nil
-				end
-			end
-		end
-	end)
-end
-
-------------------------------------------------------------------
 -- STEAL SUCCESSFUL: out of the warehouse door with a box = you got away with it
 ------------------------------------------------------------------
 task.spawn(function()
@@ -3100,6 +2979,22 @@ task.spawn(function()
 	ReplicatedStorage:SetAttribute("PhaseEndsAt", phaseEnds)
 	while true do
 		task.wait(1)
+		if night then
+			-- 5x unbox speed at night: every second takes 4 more seconds off every box that's unboxing
+			for p, prof in pairs(profiles) do
+				local plot = playerPlot[p]
+				local changed = false
+				for key, e in pairs(prof.Unboxing) do
+					if e.readyAt > now() then
+						e.readyAt = math.max(now(), e.readyAt - 4)
+						changed = true
+						local part = plot and unboxFolder(plot):FindFirstChild("UnboxBox" .. key)
+						if part then part:SetAttribute("ReadyAt", e.readyAt) end
+					end
+				end
+				if changed then sync(p) end
+			end
+		end
 		if workspace:GetServerTimeNow() >= phaseEnds then
 			night = not night
 			phaseEnds = workspace:GetServerTimeNow() + (night and Config.NightLength or Config.DayLength)
@@ -3107,7 +3002,7 @@ task.spawn(function()
 			ReplicatedStorage:SetAttribute("PhaseEndsAt", phaseEnds)
 			setDoor(night)
 			if night then
-				notifyAll("Night time! The warehouse is closed until sunrise - the shelves are being restocked.", Color3.fromRGB(170, 190, 255))
+				notifyAll("Night time! The warehouse is closed - but your boxes unbox 5x FASTER until sunrise!", Color3.fromRGB(170, 190, 255))
 				-- everybody still inside goes home (a carried box is dropped)
 				for _, p in ipairs(Players:GetPlayers()) do
 					local _, hrp = getChar(p)
