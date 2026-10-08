@@ -72,15 +72,20 @@ Config.Mutations = {
 }
 
 -- SIZES: rolled for every box. scale = how big, mult = cash multiplier, slow = extra carry slowdown
+-- SIZE RNG: every box rolls a size. Bigger = worth more but slows you down while you carry it,
+-- smaller = worth less but you run FASTER (slow < 0). Keep the order small -> big.
 Config.Sizes = {
-	{id = "Tiny",   chance = 8,  scale = 0.6, mult = 0.5, slow = -1},
-	{id = "Small",  chance = 20, scale = 0.8, mult = 0.8, slow = 0},
-	{id = "Normal", chance = 50, scale = 1,   mult = 1,   slow = 0},
-	{id = "Big",    chance = 14, scale = 1.3, mult = 1.6, slow = 1},
-	{id = "Huge",   chance = 6,  scale = 1.5, mult = 2.5, slow = 2},
-	{id = "Giant",  chance = 2,  scale = 1.8, mult = 4,   slow = 3.5},
+	{id = "Microscopic", chance = 3,   scale = 0.4, mult = 0.3, slow = -4},
+	{id = "Tiny",        chance = 8,   scale = 0.6, mult = 0.5, slow = -2},
+	{id = "Small",       chance = 18,  scale = 0.8, mult = 0.8, slow = -0.5},
+	{id = "Normal",      chance = 40,  scale = 1,   mult = 1,   slow = 0},
+	{id = "Big",         chance = 15,  scale = 1.3, mult = 1.6, slow = 1},
+	{id = "Huge",        chance = 8,   scale = 1.5, mult = 2.5, slow = 2},
+	{id = "Giant",       chance = 5,   scale = 1.8, mult = 4,   slow = 3.5},
+	{id = "Colossal",    chance = 2.5, scale = 2.3, mult = 7,   slow = 5},
+	{id = "Titanic",     chance = 0.5, scale = 2.8, mult = 12,  slow = 7},
 }
-Config.ShelfMaxSize = 4 -- boxes on shelves can be at most "Big" (index 4); pallets can hold anything
+Config.ShelfMaxSize = 5 -- boxes on warehouse shelves can be at most "Big" (index 5); pallets can hold anything
 
 function Config.GetMutation(id)
 	for _, m in ipairs(Config.Mutations) do if m.id == id then return m end end
@@ -88,7 +93,8 @@ function Config.GetMutation(id)
 end
 function Config.GetSize(id)
 	for _, s in ipairs(Config.Sizes) do if s.id == id then return s end end
-	return Config.Sizes[3]
+	for _, s in ipairs(Config.Sizes) do if s.id == "Normal" then return s end end
+	return Config.Sizes[1]
 end
 function Config.BoxLabel(def, mutationId, sizeId)
 	local parts = {}
