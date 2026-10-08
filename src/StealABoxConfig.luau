@@ -805,10 +805,43 @@ local MUT_MATERIAL = {Gold = MAT.Metal, Diamond = MAT.Glass, Lava = MAT.Neon, Ga
 
 -- Build an item as a model. Returns the model and a list of {part, offset, rot, size} at scale 1,
 -- so animations can move / resize every part around one centre.
+-- rarer items get extra detail on top of their model: sparkles (Uncommon), a gold stand + gems (Rare),
+-- and a gold stand, a halo and glowing gems all around (Legendary)
+local function rarityExtras(spec, tier)
+	local out = table.clone(spec)
+	local gold, tcol = rgb(255, 200, 50), (Config.ItemTiers[tier] or Config.ItemTiers[1]).color
+	if tier >= 2 then
+		table.insert(out, S(0.25, 0.25, 0.25, 1.15, 0.8, 0, tcol, MAT.Neon))
+		table.insert(out, S(0.2, 0.2, 0.2, -1.1, 0.4, 0.3, tcol, MAT.Neon))
+	end
+	if tier >= 3 then
+		table.insert(out, C(0.25, 2.6, 2.6, 0, -1.2, 0, gold, MAT.Metal, 0, 0, 90))
+		table.insert(out, C(0.15, 2.9, 2.9, 0, -1.38, 0, tcol, MAT.Neon, 0, 0, 90))
+		for k = 0, 2 do
+			local a = k / 3 * math.pi * 2
+			table.insert(out, B(0.3, 0.3, 0.3, math.cos(a) * 1.25, -1.05, math.sin(a) * 1.25, tcol, MAT.Neon, 45, 45, 0))
+		end
+	end
+	if tier >= 4 then
+		for k = 0, 7 do -- a golden halo
+			local a = k / 8 * math.pi * 2
+			table.insert(out, S(0.28, 0.28, 0.28, math.cos(a) * 0.85, 1.55, math.sin(a) * 0.85, gold, MAT.Neon))
+		end
+		table.insert(out, C(0.3, 3.2, 3.2, 0, -1.5, 0, gold, MAT.Metal, 0, 0, 90))
+		for k = 0, 3 do -- big gems all around
+			local a = k / 4 * math.pi * 2 + 0.4
+			table.insert(out, B(0.4, 0.4, 0.4, math.cos(a) * 1.5, 0.3 + (k % 2) * 0.6, math.sin(a) * 1.5, tcol:Lerp(rgb(255, 255, 255), 0.2), MAT.Neon, 45, 45, 0))
+		end
+	end
+	return out
+end
+
 function Config.BuildItemModel(item, scale, cframe)
 	scale = scale or 1
 	cframe = cframe or CFrame.new()
 	local spec = Config.ItemModels[item.id] or {S(1.2, 1.2, 1.2, 0, 0, 0, rgb(200, 200, 200))}
+	local idef = Config.Items[item.id]
+	if idef and idef.tier >= 2 then spec = rarityExtras(spec, idef.tier) end
 	local mut = Config.GetMutation(item.mutation)
 	local m = Instance.new("Model")
 	m.Name = "Item_" .. item.id
@@ -860,7 +893,7 @@ end
 
 -- how big products look on the shop shelf
 function Config.ShelfItemScale(item)
-	return 1.3 * math.min(1.15, math.sqrt(Config.GetSize(item.size).scale))
+	return 1.75 * math.min(1.15, math.sqrt(Config.GetSize(item.size).scale))
 end
 
 ------------------------------------------------------------------

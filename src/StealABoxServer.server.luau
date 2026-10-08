@@ -398,11 +398,26 @@ local function styleBox(box, def, mutationId, scaleMult)
 	deco("Tape", Vector3.new(X * 0.2, Y * 0.13, Z * 1.06), CFrame.new(0, Y * 0.445, 0), tapeColor)
 	deco("TapeFront", Vector3.new(X * 0.2, Y * 0.35, Z * 0.04), CFrame.new(0, Y * 0.28, -Z * 0.51), tapeColor)
 	deco("TapeBack", Vector3.new(X * 0.2, Y * 0.35, Z * 0.04), CFrame.new(0, Y * 0.28, Z * 0.51), tapeColor)
-	-- corner rims
+	-- corner rims: plain on common boxes, silver on rare ones, shiny gold on epic ones
+	local rimCol, rimMat = dark, nil
+	if def.rarity == 2 then rimCol, rimMat = Color3.fromRGB(200, 205, 215), Enum.Material.Metal end
+	if def.rarity >= 3 then rimCol, rimMat = Color3.fromRGB(255, 200, 50), Enum.Material.Metal end
 	for _, cx in ipairs({-1, 1}) do
 		for _, cz in ipairs({-1, 1}) do
-			deco("Rim", Vector3.new(X * 0.08, Y * 1.0, Z * 0.08), CFrame.new(cx * X * 0.48, 0, cz * Z * 0.48), dark)
+			local rim = deco("Rim", Vector3.new(X * 0.09, Y * 1.02, Z * 0.09), CFrame.new(cx * X * 0.48, 0, cz * Z * 0.48), rimCol, rimMat)
+			if def.rarity >= 2 then rim.Reflectance = 0.25 end
 		end
+	end
+	-- rare + epic: a metal band around the middle; epic: it glows, and a gold gem sits on the lid
+	if def.rarity >= 2 then
+		local glow = def.rarity >= 3
+		deco("Band", Vector3.new(X * 1.03, Y * 0.09, Z * 1.03), CFrame.new(0, -Y * 0.12, 0),
+			glow and (Config.Rarities[def.rarity].color) or Color3.fromRGB(190, 195, 205), glow and Enum.Material.Neon or Enum.Material.Metal)
+	end
+	if def.rarity >= 3 then
+		local gem = deco("Gem", Vector3.new(X * 0.22, X * 0.22, X * 0.22), CFrame.new(0, Y * 0.56, 0) * CFrame.Angles(math.rad(45), 0, math.rad(45)),
+			Color3.fromRGB(255, 215, 70), Enum.Material.Neon)
+		gem.Reflectance = 0.2
 	end
 	-- printed on the sides: a real shipping label (rarity band, name, barcode) and "this side up" arrows
 	local rar = Config.Rarities[def.rarity] or Config.Rarities[1]

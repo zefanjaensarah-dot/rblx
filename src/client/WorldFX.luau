@@ -475,6 +475,79 @@ function WorldFX.init(ctx)
 		end
 	end
 
+	-- EXTRA EPIC: a glowing energy box that GROWS in rainbow colours, lightning from the sky
+	-- (more bolts for better items), then a rainbow over the box and an RGB explosion
+	local RAINBOW = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 60, 60)), ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 160, 40)),
+		ColorSequenceKeypoint.new(0.4, Color3.fromRGB(255, 240, 60)), ColorSequenceKeypoint.new(0.6, Color3.fromRGB(80, 230, 90)),
+		ColorSequenceKeypoint.new(0.8, Color3.fromRGB(60, 150, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 90, 255))})
+	local BANDS = {Color3.fromRGB(255, 60, 60), Color3.fromRGB(255, 160, 40), Color3.fromRGB(255, 240, 60), Color3.fromRGB(80, 230, 90),
+		Color3.fromRGB(60, 150, 255), Color3.fromRGB(110, 80, 255), Color3.fromRGB(180, 90, 255)}
+	local function lightning(from, to, parent)
+		local pts, n = {from}, 7
+		for k = 1, n - 1 do
+			local p = from:Lerp(to, k / n)
+			table.insert(pts, p + Vector3.new((math.random() - 0.5) * 6, 0, (math.random() - 0.5) * 6))
+		end
+		table.insert(pts, to)
+		local last
+		for k = 1, #pts - 1 do
+			local a, b = pts[k], pts[k + 1]
+			last = fxPart({Size = Vector3.new(0.45, 0.45, (b - a).Magnitude), CFrame = CFrame.lookAt((a + b) / 2, b), Color = Color3.fromRGB(210, 235, 255)}, parent)
+		end
+		if last then new("PointLight", {Range = 40, Brightness = 8, Color = Color3.fromRGB(190, 220, 255), Shadows = false}, last) end
+	end
+	local function epicOpening(center, sz, tier, dur, isMine)
+		local fx = new("Folder", {Name = "EpicFX"}, fxFolder)
+		Debris:AddItem(fx, dur + 3.5)
+		-- the energy box grows around the crate
+		local energy = fxPart({Name = "Energy", Size = Vector3.one * sz * 1.15, CFrame = CFrame.new(center), Transparency = 0.75}, fx)
+		TweenService:Create(energy, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = Vector3.one * sz * (2 + tier * 0.45)}):Play()
+		task.spawn(function()
+			local t0 = os.clock()
+			while energy.Parent and os.clock() - t0 < dur do
+				energy.Color = Color3.fromHSV(((os.clock() - t0) * 1.6) % 1, 0.8, 1)
+				energy.CFrame = CFrame.new(center) * CFrame.Angles(0, (os.clock() - t0) * 2, 0)
+				task.wait(0.05)
+			end
+			energy:Destroy()
+		end)
+		-- lightning bolts from the sky
+		local strikes = tier + 1
+		for k = 1, strikes do
+			task.delay(dur * (k / (strikes + 0.5)), function()
+				if not fx.Parent then return end
+				local bolt = new("Folder", {}, fx)
+				lightning(center + Vector3.new((math.random() - 0.5) * 20, 90, (math.random() - 0.5) * 20), center + Vector3.new(0, sz * 0.6, 0), bolt)
+				burst(center + Vector3.new(0, sz * 0.6, 0), 20, {Color = ColorSequence.new(Color3.fromRGB(200, 230, 255), WHITE), LightEmission = 1,
+					Size = NumberSequence.new(0.6, 0), Lifetime = NumberRange.new(0.3, 0.6), Speed = NumberRange.new(10, 20)})
+				if isMine and ctx.flash and effectsOn() then ctx.flash(Color3.fromRGB(220, 235, 255), 0.6, 0.25) end
+				Debris:AddItem(bolt, 0.18)
+			end)
+		end
+		-- the reveal: an RGB explosion and a rainbow over the box
+		task.delay(dur, function()
+			if not fx.Parent then return end
+			burst(center, 90 + tier * 30, {Color = RAINBOW, LightEmission = 1, Size = NumberSequence.new(1.2, 0), Lifetime = NumberRange.new(0.6, 1.3),
+				Speed = NumberRange.new(25, 45), Drag = 3})
+			for i, col in ipairs({Color3.fromRGB(255, 50, 50), Color3.fromRGB(50, 255, 80), Color3.fromRGB(60, 120, 255)}) do
+				local ring = fxPart({Shape = Enum.PartType.Ball, Size = Vector3.one * sz, CFrame = CFrame.new(center), Color = col, Transparency = 0.4}, fx)
+				TweenService:Create(ring, TweenInfo.new(0.5 + i * 0.15, Enum.EasingStyle.Quad), {Size = Vector3.one * sz * (6 + i * 2), Transparency = 1}):Play()
+			end
+			local arc = new("Folder", {Name = "Rainbow"}, fx)
+			for b, col in ipairs(BANDS) do
+				local r = sz * 2.2 + (b - 1) * 0.7
+				for k = 0, 10 do
+					local a = math.pi * k / 10
+					local pos = center + Vector3.new(math.cos(a) * r, math.sin(a) * r, 0)
+					fxPart({Size = Vector3.new(0.7, 0.7, 0.7) * (1 + r * 0.02) + Vector3.new(r * 0.28, 0, 0), CFrame = CFrame.new(pos) * CFrame.Angles(0, 0, a + math.pi / 2),
+						Color = col, Transparency = 0.15}, arc)
+				end
+			end
+			Debris:AddItem(arc, 2.8)
+		end)
+	end
+
 	openingFX = function(boxPart, tier, dur)
 		if typeof(boxPart) ~= "Instance" or not boxPart.Parent then return end
 		dur = dur or 2.2
@@ -506,6 +579,7 @@ function WorldFX.init(ctx)
 		-- hide the real box (only on this screen) and swap in a crate that can open
 		hideRealBox(boxPart)
 		openingStart[boxPart] = {os.clock(), dur}
+		epicOpening(center, sz, tier, dur, isMine)
 
 		local holder = new("Folder", {Name = "OpeningFX"}, fxFolder)
 		local th = sz * 0.07
@@ -603,7 +677,9 @@ function WorldFX.init(ctx)
 			end
 		end
 		if isMine and epic and effectsOn() then
-			if nStages >= 4 then screenFX.bars(true) end
+			-- CUTSCENE: black bars + the camera swoops in and circles the box until the item is out
+			screenFX.bars(true)
+			if ctx.cinematic then ctx.cinematic(center + Vector3.new(0, sz + 2.5, 0), dur + Config.RevealTime(tier) - 0.5, 0.7, 12 + sz * 2) end
 			local cam = workspace.CurrentCamera
 			if cam then TweenService:Create(cam, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {FieldOfView = NORMAL_FOV - 8 - nStages * 2}):Play() end
 		end
@@ -772,7 +848,8 @@ function WorldFX.init(ctx)
 	local cinematicBusy = false
 
 	-- the camera swoops in to look at the item, holds, and swoops back
-	local function cinematic(focus, hold)
+	local function cinematic(focus, hold, spin, dist)
+		spin, dist = spin or 0.25, dist or 13
 		local cam = workspace.CurrentCamera
 		if cinematicBusy or not cam or not effectsOn() then return end
 		cinematicBusy = true
@@ -780,7 +857,7 @@ function WorldFX.init(ctx)
 		local away = startCF.Position - focus
 		away = Vector3.new(away.X, 0, away.Z)
 		away = (away.Magnitude > 0.1) and away.Unit or Vector3.new(0, 0, 1)
-		local eye = focus + away * 13 + Vector3.new(0, 3.5, 0)
+		local eye = focus + away * dist + Vector3.new(0, 3.5, 0)
 		cam.CameraType = Enum.CameraType.Scriptable
 		TweenService:Create(cam, TweenInfo.new(0.7, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {CFrame = CFrame.lookAt(eye, focus)}):Play()
 		-- a slow orbit while it holds
@@ -789,8 +866,8 @@ function WorldFX.init(ctx)
 		task.delay(0.7, function()
 			conn = RunService.RenderStepped:Connect(function()
 				local k = os.clock() - t0 - 0.7
-				local rot = CFrame.Angles(0, k * 0.25, 0)
-				local p = focus + rot:VectorToWorldSpace(away * 13) + Vector3.new(0, 3.5, 0)
+				local rot = CFrame.Angles(0, k * spin, 0)
+				local p = focus + rot:VectorToWorldSpace(away * dist) + Vector3.new(0, 3.5, 0)
 				cam.CFrame = CFrame.lookAt(p, focus)
 			end)
 		end)
@@ -804,6 +881,8 @@ function WorldFX.init(ctx)
 		end)
 	end
 
+	ctx.cinematic = cinematic
+
 	reveal3D = function(pos, tier, info)
 		if type(info) ~= "table" or not info.item then return end
 		local item = info.item
@@ -814,7 +893,7 @@ function WorldFX.init(ctx)
 		local glow = mut.color or tierCol
 		local special = mut.id ~= "Normal"
 		local epic = def.tier >= 3 or special
-		local big = math.clamp(1.9 * math.sqrt(Config.GetSize(item.size).scale), 1.4, 2.8) * (1 + (def.tier - 1) * 0.08)
+		local big = math.clamp(2.6 * math.sqrt(Config.GetSize(item.size).scale), 2, 3.8) * (1 + (def.tier - 1) * 0.1)
 		local isMine = info.owner == player.UserId
 		local ground = pos - Vector3.new(0, 1.5, 0)
 		local hover = pos + Vector3.new(0, 2.6 + big, 0)
