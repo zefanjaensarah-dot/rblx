@@ -73,17 +73,6 @@ function Hud.init(ctx)
 	local badges = {}
 	ctx.badges = badges
 
-	local shopBtn = UI.button(menu, {Name = "Shop", Text = "SHOP", Color = UI.rgb(110, 225, 40), Size = UDim2.fromOffset(MENU_W, TOUCH and 60 or 72), Icon = "shop",
-		IconSize = TOUCH and 46 or 50, IconColor = C.red, TextSize = TOUCH and 34 or 38, LayoutOrder = 0, Radius = 9, Depth = 6})
-	-- a light sweep runs over the Shop button every few seconds
-	local shopSheen = new("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.white, BorderSizePixel = 0, ZIndex = shopBtn.face.ZIndex + 1}, shopBtn.face)
-	UI.corner(shopSheen, 18)
-	local shopSheenGrad = new("UIGradient", {Rotation = 25, Offset = Vector2.new(-1.2, 0), Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.42, 1), NumberSequenceKeypoint.new(0.5, 0.35), NumberSequenceKeypoint.new(0.58, 1), NumberSequenceKeypoint.new(1, 1)})}, shopSheen)
-	shopBtn.Activated:Connect(function() UI.toggle("Shop") end)
-	badges.Shop = UI.badge(shopBtn.face, shopBtn.face.ZIndex)
-	local shopScale = new("UIScale", {}, shopBtn.holder)
-
 	local grid = box(menu, {Size = UDim2.fromOffset(MENU_W, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 1})
 	new("UIGridLayout", {CellSize = UDim2.fromOffset(CELL_W, CELL_H), CellPadding = UDim2.fromOffset(GAP, GAP), SortOrder = Enum.SortOrder.LayoutOrder}, grid)
 	local MENU = {
@@ -92,28 +81,21 @@ function Hud.init(ctx)
 		{"Daily", "Daily", "calendar", UI.rgb(80, 120, 255)},
 	}
 	hud.menuIcons = {}
-	-- a square candy button with a big icon that pokes out over its top edge
+	-- a menu button like the inspiration game: no box, just a big icon with its name under it
 	local function squareButton(parent, key, label, iconName, color, order, size)
 		local holder = box(parent, {Name = key, LayoutOrder = order, Size = size or UDim2.fromScale(1, 1)})
-		local shadow = new("Frame", {Position = UDim2.fromOffset(0, 6), Size = UDim2.new(1, 0, 1, -6), BackgroundColor3 = color:Lerp(C.black, 0.5)}, holder)
-		UI.corner(shadow, 9)
-		UI.stroke(shadow, 3.5)
-		local face = new("TextButton", {Size = UDim2.new(1, 0, 1, -6), BackgroundColor3 = color, Text = "", AutoButtonColor = false}, holder)
-		UI.corner(face, 9)
-		UI.stroke(face, 3.5)
-		UI.vivid(face, color)
-		local rim = new("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1, -7, 1, -7), BackgroundTransparency = 1}, face)
-		UI.corner(rim, 6)
-		UI.stroke(rim, 2.2, C.white, 0.4)
-		local shine = new("Frame", {Position = UDim2.fromOffset(6, 4), Size = UDim2.new(1, -12, 0.38, 0), BackgroundColor3 = C.white, BackgroundTransparency = 0.72, BorderSizePixel = 0}, face)
-		UI.corner(shine, 14)
-		local isz = math.floor(CELL_W * 0.5)
-		local icon = UI.icon(iconName, face, UDim2.fromOffset(isz, isz), UDim2.new(0.5, 0, 0, 6), color:Lerp(C.white, 0.65), Vector2.new(0.5, 0))
+		local face = new("TextButton", {Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "", AutoButtonColor = false}, holder)
+		local isz = math.floor(CELL_W * 0.78)
+		local icon = UI.icon(iconName, face, UDim2.fromOffset(isz, isz), UDim2.new(0.5, 0, 0, -6), color:Lerp(C.white, 0.65), Vector2.new(0.5, 0))
 		table.insert(hud.menuIcons, {icon = icon, pos = icon.Position, iconScale = new("UIScale", {}, icon), faceScale = new("UIScale", {}, face)})
-		UI.label(face, label, {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -4), Size = UDim2.new(1, -6, 0, 26), Max = 24, Min = 12, Stroke = 2.6, TextWrapped = false})
+		UI.label(face, label, {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 2), Size = UDim2.new(1, 10, 0, 32), Max = 30, Min = 14, Stroke = 3.2, TextWrapped = false})
 		UI.pressable(face, holder)
 		return face
 	end
+	local shopFace = squareButton(menu, "Shop", "Shop", "shop", UI.rgb(110, 225, 40), 0, UDim2.fromOffset(MENU_W, CELL_H + 6))
+	shopFace.Activated:Connect(function() UI.toggle("Shop") end)
+	badges.Shop = UI.badge(shopFace, shopFace.ZIndex)
+	local shopScale = new("UIScale", {}, shopFace.Parent)
 	for i, m in ipairs(MENU) do
 		local key, label, iconName, color = m[1], m[2], m[3], m[4]
 		local face = squareButton(grid, key, label, iconName, color, i)
@@ -787,7 +769,6 @@ function Hud.init(ctx)
 			offerCard.Rotation = math.sin(t * 2.2) * 3
 			offerSheenGrad.Offset = Vector2.new(((t * 0.55) % 2.4) - 1.2, 0)
 		end
-		shopSheenGrad.Offset = Vector2.new(((t * 0.4 + 1) % 2.8) - 1.4, 0)
 		for _, b in pairs(badges) do
 			if b.frame.Visible then b.scale.Scale = 1 + 0.12 * math.abs(math.sin(t * 4)) end
 		end

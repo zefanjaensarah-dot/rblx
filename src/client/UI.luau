@@ -783,40 +783,51 @@ local function makePage(parent, z)
 	return page
 end
 
+-- every window gets its own bright header colour (like the inspiration game)
+local WIN_COLORS = {
+	Shop = rgb(255, 196, 30), Index = rgb(40, 170, 255), Items = rgb(80, 205, 60), Unboxing = rgb(255, 140, 40),
+	Quests = rgb(160, 100, 255), Codes = rgb(255, 100, 170), Settings = rgb(110, 135, 175), Daily = rgb(70, 125, 255),
+	Gifts = rgb(255, 80, 160), Phone = rgb(60, 70, 95), Trails = rgb(255, 110, 200),
+}
 function UI.window(opt)
 	local docked = opt.Docked == true
-	local color = rgb(255, 150, 30) -- every window has the same orange header (like the screenshots)
+	local color = opt.Color or WIN_COLORS[opt.Name] or rgb(255, 196, 30)
 	local size = opt.Size or Vector2.new(760, 470)
+	-- the window itself is dark "glass": you see the (blurred) world through it
 	local frame = new("Frame", {Name = opt.Name, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(size.X, size.Y),
-		BackgroundColor3 = color:Lerp(C.panel, 0.45), Visible = false, ZIndex = 60}, UI.root)
-	UI.corner(frame, 8)
-	UI.stroke(frame, 4)
-	UI.shade(frame, C.white, rgb(175, 172, 192))
-	frame.BackgroundColor3 = rgb(44, 44, 48)
+		BackgroundColor3 = rgb(22, 26, 34), BackgroundTransparency = 0.22, Visible = false, ZIndex = 60}, UI.root)
+	UI.corner(frame, 14)
+	UI.stroke(frame, 3.5, rgb(12, 12, 18), 0.1)
 	local scale = new("UIScale", {}, frame)
-	-- title bar
-	local header = new("Frame", {Name = "Header", Size = UDim2.new(1, 0, 0, 58), BackgroundColor3 = color, BorderSizePixel = 0}, frame)
-	UI.corner(header, 22)
-	UI.shade(header, color:Lerp(C.white, 0.35), color:Lerp(C.black, 0.12))
-	new("Frame", {Position = UDim2.new(0, 0, 1, -22), Size = UDim2.new(1, 0, 0, 22), BackgroundColor3 = color:Lerp(C.black, 0.1), BorderSizePixel = 0}, header)
-	local sheen = new("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.white, BorderSizePixel = 0}, header)
-	UI.corner(sheen, 22)
-	local sheenGrad = new("UIGradient", {Rotation = 20, Offset = Vector2.new(-1, 0), Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.42, 1), NumberSequenceKeypoint.new(0.5, 0.55), NumberSequenceKeypoint.new(0.58, 1), NumberSequenceKeypoint.new(1, 1)})}, sheen)
+	-- title bar: a bright strip covered in lego studs
+	local header = new("Frame", {Name = "Header", Position = UDim2.fromOffset(4, 4), Size = UDim2.new(1, -8, 0, 58), BackgroundColor3 = color, BorderSizePixel = 0, ClipsDescendants = true}, frame)
+	UI.corner(header, 10)
+	UI.stroke(header, 3, color:Lerp(C.black, 0.45))
+	UI.shade(header, color:Lerp(C.white, 0.22), color:Lerp(C.black, 0.06))
+	for k = 0, math.floor(size.X / 30) do
+		local stud = new("Frame", {Position = UDim2.fromOffset(4 + k * 30, (k % 2 == 0) and 7 or 31), Size = UDim2.fromOffset(20, 20),
+			BackgroundColor3 = color:Lerp(C.white, 0.45), BackgroundTransparency = 0.55, BorderSizePixel = 0, ZIndex = 1}, header)
+		UI.corner(stud, true)
+	end
+	local sheen = new("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.white, BackgroundTransparency = 1, BorderSizePixel = 0}, header)
+	local sheenGrad = new("UIGradient", {Rotation = 20, Offset = Vector2.new(-1, 0)}, sheen)
 	local titleX = 18
 	if opt.Icon then
-		UI.icon(opt.Icon, header, UDim2.fromOffset(46, 46), UDim2.fromOffset(14, 6), color:Lerp(C.white, 0.15))
-		titleX = 70
+		-- a big icon that pokes out over the top-left corner
+		local ic = UI.icon(opt.Icon, frame, UDim2.fromOffset(74, 74), UDim2.fromOffset(-14, -14), color:Lerp(C.white, 0.15))
+		ic.ZIndex = 8
+		titleX = 68
 	end
-	local title = UI.label(header, opt.Title or opt.Name, {Position = UDim2.fromOffset(titleX, 9), Size = UDim2.new(1, -titleX - 70, 0, 40),
-		TextXAlignment = Enum.TextXAlignment.Left, Max = 32, Stroke = 3, TextWrapped = false})
+	local title = UI.label(header, opt.Title or opt.Name, {Position = UDim2.fromOffset(titleX, 6), Size = UDim2.new(1, -titleX - 70, 0, 46),
+		TextXAlignment = Enum.TextXAlignment.Left, Max = 40, Stroke = 3.5, TextWrapped = false})
+	title.ZIndex = 3
 	local close
 	if docked then
 		-- side panel: a red square ">" tab on its left edge closes it
-		header.Size = UDim2.new(1, 0, 0, 54)
+		header.Size = UDim2.new(1, -8, 0, 54)
 		close = new("TextButton", {Name = "Close", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(0, -8, 0.5, 0), Size = UDim2.fromOffset(52, 52),
-			BackgroundColor3 = rgb(230, 30, 40), Text = "", AutoButtonColor = false}, frame)
-		UI.corner(close, 6)
+			BackgroundColor3 = rgb(240, 45, 70), Text = "", AutoButtonColor = false}, frame)
+		UI.corner(close, 10)
 		UI.stroke(close, 3.5)
 		UI.shade(close, C.white, rgb(190, 190, 190))
 		UI.label(close, ">", {Size = UDim2.fromScale(1, 1), Max = 36, Stroke = 3})
@@ -830,32 +841,24 @@ function UI.window(opt)
 			opt.HeaderButton.TextSize = opt.HeaderButton.TextSize or 18
 		end
 	else
-		close = new("TextButton", {Name = "Close", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0, 29), Size = UDim2.fromOffset(46, 46),
-			BackgroundColor3 = rgb(230, 30, 40), Text = "", AutoButtonColor = false}, frame)
-		UI.corner(close, 6)
-		UI.stroke(close, 3.5)
-		UI.shade(close, C.white, rgb(190, 190, 190))
-		UI.icon("close", close, UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), C.white, Vector2.new(0.5, 0.5))
+		-- a big red cartoon X over the top-right corner
+		close = new("TextButton", {Name = "Close", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 16, 0, -14), Size = UDim2.fromOffset(64, 64),
+			BackgroundTransparency = 1, Text = "", AutoButtonColor = false, ZIndex = 8}, frame)
+		for _, rot in ipairs({45, -45}) do
+			local bar = new("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(1, 0.3), Rotation = rot,
+				BackgroundColor3 = rgb(240, 45, 70), BorderSizePixel = 0, ZIndex = 8}, close)
+			UI.corner(bar, 7)
+			UI.stroke(bar, 4, rgb(80, 8, 22))
+		end
+		local core = new("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.3, 0.3), Rotation = 45,
+			BackgroundColor3 = rgb(240, 45, 70), BorderSizePixel = 0, ZIndex = 9}, close)
+		new("Frame", {Position = UDim2.fromScale(0.1, 0.36), Size = UDim2.new(0.8, 0, 0, 3), Rotation = 45, BackgroundColor3 = C.white, BackgroundTransparency = 0.45, BorderSizePixel = 0, ZIndex = 9}, close)
+		core.Name = "Core"
 	end
 	UI.pressable(close)
-	-- body
-	local body = new("Frame", {Name = "Body", Position = UDim2.fromOffset(8, 64), Size = UDim2.new(1, -16, 1, -72), BackgroundColor3 = color:Lerp(C.panelDark, 0.9), BorderSizePixel = 0}, frame)
-	UI.corner(body, 16)
-	UI.stroke(body, 2.5, color:Lerp(C.ink, 0.5))
+	-- body: see-through, the glass window shows behind the content
+	local body = new("Frame", {Name = "Body", Position = UDim2.fromOffset(6, 68), Size = UDim2.new(1, -12, 1, -74), BackgroundTransparency = 1, BorderSizePixel = 0}, frame)
 	local headerBtn, footerBtn
-	-- dark charcoal body with a faint grid (two striped gradients, no hundreds of frames)
-	body.Position, body.Size = UDim2.fromOffset(6, 60), UDim2.new(1, -12, 1, -66)
-	body.BackgroundColor3 = rgb(50, 50, 55)
-	UI.corner(body, 4)
-	for _, rot in ipairs({0, 90}) do
-		local keys = {}
-		for k = 0, 18 do
-			table.insert(keys, NumberSequenceKeypoint.new(k / 18, (k % 2 == 0) and 0.93 or 1))
-		end
-		local grid = new("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.white, BorderSizePixel = 0, BackgroundTransparency = 0}, body)
-		UI.corner(grid, 4)
-		new("UIGradient", {Rotation = rot, Transparency = NumberSequence.new(keys)}, grid)
-	end
 	if docked then
 		if opt.HeaderButton then headerBtn = UI.button(header, opt.HeaderButton) end
 		if opt.Footer then

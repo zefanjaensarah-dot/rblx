@@ -947,6 +947,12 @@ local function refreshStands(player)
 			if s > unlocked then
 				stand.Color = Color3.fromRGB(90, 90, 100)
 				if top then top.Color = Color3.fromRGB(60, 60, 70) end -- locked spot (grey): buy it with "+1 Equip"
+				if s == unlocked + 1 then -- the next slot you can buy shows its price
+					local bb = billboard(stand, "ItemTag", UDim2.fromScale(6, 2.4), Vector3.new(0, 2.8, 0))
+					bb.MaxDistance = 70
+					label(bb, "Name", "Slot " .. s, Color3.new(1, 1, 1), UDim2.fromScale(1, 0.5), UDim2.fromScale(0, 0), 2)
+					label(bb, "Income", "$" .. Config.FormatNum(Config.StandCost(unlocked)), Color3.fromRGB(124, 255, 106), UDim2.fromScale(1, 0.5), UDim2.fromScale(0, 0.5), 2.5)
+				end
 			elseif idx then
 				local item = prof.Items[idx]
 				local def = Config.Items[item.id]
@@ -1119,7 +1125,7 @@ end
 
 -- where on a plot boxes may be placed (plot-local): open floor in front of the shop shelf
 local PLACE_U = Config.Court.plotWidth / 2 - 4
-local PLACE_W_MIN, PLACE_W_MAX = 5, 72
+local PLACE_W_MIN, PLACE_W_MAX = 5, 44 -- (the podium rows start at w 46)
 
 local function placeBoxAt(player, worldPos)
 	local prof, c, plot = profiles[player], carrying[player], playerPlot[player]
@@ -1951,16 +1957,19 @@ local function spawnCustomer(player, plot, standIndex, item)
 	-- plot-local coords: u = sideways, w = depth from the street
 	local function toWorld(u, w) local p = (frame * CFrame.new(u, 0, -w)).Position return Vector3.new(p.X, 0, p.Z) end
 	local function toLocal(pos) local p = frame:PointToObjectSpace(pos) return p.X, -p.Z end
-	local su = toLocal(stand.Position)
+	local su, sw = toLocal(stand.Position)
+	local aisle = su + 4.75 -- walk between the podium columns
 	local side = (math.random() < 0.5) and -1 or 1
 	local W = {}
 	local function go(u, w, wait, action) table.insert(W, {pos = toWorld(u, w), wait = wait or 0, action = action}) end
 	-- walk in through the gate, straight to the shelf, grab it (pays instantly), leave
 	go(side * 5, -6)
 	go(side * 3, 4)
-	go(su * 0.6, 50)
-	go(su, 77.5, 1.2, "take")
-	go(su * 0.6, 50)
+	go(aisle, 45)
+	go(aisle, sw - 4.5)
+	go(su, sw - 3.6, 1.2, "take")
+	go(aisle, sw - 4.5)
+	go(aisle, 45)
 	go(side * 3, 4)
 	go(side * 5, -6)
 	go(side * 50, -10, 0, "leave")
@@ -3030,7 +3039,7 @@ task.spawn(function()
 				notifyAll("Good morning! The warehouse is open again - go steal!", Color3.fromRGB(255, 230, 120))
 				pcall(function()
 					Lighting.ClockTime = 6
-					TweenService:Create(Lighting, TweenInfo.new(6), {ClockTime = 14, Brightness = 2.5, OutdoorAmbient = Color3.fromRGB(165, 165, 165)}):Play()
+					TweenService:Create(Lighting, TweenInfo.new(6), {ClockTime = 14, Brightness = 3, OutdoorAmbient = Color3.fromRGB(175, 175, 185)}):Play()
 				end)
 			end
 		end

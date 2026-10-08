@@ -119,9 +119,9 @@ local STORE_HW = Config.StoreHalfWidth()
 do
 	local Lighting = game:GetService("Lighting")
 	Lighting.ClockTime = 14
-	Lighting.Brightness = 2.5
-	Lighting.Ambient = RGB(150, 156, 172)
-	Lighting.OutdoorAmbient = RGB(150, 156, 172)
+	Lighting.Brightness = 3
+	Lighting.Ambient = RGB(175, 175, 185)
+	Lighting.OutdoorAmbient = RGB(175, 175, 185)
 	Lighting.GlobalShadows = false
 	for _, e in ipairs(Lighting:GetChildren()) do
 		if e.Name == "StealABoxFX" or e:IsA("Atmosphere") or e:IsA("Sky") then e:Destroy() end
@@ -132,12 +132,12 @@ do
 	end)
 	local cc = Instance.new("ColorCorrectionEffect")
 	cc.Name = "StealABoxFX"
-	cc.Saturation = 0.28
-	cc.Contrast = 0.06
+	cc.Saturation = 0.35
+	cc.Contrast = 0.08
 	cc.TintColor = RGB(255, 252, 245)
 	cc.Parent = Lighting
 	local atm = Instance.new("Atmosphere")
-	atm.Density = 0.24
+	atm.Density = 0.14
 	atm.Offset = 0.2
 	atm.Color = RGB(205, 228, 255)
 	atm.Decay = RGB(120, 170, 235)
@@ -159,42 +159,45 @@ do
 	P(root, "CourtBase", V(MAPW * 2 + 12, 2, COURT_LEN + 12), C(0, -1, COURT_LEN / 2), RGB(110, 90, 70))
 	P(root, "WarehouseBase", V(STORE_HW * 2 + 8, 2, FRONT_Z - STORE_END + 2), C(0, -1, (FRONT_Z + STORE_END - 2) / 2), RGB(110, 90, 70))
 	-- grass: 3 big parts (left, right, behind the street)
-	local GRASS, SW = RGB(100, 210, 45), 16
+	local GRASS, SW = RGB(95, 215, 60), 16
 	local grass = folder(root, "Grass")
 	for _, sx in ipairs({-1, 1}) do
-		P(grass, "Tile", V(MAPW - SW, 0.2, COURT_LEN + 2), C(sx * (MAPW + SW) / 2, 0.1, COURT_LEN / 2 - 1), GRASS, M.Grass)
+		P(grass, "Tile", V(MAPW - SW, 0.2, COURT_LEN + 2), C(sx * (MAPW + SW) / 2, 0.1, COURT_LEN / 2 - 1), GRASS).TopSurface = Enum.SurfaceType.Studs
 	end
 	-- the street from the spawn to the store door
 	local streetEnd = COURT_LEN
-	P(root, "Street", V(SW * 2, 0.3, streetEnd), C(0, 0.15, streetEnd / 2), RGB(100, 104, 118), M.Concrete)
-	for z = 10, COURT_LEN - 10, 20 do
-		P(root, "LaneDash", V(1, 0.05, 8), C(0, 0.32, z), RGB(255, 225, 90), M.SmoothPlastic, NOHIT)
+	P(root, "Street", V(SW * 2, 0.3, streetEnd), C(0, 0.15, streetEnd / 2), RGB(52, 54, 62))
+	for _, x in ipairs({-0.6, 0.6}) do -- the double yellow line
+		P(root, "LaneLine", V(0.5, 0.04, COURT_LEN), C(x, 0.32, COURT_LEN / 2), RGB(255, 210, 40), nil, NOHIT)
 	end
 	for _, sx in ipairs({-1, 1}) do
-		P(root, "Curb", V(1.4, 0.6, COURT_LEN), C(sx * (SW - 0.7), 0.3, COURT_LEN / 2), RGB(235, 235, 240), M.SmoothPlastic, NOHIT)
+		P(root, "EdgeLine", V(0.5, 0.04, COURT_LEN), C(sx * (SW - 3), 0.32, COURT_LEN / 2), RGB(245, 245, 245), nil, NOHIT)
+		P(root, "Curb", V(2, 0.8, COURT_LEN), C(sx * (SW - 1), 0.4, COURT_LEN / 2), RGB(205, 205, 212), nil, NOHIT).TopSurface = Enum.SurfaceType.Studs
 	end
 	-- red brick walls all around (they meet the store front at z -4)
 	local BRICK, CAP = RGB(186, 88, 66), RGB(240, 222, 196)
-	-- (now a low cream garden wall with a puffy hedge on top; an invisible wall keeps everyone in)
-	local STONE, HEDGE = RGB(245, 232, 205), RGB(60, 170, 65)
+	-- chunky brown checker dirt walls with grass on top (an invisible wall keeps everyone in)
+	local DIRT1, DIRT2, LIP = RGB(195, 125, 72), RGB(168, 104, 60), RGB(95, 215, 60)
+	local DH = 7 -- each checker block is 8 long and 7 tall, 2 rows
+	local function dirt(name, size, cf, k)
+		P(root, name, size, cf, (k % 2 == 0) and DIRT1 or DIRT2, nil, NOHIT).TopSurface = Enum.SurfaceType.Studs
+	end
 	for _, sx in ipairs({-1, 1}) do
 		P(root, "CourtWall", V(4, 60, COURT_LEN + 8), C(sx * (MAPW + 2), 30, COURT_LEN / 2), BRICK, nil, {Transparency = 1})
-		P(root, "GardenWall", V(4, 5, COURT_LEN + 8), C(sx * (MAPW + 2), 2.5, COURT_LEN / 2), STONE, nil, NOHIT)
-		P(root, "WallTrim", V(4.8, 0.8, COURT_LEN + 8), C(sx * (MAPW + 2), 5.2, COURT_LEN / 2), CAP, nil, NOHIT)
-		P(root, "Hedge", V(4.6, 5, COURT_LEN + 8), C(sx * (MAPW + 2), 8, COURT_LEN / 2), HEDGE, nil, NOHIT)
-		for z = 2, COURT_LEN + 2, 9 do
-			local h = P(root, "HedgeBump", V(6, 6, 6), C(sx * (MAPW + 2), 10.2, z), HEDGE:Lerp(WHITE, (z % 2) * 0.08), nil, NOHIT)
-			h.Shape = Enum.PartType.Ball
+		for k = 0, math.ceil((COURT_LEN + 8) / 8) - 1 do
+			for row = 0, 1 do
+				dirt("DirtWall", V(6, DH, 8), C(sx * (MAPW + 3), DH * (row + 0.5), -4 + k * 8 + 4), k + row)
+			end
 		end
+		P(root, "GrassLip", V(7, 1.2, COURT_LEN + 8), C(sx * (MAPW + 3), DH * 2 + 0.6, COURT_LEN / 2), LIP, nil, NOHIT).TopSurface = Enum.SurfaceType.Studs
 	end
 	P(root, "BackWall", V(MAPW * 2 + 8, 60, 4), C(0, 30, COURT_LEN + 2), BRICK, nil, {Transparency = 1})
-	P(root, "GardenWall", V(MAPW * 2 + 8, 5, 4), C(0, 2.5, COURT_LEN + 2), STONE, nil, NOHIT)
-	P(root, "WallTrim", V(MAPW * 2 + 8.8, 0.8, 4.8), C(0, 5.2, COURT_LEN + 2), CAP, nil, NOHIT)
-	P(root, "Hedge", V(MAPW * 2 + 8.6, 5, 4.6), C(0, 8, COURT_LEN + 2), HEDGE, nil, NOHIT)
-	for x = -MAPW, MAPW, 9 do
-		local h = P(root, "HedgeBump", V(6, 6, 6), C(x, 10.2, COURT_LEN + 2), HEDGE:Lerp(WHITE, (math.abs(x) % 2) * 0.08), nil, NOHIT)
-		h.Shape = Enum.PartType.Ball
+	for k = 0, math.ceil((MAPW * 2) / 8) - 1 do
+		for row = 0, 1 do
+			dirt("DirtWall", V(8, DH, 6), C(-MAPW + k * 8 + 4, DH * (row + 0.5), COURT_LEN + 3), k + row)
+		end
 	end
+	P(root, "GrassLip", V(MAPW * 2 + 12, 1.2, 7), C(0, DH * 2 + 0.6, COURT_LEN + 3), LIP, nil, NOHIT).TopSurface = Enum.SurfaceType.Studs
 	-- the "Warehouse" teleport lands here, right in front of the store door
 	P(root, "EntrancePoint", V(2, 0.2, 2), C(0, 0.5, 10), RGB(0, 0, 0), nil, GHOST)
 	-- the tutorial points here (inside the door) while you're still outside
@@ -2390,7 +2393,7 @@ for areaIndex, area in ipairs(Config.Areas) do
 	local bio = BIOMES[areaIndex]
 
 	-- floor (studded, like the classic Roblox look) + accent border
-	D(r, "Floor", V(HW * 2, 0.4, SL), 0, 0.3, SL / 2, bio.lane, M.SmoothPlastic)
+	D(r, "Floor", V(HW * 2, 0.4, SL), 0, 0.3, SL / 2, bio.lane, M.SmoothPlastic).TopSurface = Enum.SurfaceType.Studs
 	-- big cartoon checker tiles
 	local TS = HW * 2 / 6
 	local tileCol = bio.lane:Lerp(RGB(255, 255, 255), 0.2)
@@ -2398,7 +2401,7 @@ for areaIndex, area in ipairs(Config.Areas) do
 		local len = math.min(TS, SL - j * TS)
 		for i = 0, 5 do
 			if (i + j) % 2 == 0 then
-				D(r, "FloorTile", V(TS, 0.04, len), -HW + TS * (i + 0.5), F + 0.02, j * TS + len / 2, tileCol, M.SmoothPlastic, FX)
+				D(r, "FloorTile", V(TS, 0.04, len), -HW + TS * (i + 0.5), F + 0.02, j * TS + len / 2, tileCol, M.SmoothPlastic, FX).TopSurface = Enum.SurfaceType.Studs
 			end
 		end
 	end
@@ -2529,97 +2532,60 @@ local function buildPlot(i, side, zc)
 	o:SetAttribute("Side", side)
 
 	-- the tiled shop floor you click to place boxes on (a checker in the base's colour)
-	local floor = PP("PlotFloor", V(CW, 0.4, CD), 0, 0.2, CD / 2, col:Lerp(WHITE, 0.85))
+	local floor = PP("PlotFloor", V(CW, 0.4, CD), 0, 0.2, CD / 2, RGB(100, 215, 65))
+	floor.TopSurface = Enum.SurfaceType.Studs
 	floor:SetAttribute("Placeable", true)
 	local TILE_N = 8
 	local ts = CW / TILE_N
 	for i = 0, TILE_N - 1 do
 		for j = 0, TILE_N - 1 do
 			if (i + j) % 2 == 0 then
-				PP("FloorTile", V(ts, 0.06, ts), -HU + ts * (i + 0.5), 0.43, ts * (j + 0.5), col:Lerp(WHITE, 0.55), nil, NOHIT)
+				PP("FloorTile", V(ts, 0.06, ts), -HU + ts * (i + 0.5), 0.43, ts * (j + 0.5), RGB(125, 228, 80), nil, NOHIT).TopSurface = Enum.SurfaceType.Studs
 			end
 		end
 	end
-	-- real shop walls on the sides and at the back (white, a coloured band, a glowing light strip on top)
-	local WALL_COL = RGB(248, 246, 240)
-	local function wall(u0, w0, u1, w1, lamp)
-		local a, b = W(u0, 0, w0).Position, W(u1, 0, w1).Position
-		local mid = (a + b) / 2
-		local len = (b - a).Magnitude + 1.2
-		local cf = CFrame.lookAt(mid, mid + (b - a).Unit)
-		P(m, "Wall", V(1.2, 16, len), cf + V(0, 8, 0), WALL_COL)
-		P(m, "WallBand", V(1.4, 4, len), cf + V(0, 2, 0), col, nil, NOHIT)
-		P(m, "WallTrim", V(1.6, 0.8, len + 0.4), cf + V(0, 16.2, 0), col, nil, NOHIT)
-		local strip = P(m, "WallLight", V(1.7, 0.5, len - 2), cf + V(0, 14.6, 0), RGB(255, 250, 235), M.Neon, NOHIT)
-		if lamp then
-			local l = Instance.new("PointLight")
-			l.Color = RGB(255, 244, 220)
-			l.Range = 48
-			l.Brightness = 0.9
-			l.Shadows = false
-			l.Parent = strip
-		end
-	end
-	wall(-HU, 0, -HU, CD, true)
-	wall(HU, 0, HU, CD, true)
-	wall(-HU, CD, HU, CD, false)
-	-- a roof over the whole shop (the front stays open to walk in)
-	PP("Ceiling", V(CW + 2.4, 1, CD + 1.2), 0, 17.1, CD / 2, col:Lerp(WHITE, 0.55))
-	PP("RoofTrim", V(CW + 3, 0.6, 1.4), 0, 17.6, 0, col, nil, NOHIT)
-	for k = 0, 11 do
-		local stripe = PP("Awning", V(CW / 12, 0.4, 6), -HU + (k + 0.5) * CW / 12, 15.9, -2.6, (k % 2 == 0) and col or WHITE, nil, NOHIT, CFrame.Angles(math.rad(18), 0, 0))
-		stripe.CastShadow = false
-		PP("AwningEdge", V(CW / 12, 1.3, 0.3), -HU + (k + 0.5) * CW / 12, 14.4, -5.5, (k % 2 == 0) and WHITE or col, nil, NOHIT).CastShadow = false
-	end
-	-- a low wooden fence at the front (open in the middle for the door)
+	-- a chunky wooden fence all around (open in the middle of the front for the gate)
 	local function fence(u0, w0, u1, w1)
 		local a, b = W(u0, 0, w0).Position, W(u1, 0, w1).Position
 		local mid = (a + b) / 2
 		local len = (b - a).Magnitude + 1.2
 		local cf = CFrame.lookAt(mid, mid + (b - a).Unit)
-		local WOOD, WOOD_DARK = RGB(165, 105, 55), RGB(120, 75, 40)
-		P(m, "FenceRail", V(0.5, 0.6, len), cf + V(0, 1.4, 0), WOOD, M.Wood, NOHIT)
-		P(m, "FenceRail", V(0.5, 0.6, len), cf + V(0, 2.8, 0), WOOD, M.Wood, NOHIT)
-		local posts = math.max(1, math.floor(len / 12))
+		local WOOD, WOOD_DARK = RGB(170, 110, 62), RGB(128, 80, 44)
+		P(m, "FenceRail", V(0.7, 0.9, len), cf + V(0, 1.6, 0), WOOD, nil, NOHIT)
+		P(m, "FenceRail", V(0.7, 0.9, len), cf + V(0, 3.3, 0), WOOD, nil, NOHIT)
+		local posts = math.max(1, math.floor(len / 9))
 		for k = 0, posts do
 			local pos = a:Lerp(b, k / posts)
-			P(m, "FencePost", V(0.9, 3.6, 0.9), CFrame.new(pos + V(0, 1.8, 0)), WOOD_DARK, M.Wood, NOHIT)
+			P(m, "FencePost", V(1.3, 4.6, 1.3), CFrame.new(pos + V(0, 2.3, 0)), WOOD_DARK, nil, NOHIT).TopSurface = Enum.SurfaceType.Studs
 		end
 	end
 	fence(-HU, 0, -12, 0)
 	fence(12, 0, HU, 0)
+	fence(-HU, 0, -HU, CD)
+	fence(HU, 0, HU, CD)
+	fence(-HU, CD, HU, CD)
 
 	PP("SpawnPoint", V(2, 0.2, 2), -18, 0.6, 10, RGB(0, 0, 0), nil, GHOST)
 
-	-- THE SHOP: one long display shelf (5 units x 3 layers x 3 spots = 45 stands)
-	local UW, UGAP = 15.6, 16.8
-	local WIDE = UGAP * (Config.ShelfUnits - 1) + UW
-	PP("ShelfBase", V(WIDE, 2, 5.6), 0, 1.2, 84, WHITE)
-	PP("ShelfBack", V(WIDE + 1.2, 17, 0.6), 0, 8.6, 87.2, col)
-	for _, y in ipairs({6.5, 10.9}) do
-		PP("ShelfTier", V(WIDE, 0.4, 5.4), 0, y, 84.2, RGB(245, 245, 248))
-	end
-	PP("ShelfTop", V(WIDE + 1.2, 0.7, 6.2), 0, 15.6, 84, WHITE)
-	for d = 0, Config.ShelfUnits do
-		PP("ShelfSide", V(1, 15.4, 6), -WIDE / 2 - 0.6 + d * UGAP, 8, 84, WHITE)
-	end
-	-- the glowing price rail (the server uses its colour for empty spots)
-	PP("GlowStrip", V(WIDE, 0.25, 0.3), 0, 16.1, 80.9, glow, M.Neon, NOHIT)
-	for k = 1, Config.ShelfUnits do
-		local cu = -33.6 + (k - 1) * UGAP
-		for layer = 0, Config.ShelfLayers - 1 do
-			local y = ({2.35, 6.85, 11.25})[layer + 1]
-			for c = 0, Config.ShelfCols - 1 do
-				local s = (k - 1) * Config.ShelfLayers * Config.ShelfCols + layer * Config.ShelfCols + c + 1
-				local su = cu + (c - 1) * 5
-				local stand = PP("Stand" .. s, V(4.4, 0.3, 4.2), su, y, 83.6, RGB(245, 245, 250))
-				stand:SetAttribute("Slot", s)
-				PP("StandTop" .. s, V(4.4, 0.12, 0.35), su, y + 0.05, 81.55, glow, M.Neon, NOHIT)
-			end
+	-- THE SHOP: rows of podiums on dirt strips (9 across x 5 rows = 45 slots, slot 1 front-left)
+	local COLS, ROWS = 9, 5
+	for r = 0, ROWS - 1 do
+		local w = 50 + r * 9
+		PP("DirtRow", V(CW - 6, 0.08, 7.4), 0, 0.45, w, RGB(226, 186, 122), nil, NOHIT).TopSurface = Enum.SurfaceType.Studs
+		for c = 0, COLS - 1 do
+			local s = r * COLS + c + 1
+			local u = -38 + c * 9.5
+			PP("Podium", V(5.2, 2, 5.2), u, 1.2, w, RGB(150, 156, 172))
+			local stand = PP("Stand" .. s, V(5.8, 0.4, 5.8), u, 2.4, w, RGB(245, 245, 250))
+			stand.TopSurface = Enum.SurfaceType.Studs
+			stand:SetAttribute("Slot", s)
+			PP("StandTop" .. s, V(5.8, 0.5, 0.4), u, 1.6, w - 2.75, glow, M.Neon, NOHIT)
 		end
 	end
-	local shopSign = PP("ShopSign", V(26, 4.6, 0.6), 0, 19.4, 87, col)
-	PP("ShopSignFrame", V(27.4, 6, 0.4), 0, 19.4, 87.4, WHITE)
+	PP("GlowStrip", V(1, 0.2, 1), 0, -2, 50, glow, M.Neon, GHOST) -- (the server reads the empty-slot colour from this)
+	-- a wooden SHOP board at the back
+	for _, u in ipairs({-11, 11}) do PP("ShopSignPost", V(1.2, 9, 1.2), u, 4.5, 91, RGB(128, 80, 44)) end
+	local shopSign = PP("ShopSign", V(24, 5, 0.8), 0, 8.6, 91, RGB(170, 110, 62))
 	signText(shopSign, Enum.NormalId.Back, "SHOP", 40, 4, 200)
 
 	-- TREADMILL (right front corner): run on the belt to earn speed, upgrade at the console
@@ -2805,7 +2771,17 @@ do
 		end
 	end
 
-	-- THE SQUARE: trees in the corners, bushes and flowers, a crosswalk to the door
+	-- THE SQUARE: a tan studded dirt checker plaza, trees in the corners, bushes and flowers, a crosswalk
+	for _, sx in ipairs({-1, 1}) do
+		P(deco, "Plaza", V(MAPW - 16, 0.1, SQUARE - FRONT_Z - 2), C(sx * (MAPW + 16) / 2, 0.25, (SQUARE + FRONT_Z + 2) / 2), RGB(232, 196, 135), nil, DECO).TopSurface = Enum.SurfaceType.Studs
+		for i = 0, 7 do
+			for j = 0, 3 do
+				if (i + j) % 2 == 0 then
+					P(deco, "PlazaTile", V(12, 0.06, 11.5), C(sx * (16 + 6 + i * 12), 0.31, FRONT_Z + 2 + 5.75 + j * 11.5), RGB(215, 176, 115), nil, DECO).TopSurface = Enum.SurfaceType.Studs
+				end
+			end
+		end
+	end
 	tree(-104, 34, 1.2) tree(-74, 38, 1) tree(104, 36, 1.2) tree(104, 6, 1.1) tree(84, 40, 0.9)
 	bush(-46, 38) bush(-24, 30) bush(30, 38) bush(40, 6) bush(-102, 14)
 	flowers(-108, 12, -60, 44, 22)

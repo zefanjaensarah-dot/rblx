@@ -39,9 +39,9 @@ function ShopWindow.init(ctx)
 				b.setText("SOON")
 				b.setEnabled(false)
 			else
-				b.setText("R$ " .. fmt(ctx.price(key, fallback)))
+				b.setText("Buy  R$ " .. fmt(ctx.price(key, fallback)))
 				b.setEnabled(true)
-				b.setColor(C.green)
+				b.setColor(UI.rgb(255, 200, 30)) -- yellow "Buy" pill, like the inspiration
 			end
 		end
 		return b, draw
