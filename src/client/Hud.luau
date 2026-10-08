@@ -63,7 +63,7 @@ function Hud.init(ctx)
 	-- TOP-LEFT MENU: a big shiny SHOP button, then candy-coloured square buttons
 	------------------------------------------------------------------
 	local MENU_COLS = TOUCH and 3 or 2
-	local CELL_W, CELL_H, GAP = TOUCH and 88 or 92, TOUCH and 92 or 96, TOUCH and 8 or 10
+	local CELL_W, CELL_H, GAP = TOUCH and 84 or 92, TOUCH and 80 or 96, TOUCH and 8 or 10
 	local MENU_W = MENU_COLS * CELL_W + (MENU_COLS - 1) * GAP
 	-- (above the dark layer behind windows: you can jump from one window to another in one click)
 	local menu = box(root, {Name = "Menu", Position = UDim2.fromOffset(12, 8), Size = UDim2.fromOffset(MENU_W + 8, 520), ZIndex = 55})
@@ -74,8 +74,8 @@ function Hud.init(ctx)
 	local badges = {}
 	ctx.badges = badges
 
-	local shopBtn = UI.button(menu, {Name = "Shop", Text = "SHOP", Color = C.yellow, Size = UDim2.fromOffset(MENU_W, TOUCH and 66 or 72), Icon = "shop",
-		IconSize = TOUCH and 46 or 50, IconColor = C.red, TextSize = TOUCH and 34 or 38, LayoutOrder = 0, Radius = 18, Depth = 6})
+	local shopBtn = UI.button(menu, {Name = "Shop", Text = "SHOP", Color = C.yellow, Size = UDim2.fromOffset(MENU_W, TOUCH and 60 or 72), Icon = "shop",
+		IconSize = TOUCH and 46 or 50, IconColor = C.red, TextSize = TOUCH and 34 or 38, LayoutOrder = 0, Radius = 9, Depth = 6})
 	-- a light sweep runs over the Shop button every few seconds
 	local shopSheen = new("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.white, BorderSizePixel = 0, ZIndex = shopBtn.face.ZIndex + 1}, shopBtn.face)
 	UI.corner(shopSheen, 18)
@@ -101,11 +101,11 @@ function Hud.init(ctx)
 	local function squareButton(parent, key, label, iconName, color, order, size)
 		local holder = box(parent, {Name = key, LayoutOrder = order, Size = size or UDim2.fromScale(1, 1)})
 		local shadow = new("Frame", {Position = UDim2.fromOffset(0, 6), Size = UDim2.new(1, 0, 1, -6), BackgroundColor3 = color:Lerp(C.black, 0.5)}, holder)
-		UI.corner(shadow, 18)
-		UI.stroke(shadow, 3)
+		UI.corner(shadow, 9)
+		UI.stroke(shadow, 3.5)
 		local face = new("TextButton", {Size = UDim2.new(1, 0, 1, -6), BackgroundColor3 = color, Text = "", AutoButtonColor = false}, holder)
-		UI.corner(face, 18)
-		UI.stroke(face, 3)
+		UI.corner(face, 9)
+		UI.stroke(face, 3.5)
 		UI.vivid(face, color)
 		local shine = new("Frame", {Position = UDim2.fromOffset(6, 4), Size = UDim2.new(1, -12, 0.38, 0), BackgroundColor3 = C.white, BackgroundTransparency = 0.72, BorderSizePixel = 0}, face)
 		UI.corner(shine, 14)
@@ -121,6 +121,37 @@ function Hud.init(ctx)
 		local face = squareButton(grid, key, label, iconName, color, i)
 		face.Activated:Connect(function() UI.toggle(key) end)
 		badges[key] = UI.badge(face, face.ZIndex)
+	end
+
+	-- SLOW MODE toggle under the menu: a dark green track with a red square knob (green when on)
+	do
+		local ROW_H = TOUCH and 40 or 46
+		local row = box(menu, {Size = UDim2.fromOffset(MENU_W, ROW_H), LayoutOrder = 2})
+		local track = new("TextButton", {Size = UDim2.fromOffset(ROW_H * 2, ROW_H), BackgroundColor3 = UI.rgb(45, 95, 35), Text = "", AutoButtonColor = false}, row)
+		UI.corner(track, 7)
+		UI.stroke(track, 3.5)
+		local k = ROW_H - 8
+		local knob = new("Frame", {Position = UDim2.fromOffset(4, 4), Size = UDim2.fromOffset(k, k), BackgroundColor3 = C.red}, track)
+		UI.corner(knob, 6)
+		UI.stroke(knob, 3)
+		UI.shade(knob, C.white, UI.rgb(190, 190, 200))
+		UI.label(row, "Slow Mode", {Position = UDim2.fromOffset(ROW_H * 2 + 10, 0), Size = UDim2.new(1, -ROW_H * 2 - 10, 1, 0), Max = TOUCH and 20 or 24,
+			Stroke = 2.6, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false})
+		local slowOn = false
+		local function setSlow(on)
+			slowOn = on
+			UI.tween(knob, 0.25, {Position = UDim2.fromOffset(on and (ROW_H * 2 - k - 4) or 4, 4)}, Enum.EasingStyle.Back)
+			knob.BackgroundColor3 = on and C.green or C.red
+			track.BackgroundColor3 = on and UI.rgb(30, 130, 45) or UI.rgb(45, 95, 35)
+		end
+		hud.setSlowToggle = setSlow
+		UI.pressable(track)
+		track.Activated:Connect(function()
+			setSlow(not slowOn)
+			ctx.invoke("SlowMode", slowOn)
+			local sw = ctx.settingSwitches and ctx.settingSwitches.SlowMode
+			if sw then sw.set(slowOn, true) end
+		end)
 	end
 
 	------------------------------------------------------------------
@@ -764,6 +795,7 @@ function Hud.init(ctx)
 			local nowT = workspace:GetServerTimeNow()
 			local night = ReplicatedStorage:GetAttribute("IsNight")
 			local ends = ReplicatedStorage:GetAttribute("PhaseEndsAt")
+			phaseT.frame.Visible = ends ~= nil -- (no day/night in the Mega Mart)
 			phaseT.icon.Visible = not night
 			sunIcon.Visible = night == true
 			local inWord = TOUCH and " " or " in "

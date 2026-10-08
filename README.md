@@ -1,6 +1,8 @@
 # Steal a Box
 
-Steal boxes from a guarded warehouse, unbox them at your base, sell the items in your shop and get faster on your treadmill.
+Steal boxes from the **MEGA MART** supermarket, unbox them at your base, sell the items in your shop and get faster on your treadmill.
+
+**v6 - the Mega Mart:** the warehouse is now one big supermarket with 10 departments (Fruit & Veg, Bakery, Dairy, Butcher, Frozen, Snacks & Candy, Drinks, Toys, Electronics, Manager's Vault). Each one is bigger and harder than the last, with walls on both sides, aisles, fridges and security guards. The lobby is simple: your bases, the Trails Shop, a FREE gift (every 15 minutes) and Top Money / Top Speed leaderboards. The map went from about 10,000 parts and 369 lights to about 3,400 parts and no lights, so it lags much less. Boxes restock a little while after they are taken (no more day/night). Old saves are converted to the new supermarket items automatically.
 
 **Open `StealABox_v5.rbxl` in Roblox Studio.** (`StealABox_polished_v4.rbxl` is the previous version, kept for reference.)
 

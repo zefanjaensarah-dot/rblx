@@ -37,8 +37,8 @@ Shop.Passes = {
 
 -- DEVELOPER PRODUCTS: can be bought again and again
 --   kind "cash":       gives `minutes` worth of your income (never less than `base`)
---   kind "skip":       every box unboxing on your plot is ready right away
---   kind "luckybox":   a guaranteed Rainbow box (1 in 5 is Galaxy!) from your best warehouse area
+--   kind "skip":       every box unboxing on your base is ready right away
+--   kind "luckybox":   a guaranteed Rainbow box (1 in 5 is Galaxy!) from your best department
 --   kind "serverluck": 2x mutation luck for EVERYONE in the server (see Config.ServerLuck)
 Shop.Products = {
 	{key = "CashS",  id = 0, robux = 25,  kind = "cash", name = "Pile of Cash",     minutes = 10,  base = 2500,   icon = "cash"},
@@ -46,9 +46,9 @@ Shop.Products = {
 	{key = "CashL",  id = 0, robux = 199, kind = "cash", name = "Vault of Cash",    minutes = 180, base = 120000, icon = "coin"},
 	{key = "CashXL", id = 0, robux = 499, kind = "cash", name = "Mountain of Cash", minutes = 720, base = 900000, icon = "star"},
 	{key = "SkipUnbox",  id = 0, robux = 39,  kind = "skip",       name = "Instant Unbox", icon = "clock",
-		desc = "Every box on your plot is ready to open NOW."},
+		desc = "Open every box on your base right now"},
 	{key = "LuckyBox",   id = 0, robux = 99,  kind = "luckybox",   name = "Lucky Box",     icon = "gift",
-		desc = "A guaranteed RAINBOW box (1 in 5 is GALAXY!) from your best area."},
+		desc = "A guaranteed RAINBOW box (1 in 5 is GALAXY!) from your best department."},
 	{key = "ServerLuck", id = 0, robux = 149, kind = "serverluck", name = "Server Luck",   icon = "clover",
 		desc = "2x mutation luck for EVERYONE in the server for 15 minutes. Stacks!"},
 }

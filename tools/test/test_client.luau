@@ -71,10 +71,10 @@ char.Parent = ws
 H.setValue(localPlayer, "Character", char)
 
 -- fake server answers
-local profile = {Cash = 123456, Stolen = 3, Boxes = {OldBox = 2, HayBox = 1}, Mutations = {Normal = 3}, ItemsFound = {OldSpoon = 2, Carrot = 1},
-	Items = {{id = "OldSpoon", mutation = "Normal", size = "Normal", stand = 1}, {id = "Carrot", mutation = "Gold", size = "Big"},
-		{id = "GoldenEgg", mutation = "Rainbow", size = "Giant", stand = 2}},
-	Unboxing = {["1"] = {id = "OldBox", mutation = "Normal", size = "Normal", readyAt = 0, duration = 10, u = 0, w = 30, rot = 0}},
+local profile = {Cash = 123456, Stolen = 3, Boxes = {AppleCrate = 2, BananaBox = 1}, Mutations = {Normal = 3}, ItemsFound = {Apple = 2, Banana = 1},
+	Items = {{id = "Apple", mutation = "Normal", size = "Normal", stand = 1}, {id = "Banana", mutation = "Gold", size = "Big"},
+		{id = "Watermelon", mutation = "Rainbow", size = "Giant", stand = 2}},
+	Unboxing = {["1"] = {id = "AppleCrate", mutation = "Normal", size = "Normal", readyAt = 0, duration = 10, u = 0, w = 30, rot = 0}},
 	Treadmill = 1, SpeedPoints = 150, TutorialDone = false, Trails = {Dust = true}, Trail = "Dust", Customers = 2, SpeedBoost = 2,
 	Receipts = {}, IndexClaimed = {["2"] = true}, Daily = {Streak = 2, Last = math.floor((os.clock() + 1.7e9) / 86400) - 1}, Codes = {}, Settings = {Sfx = true}}
 H.onInvokeServer = function(action, arg, extra)
@@ -97,7 +97,7 @@ localPlayer:SetAttribute("SpeedPoints", 4567)
 localPlayer:SetAttribute("PlotName", "Plot1")
 localPlayer:SetAttribute("GiftStart", os.clock() + 1.7e9 - 400)
 localPlayer:SetAttribute("GiftClaimed", "1")
-localPlayer:SetAttribute("Carrying", "OldBox")
+localPlayer:SetAttribute("Carrying", "AppleCrate")
 localPlayer:SetAttribute("CarryLabel", "Gold Big Old Box")
 localPlayer:SetAttribute("Chased", true)
 localPlayer:SetAttribute("OfflineEarned", 5000)
@@ -152,13 +152,13 @@ tl.Name = "Time"
 tl.Parent = bar
 fireClient("FX", "Opening", ub.Position, 4, ub, 2)
 for _ = 1, 30 do H.step(1, 0.1) end
-fireClient("FX", "Reveal3D", ub.Position, 4, {item = {id = "AntiqueVase", mutation = "Galaxy", size = "Huge"}, target = roblox.CFrame.new(0, 5, 80), targetScale = 1.2, owner = 1})
-fireClient("Reveal", {id = "AntiqueVase", mutation = "Galaxy", size = "Huge"}, true)
+fireClient("FX", "Reveal3D", ub.Position, 4, {item = {id = "GoldPineapple", mutation = "Galaxy", size = "Huge"}, target = roblox.CFrame.new(0, 5, 80), targetScale = 1.2, owner = 1})
+fireClient("Reveal", {id = "GoldPineapple", mutation = "Galaxy", size = "Huge"}, true)
 for _ = 1, 30 do H.step(1, 0.1) end
 -- shopper bubble + sale pop
 local think = H.newInstance("BillboardGui")
 think.Name = "Think"
-think:SetAttribute("Item", "Carrot")
+think:SetAttribute("Item", "Banana")
 think.Parent = ub
 S.CollectionService:AddTag(think, "ItemBubble")
 local pop = H.newInstance("BillboardGui")
@@ -178,7 +178,7 @@ task.wait(0.5)
 -- shop purchase granted
 fireClient("ShopEvent", "Granted", {title = "2x Cash", msg = "Thanks"})
 -- fling
-H.signalFor(remotes:FindFirstChild("Fling"), "OnClientEvent"):Fire(roblox.Vector3.new(0, 50, 80), 0.3, "Sleepy Watchman")
+H.signalFor(remotes:FindFirstChild("Fling"), "OnClientEvent"):Fire(roblox.Vector3.new(0, 50, 80), 0.3, "Sleepy Stock Boy")
 H.step(10)
 
 -- 3) open every window and press every button

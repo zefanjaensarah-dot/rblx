@@ -160,7 +160,7 @@ local function newProfile()
 	local p = {Cash = 0, Stolen = 0, Boxes = {}, Mutations = {}, ItemsFound = {},
 		Items = {}, Unboxing = {}, Upgrades = {}, Treadmill = 1, SpeedPoints = Config.StartSpeed, TutorialDone = false,
 		Trails = {}, Trail = nil, Customers = 1, SpeedBoost = 1, Receipts = {},
-		IndexClaimed = {}, Daily = {Streak = 0, Last = -1}, Codes = {}, Settings = {}}
+		IndexClaimed = {}, Daily = {Streak = 0, Last = -1}, Codes = {}, Settings = {}, SaveVersion = 2}
 	return p
 end
 
@@ -1498,7 +1498,7 @@ local SOLID = {
 	Wall = true, Barrier = true, BackWall = true, CourtWall = true, WallCap = true, BackWallCap = true, Ceiling = true,
 }
 local function passThrough(p)
-	if p:IsA("BasePart") and not SOLID[p.Name] then p.CollisionGroup = GROUP_PASS end
+	if p:IsA("BasePart") and not SOLID[p.Name] and p:GetAttribute("Solid") ~= true then p.CollisionGroup = GROUP_PASS end
 end
 for _, p in ipairs(world:GetDescendants()) do passThrough(p) end
 -- new things too (boxes that spawn, dropped boxes, unboxing boxes, shelf products...)
@@ -2680,8 +2680,9 @@ RunService.Heartbeat:Connect(function(dt)
 			local p = g.target
 			local _, hrp = getChar(p)
 			-- they chase you into the next area, but not further
-			local leashZ = math.min(Config.AreaStartZ(g.area) + 2 * L.sectionLen, L.frontZ + 12) -- chase through 2 areas, never out into the courtyard
-			local keep = hrp and carrying[p] and not isImmune(p) and hrp.Position.Z < leashZ and math.abs(hrp.Position.X) < L.halfWidth + 2
+			-- chase through this department and the one before it, never out into the courtyard
+			local leashZ = math.min(Config.AreaStartZ(g.area) + Config.AreaLen(math.max(1, g.area - 1)), L.frontZ + 12)
+			local keep = hrp and carrying[p] and not isImmune(p) and hrp.Position.Z < leashZ and math.abs(hrp.Position.X) < Config.AreaHalfWidth(g.area) + 2
 			if keep then
 				local flat = Vector3.new(hrp.Position.X - g.pos.X, 0, hrp.Position.Z - g.pos.Z)
 				if os.clock() < (g.wakeUntil or 0) then
@@ -2733,49 +2734,24 @@ RunService.Heartbeat:Connect(function(dt)
 end)
 
 ------------------------------------------------------------------
--- DAY / NIGHT: stolen boxes only come back at night.
--- Day: shelves slowly empty out. Night: everything restocks (and it's darker!).
+-- RESTOCK: an empty shelf spot gets a new box a little while after it was emptied
+-- (deeper departments take a bit longer). No day/night any more.
 ------------------------------------------------------------------
-local Lighting = game:GetService("Lighting")
 task.spawn(function()
-	local phaseNight = false
-	local phaseEnds = workspace:GetServerTimeNow() + Config.DayLength
-	ReplicatedStorage:SetAttribute("IsNight", false)
-	ReplicatedStorage:SetAttribute("PhaseEndsAt", phaseEnds)
+	local emptySince = {}
 	while true do
-		task.wait(0.25)
-		local t = workspace:GetServerTimeNow()
-		if t >= phaseEnds then
-			phaseNight = not phaseNight
-			phaseEnds = t + (phaseNight and Config.NightLength or Config.DayLength)
-			ReplicatedStorage:SetAttribute("IsNight", phaseNight)
-			ReplicatedStorage:SetAttribute("PhaseEndsAt", phaseEnds)
-			if phaseNight then
-				notifyAll("🌙 Night has fallen - the boxes are back on the shelves!", Color3.fromRGB(170, 190, 255))
-				-- restock every empty spot (a few at a time so it ripples through the warehouse)
-				task.spawn(function()
-					for i, sp in ipairs(boxSpawns) do
-						if not spawnFilled[sp] then
-							spawnBox(sp)
-							if i % 6 == 0 then task.wait(0.05) end
-						end
-					end
-				end)
+		task.wait(2)
+		local t = os.clock()
+		for _, sp in ipairs(boxSpawns) do
+			if spawnFilled[sp] then
+				emptySince[sp] = nil
 			else
-				notifyAll("☀️ Morning! No new boxes until night - grab what's left!", Color3.fromRGB(255, 230, 120))
+				emptySince[sp] = emptySince[sp] or t
+				if t - emptySince[sp] >= Config.RestockTime(sp:GetAttribute("Area") or 1, 1) then
+					emptySince[sp] = nil
+					spawnBox(sp)
+				end
 			end
-		end
-		-- sky: day runs 7:00 -> 17:30, night 19:00 -> 5:00
-		local len = phaseNight and Config.NightLength or Config.DayLength
-		local k = 1 - math.clamp((phaseEnds - t) / len, 0, 1)
-		if phaseNight then
-			Lighting.ClockTime = (19 + k * 10) % 24
-			Lighting.Brightness = 1.5
-			Lighting.OutdoorAmbient = Color3.fromRGB(110, 115, 200)
-		else
-			Lighting.ClockTime = 7 + k * 10.5
-			Lighting.Brightness = 3
-			Lighting.OutdoorAmbient = Color3.fromRGB(165, 165, 165)
 		end
 	end
 end)
@@ -2932,6 +2908,28 @@ end
 
 -- copy a loaded save into a fresh profile (only fields we know, with sane values)
 local function readSave(prof, data)
+	-- saves from before the Mega Mart: turn the old box / item ids into the new supermarket ones
+	if (tonumber(data.SaveVersion) or 1) < 2 then
+		local function remap(t, map)
+			if type(t) ~= "table" then return t end
+			local out = {}
+			for k, v in pairs(t) do
+				local nk = map[k] or k
+				out[nk] = (type(v) == "number" and type(out[nk]) == "number") and (out[nk] + v) or v
+			end
+			return out
+		end
+		data.Boxes = remap(data.Boxes, Config.OldBoxToNew)
+		data.ItemsFound = remap(data.ItemsFound, Config.OldItemToNew)
+		for _, it in ipairs(type(data.Items) == "table" and data.Items or {}) do
+			if type(it) == "table" then it.id = Config.OldItemToNew[it.id] or it.id end
+		end
+		for _, e in pairs(type(data.Unboxing) == "table" and data.Unboxing or {}) do
+			if type(e) == "table" then e.id = Config.OldBoxToNew[e.id] or e.id end
+		end
+	end
+	prof.SaveVersion = 2
+	prof.FreeGiftAt = tonumber(data.FreeGiftAt) or 0
 	prof.TutorialDone = (data.TutorialDone == true) or ((tonumber(data.Treadmill) or 1) >= 2)
 	prof.Cash = math.max(0, tonumber(data.Cash) or 0)
 	prof.Stolen = tonumber(data.Stolen) or 0
@@ -3141,3 +3139,129 @@ task.spawn(function()
 		end
 	end
 end)
+
+------------------------------------------------------------------
+-- FREE GIFT in the lobby: walk up and claim free cash every few minutes
+------------------------------------------------------------------
+do
+	local lobby = world:FindFirstChild("Lobby")
+	local gift = lobby and lobby:FindFirstChild("FreeGift")
+	local prompt = gift and gift:FindFirstChild("FreeGiftPrompt", true)
+	if prompt then
+		prompt.Triggered:Connect(function(player)
+			local prof = profiles[player]
+			if not prof then return end
+			local now = os.time()
+			if (prof.FreeGiftAt or 0) > now then
+				notify(player, "Next free gift in " .. Config.FormatTime((prof.FreeGiftAt or 0) - now), Color3.fromRGB(255, 220, 90))
+				return
+			end
+			local cash = Config.FreeGiftCash(totalIncome(player))
+			prof.Cash = prof.Cash + cash
+			prof.FreeGiftAt = now + Config.FreeGift.minutes * 60
+			sync(player)
+			notify(player, "FREE GIFT! +$" .. Config.FormatNum(cash), Color3.fromRGB(120, 255, 90))
+			FXEvent:FireAllClients("LevelUp", gift:GetPivot().Position, 2)
+		end)
+	end
+end
+
+------------------------------------------------------------------
+-- LEADERBOARDS: Top Money and Top Speed on the lobby wall (all servers, best 10)
+------------------------------------------------------------------
+do
+	local lobby = world:FindFirstChild("Lobby")
+	local boards = {
+		{key = "Cash", stat = "TopMoney", part = lobby and lobby:FindFirstChild("BoardTopMoney"), prefix = "$", color = Color3.fromRGB(120, 255, 90)},
+		{key = "SpeedPoints", stat = "TopSpeed", part = lobby and lobby:FindFirstChild("BoardTopSpeed"), prefix = "", color = Color3.fromRGB(110, 190, 255)},
+	}
+	local names = {}
+	local function nameOf(userId)
+		if names[userId] then return names[userId] end
+		local ok, n = pcall(function() return Players:GetNameFromUserIdAsync(userId) end)
+		names[userId] = ok and n or ("Player " .. userId)
+		return names[userId]
+	end
+	-- each board gets 10 rows of text
+	for _, b in ipairs(boards) do
+		if b.part then
+			local gui = Instance.new("SurfaceGui")
+			gui.Face = Enum.NormalId.Front
+			gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+			gui.PixelsPerStud = 20
+			gui.LightInfluence = 0
+			gui.Parent = b.part
+			local list = Instance.new("Frame")
+			list.BackgroundTransparency = 1
+			list.Size = UDim2.new(0.86, 0, 0.78, 0)
+			list.Position = UDim2.fromScale(0.07, 0.17)
+			list.Parent = gui
+			local layout = Instance.new("UIListLayout")
+			layout.Padding = UDim.new(0.01, 0)
+			layout.Parent = list
+			b.rows = {}
+			for i = 1, 10 do
+				local row = Instance.new("TextLabel")
+				row.Size = UDim2.new(1, 0, 0.09, 0)
+				row.BackgroundColor3 = Color3.fromRGB(40, 40, 52)
+				row.BackgroundTransparency = 0.15
+				row.FontFace = Config.Font
+				row.TextScaled = true
+				row.TextColor3 = Color3.new(1, 1, 1)
+				row.TextXAlignment = Enum.TextXAlignment.Left
+				row.Text = ""
+				row.LayoutOrder = i
+				local stroke = Instance.new("UIStroke")
+				stroke.Thickness = 2
+				stroke.Parent = row
+				row.Parent = list
+				b.rows[i] = row
+			end
+			pcall(function() b.store = DataStoreService:GetOrderedDataStore("StealABox_" .. b.stat) end)
+		end
+	end
+	-- big numbers don't fit an ordered store: store log10(value) * 1e6, it only has to keep the order
+	local function encode(v) return math.floor(math.log10(math.max(1, v)) * 1e6) end
+	local function decode(v) return 10 ^ (v / 1e6) end
+	local function refresh()
+		for _, b in ipairs(boards) do
+			if b.rows then
+				local best = {}
+				for _, p in ipairs(Players:GetPlayers()) do
+					local prof = profiles[p]
+					if prof then
+						best[p.UserId] = {name = p.Name, value = tonumber(prof[b.key]) or 0}
+						if b.store and not dontSave[p] then
+							pcall(function() b.store:SetAsync(tostring(p.UserId), encode(tonumber(prof[b.key]) or 0)) end)
+						end
+					end
+				end
+				if b.store then
+					pcall(function()
+						local page = b.store:GetSortedAsync(false, 10):GetCurrentPage()
+						for _, e in ipairs(page) do
+							local id = tonumber(e.key)
+							if id and not best[id] then best[id] = {name = nameOf(id), value = decode(e.value)} end
+						end
+					end)
+				end
+				local list = {}
+				for _, e in pairs(best) do table.insert(list, e) end
+				table.sort(list, function(x, y) return x.value > y.value end)
+				for i, row in ipairs(b.rows) do
+					local e = list[i]
+					row.Text = e and ("  #" .. i .. "  " .. e.name .. "   " .. b.prefix .. Config.FormatNum(e.value)) or ""
+					row.TextColor3 = (i == 1) and Color3.fromRGB(255, 220, 70) or Color3.new(1, 1, 1)
+					row.BackgroundTransparency = e and 0.15 or 1
+				end
+			end
+		end
+	end
+	task.spawn(function()
+		task.wait(5)
+		while true do
+			pcall(refresh)
+			task.wait(60)
+		end
+	end)
+end

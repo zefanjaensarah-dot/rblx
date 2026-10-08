@@ -518,12 +518,12 @@ function UI.button(parent, opt)
 	local DEPTH = opt.Depth or 4
 	local shadow = new("Frame", {Name = "Shadow", Position = UDim2.fromOffset(0, DEPTH), Size = UDim2.new(1, 0, 1, -DEPTH),
 		BackgroundColor3 = color:Lerp(C.black, 0.45), BorderSizePixel = 0, ZIndex = z}, holder)
-	UI.corner(shadow, opt.Radius or 12)
-	UI.stroke(shadow, 2.5)
+	UI.corner(shadow, opt.Radius or 7)
+	UI.stroke(shadow, 3.5)
 	local face = new("TextButton", {Name = "Face", Size = UDim2.new(1, 0, 1, -DEPTH), BackgroundColor3 = color, Text = "", AutoButtonColor = false,
 		BorderSizePixel = 0, ZIndex = z + 1}, holder)
-	UI.corner(face, opt.Radius or 12)
-	UI.stroke(face, 2.5)
+	UI.corner(face, opt.Radius or 7)
+	UI.stroke(face, 3.5)
 	UI.shade(face, C.white, rgb(178, 178, 192))
 	-- a soft shine on the top half
 	local shine = new("Frame", {Name = "Shine", Position = UDim2.fromOffset(4, 3), Size = UDim2.new(1, -8, 0.42, -3), BackgroundColor3 = C.white,

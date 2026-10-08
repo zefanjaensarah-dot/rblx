@@ -573,6 +573,7 @@ local function buildSettings(ctx)
 		sw.Changed:Connect(function(on)
 			if r.key == "SlowMode" then
 				ctx.invoke("SlowMode", on)
+				if ctx.hud and ctx.hud.setSlowToggle then ctx.hud.setSlowToggle(on) end
 			else
 				ctx.setSetting(r.key, on)
 			end

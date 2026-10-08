@@ -279,10 +279,10 @@ check(invoke(player, "Warehouse").ok and invoke(player, "Home").ok ~= nil, "tele
 
 -- guardian: grab a box next to the area 1 guard and let him catch you
 do
-	local guard = root:FindFirstChild("Guards"):GetChildren()[1]
+	local guard = root:FindFirstChild("Guards"):FindFirstChild("Guardian1")
 	local area1
 	for _, b in ipairs(root:FindFirstChild("ActiveBoxes"):GetChildren()) do
-		if b:FindFirstChildOfClass("ProximityPrompt") and b.Position.Z > -79 and b.Position.Z < -4 then area1 = b break end
+		if b:FindFirstChildOfClass("ProximityPrompt") and b.Position.Z > Config.AreaEndZ(1) and b.Position.Z < Config.AreaStartZ(1) then area1 = b break end
 	end
 	check(area1 ~= nil, "found a box in area 1")
 	hrp.CFrame = CF(area1.Position + V3(0, 0, 3))
@@ -302,7 +302,7 @@ do
 	task.wait(2.5)
 	-- drop with G
 	for _, b in ipairs(root:FindFirstChild("ActiveBoxes"):GetChildren()) do
-		if b:FindFirstChildOfClass("ProximityPrompt") and b.Position.Z > -79 and b.Position.Z < -4 then area1 = b break end
+		if b:FindFirstChildOfClass("ProximityPrompt") and b.Position.Z > Config.AreaEndZ(1) and b.Position.Z < Config.AreaStartZ(1) then area1 = b break end
 	end
 	hrp.CFrame = CF(area1.Position + V3(0, 0, 3))
 	H.signalFor(area1:FindFirstChildOfClass("ProximityPrompt"), "Triggered"):Fire(player)
