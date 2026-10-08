@@ -22,7 +22,7 @@ do
 end
 -- the size the UI is designed for. Phones use a smaller one, so everything is a bit bigger there.
 UI.REF_W, UI.REF_H = 1280, 720
-if UI.isTouch then UI.REF_W, UI.REF_H = 1100, 600 end
+if UI.isTouch then UI.REF_W, UI.REF_H = 960, 540 end
 
 local function rgb(r, g, b) return Color3.fromRGB(r, g, b) end
 UI.rgb = rgb
@@ -78,6 +78,19 @@ function UI.shade(obj, top, bottom, rotation)
 	return new("UIGradient", {Rotation = rotation or 90, Color = ColorSequence.new(top or C.white, bottom or rgb(200, 200, 210))}, obj)
 end
 
+-- a bright candy gradient in one colour: light at the top, deep at the bottom
+function UI.vivid(obj, color, rotation)
+	obj.BackgroundColor3 = C.white
+	for _, g in ipairs(obj:GetChildren()) do
+		if g:IsA("UIGradient") then g:Destroy() end
+	end
+	return new("UIGradient", {Rotation = rotation or 90, Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, color:Lerp(C.white, 0.35)),
+		ColorSequenceKeypoint.new(0.5, color),
+		ColorSequenceKeypoint.new(1, color:Lerp(C.black, 0.22)),
+	})}, obj)
+end
+
 function UI.padding(obj, all, top, bottom, left, right)
 	return new("UIPadding", {PaddingTop = UDim.new(0, top or all or 0), PaddingBottom = UDim.new(0, bottom or all or 0),
 		PaddingLeft = UDim.new(0, left or all or 0), PaddingRight = UDim.new(0, right or all or 0)}, obj)
@@ -104,21 +117,53 @@ function UI.box(parent, props)
 	return f
 end
 
--- text with the dark outline every label has. Text always FITS its box: it shrinks
--- (TextScaled) up to `Max` px, so long words can never spill over other text.
---   props: normal TextLabel props + Max (max text size), Min (min size), Stroke (outline px, 0 = none)
+-- text with the dark outline every label has. Text always FITS its box: it is drawn at `Max`
+-- (in UI units, so it grows with the screen like everything else) and shrinks only when the
+-- words don't fit, so long words can never spill over other text.
+--   props: normal TextLabel props + Max (biggest text size), Min (smallest), Stroke (outline px, 0 = none)
+local TextService = game:GetService("TextService")
+local FIT_FONT = Enum.Font.FredokaOne
+local function fits(text, size, w, h, wrapped)
+	local ok, b = pcall(TextService.GetTextSize, TextService, text, size, FIT_FONT, Vector2.new(wrapped and w or 100000, 100000))
+	if not ok then return true end
+	return b.X <= w + 1 and b.Y <= h + 1
+end
+function UI.fitText(l, maxSize, minSize)
+	local abs = l.AbsoluteSize
+	if l.Text == "" or abs.X < 2 or abs.Y < 2 then
+		l.TextSize = maxSize
+		return
+	end
+	-- the box in UI units (the root's UIScale also scales the text)
+	local s = (UI.root and l:IsDescendantOf(UI.root)) and UI.scale or 1
+	local w, h = abs.X / s, abs.Y / s
+	if fits(l.Text, maxSize, w, h, l.TextWrapped) then
+		l.TextSize = maxSize
+		return
+	end
+	local lo, hi = minSize, maxSize - 1 -- biggest size that fits (binary search)
+	while lo < hi do
+		local mid = math.ceil((lo + hi) / 2)
+		if fits(l.Text, mid, w, h, l.TextWrapped) then lo = mid else hi = mid - 1 end
+	end
+	l.TextSize = lo
+end
 function UI.label(parent, text, props)
 	props = props or {}
 	local l = new("TextLabel", {
 		BackgroundTransparency = 1, FontFace = UI.Font, TextColor3 = C.white, Size = UDim2.fromScale(1, 1),
-		TextScaled = true, Text = Config.StripEmoji(tostring(text or "")), TextWrapped = true,
+		TextScaled = false, Text = Config.StripEmoji(tostring(text or "")), TextWrapped = true,
 	}, parent)
 	for k, v in pairs(props) do
 		if k ~= "Max" and k ~= "Min" and k ~= "Stroke" then l[k] = v end
 	end
-	if l.TextScaled then
-		new("UITextSizeConstraint", {MaxTextSize = props.Max or 28, MinTextSize = props.Min or 8}, l)
-	end
+	local maxSize = math.floor(props.Max or 28)
+	local minSize = math.min(maxSize, math.floor(props.Min or 9))
+	l.TextSize = maxSize
+	local function refit() UI.fitText(l, maxSize, minSize) end
+	l:GetPropertyChangedSignal("Text"):Connect(refit)
+	l:GetPropertyChangedSignal("AbsoluteSize"):Connect(refit)
+	refit()
 	local strokePx = props.Stroke or 2
 	if strokePx > 0 then
 		new("UIStroke", {Thickness = strokePx, Color = C.ink, LineJoinMode = Enum.LineJoinMode.Round}, l)
@@ -479,7 +524,7 @@ function UI.button(parent, opt)
 		BorderSizePixel = 0, ZIndex = z + 1}, holder)
 	UI.corner(face, opt.Radius or 12)
 	UI.stroke(face, 2.5)
-	UI.shade(face, C.white, rgb(210, 210, 215))
+	UI.shade(face, C.white, rgb(178, 178, 192))
 	-- a soft shine on the top half
 	local shine = new("Frame", {Name = "Shine", Position = UDim2.fromOffset(4, 3), Size = UDim2.new(1, -8, 0.42, -3), BackgroundColor3 = C.white,
 		BackgroundTransparency = 0.78, BorderSizePixel = 0, ZIndex = z + 1}, face)
@@ -668,18 +713,23 @@ local windows = {}
 local openWin = nil
 -- the area windows use: below one row of notifications, above the bottom edge
 local WIN_TOP, WIN_BOTTOM = 84, 10
+UI.winLeft = 12 -- windows stay right of this x (the HUD menu sets it, so windows never cover the menu)
 local function fitWindow(win)
+	local vw = UI.vw or 1280
 	local availH = math.max(200, (UI.vh or 720) - WIN_TOP - WIN_BOTTOM)
-	local w = math.min(win.size.X, math.max(320, (UI.vw or 1280) - 24))
+	local left = UI.winLeft or 12
+	local w = math.min(win.size.X, math.max(320, vw - left - 12))
 	local h = math.min(win.size.Y, availH)
 	win.frame.Size = UDim2.fromOffset(w, h)
 	win.centerY = WIN_TOP + availH / 2
+	-- centred on the screen when it fits, otherwise pushed right of the menu
+	win.centerX = math.max(vw / 2, left + w / 2)
 	return win.centerY
 end
 function UI.refitWindows()
 	for _, win in pairs(windows) do
 		fitWindow(win)
-		if win.frame.Visible then win.frame.Position = UDim2.new(0.5, 0, 0, win.centerY) end
+		if win.frame.Visible then win.frame.Position = UDim2.fromOffset(win.centerX, win.centerY) end
 	end
 end
 local windowChanged = Instance.new("BindableEvent")
@@ -698,7 +748,7 @@ function UI.window(opt)
 	local color = opt.Color or C.green
 	local size = opt.Size or Vector2.new(760, 470)
 	local frame = new("Frame", {Name = opt.Name, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(size.X, size.Y),
-		BackgroundColor3 = C.panel, Visible = false, ZIndex = 60}, UI.root)
+		BackgroundColor3 = color:Lerp(C.panel, 0.45), Visible = false, ZIndex = 60}, UI.root)
 	UI.corner(frame, 22)
 	UI.stroke(frame, 4)
 	UI.shade(frame, C.white, rgb(175, 172, 192))
@@ -727,8 +777,9 @@ function UI.window(opt)
 	UI.icon("close", close, UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), C.white, Vector2.new(0.5, 0.5))
 	UI.pressable(close)
 	-- body
-	local body = new("Frame", {Name = "Body", Position = UDim2.fromOffset(8, 64), Size = UDim2.new(1, -16, 1, -72), BackgroundColor3 = C.panelDark, BorderSizePixel = 0}, frame)
+	local body = new("Frame", {Name = "Body", Position = UDim2.fromOffset(8, 64), Size = UDim2.new(1, -16, 1, -72), BackgroundColor3 = color:Lerp(C.panelDark, 0.9), BorderSizePixel = 0}, frame)
 	UI.corner(body, 16)
+	UI.stroke(body, 2.5, color:Lerp(C.ink, 0.5))
 	local win = {name = opt.Name, frame = frame, body = body, header = header, title = title, scale = scale, sheen = sheenGrad,
 		color = color, pages = {}, tabs = {}, tab = nil, size = size}
 	if opt.Tabs then
@@ -807,9 +858,9 @@ function UI.open(name, tab)
 	if not wasOpen then
 		SFX.play("open")
 		win.scale.Scale = 0.6
-		win.frame.Position = UDim2.new(0.5, 0, 0, cy + 30)
+		win.frame.Position = UDim2.fromOffset(win.centerX, cy + 30)
 		UI.tween(win.scale, 0.45, {Scale = 1}, Enum.EasingStyle.Back)
-		UI.tween(win.frame, 0.35, {Position = UDim2.new(0.5, 0, 0, cy)}, Enum.EasingStyle.Quint)
+		UI.tween(win.frame, 0.35, {Position = UDim2.fromOffset(win.centerX, cy)}, Enum.EasingStyle.Quint)
 		win.sheen.Offset = Vector2.new(-1, 0)
 		UI.tween(win.sheen, 0.8, {Offset = Vector2.new(1, 0)})
 	end

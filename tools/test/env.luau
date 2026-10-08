@@ -373,6 +373,15 @@ function H.makeServices(game)
 	function S.MarketplaceService:PromptProductPurchase(plr, id) table.insert(H.calls, {"PromptProductPurchase", id}) end
 	function S.MarketplaceService:PromptGamePassPurchase(plr, id) table.insert(H.calls, {"PromptGamePassPurchase", id}) end
 	function S.MarketplaceService:UserOwnsGamePassAsync(uid, id) return false end
+	-- text measuring: about 0.55 x size per character, wrapped to the frame width
+	S.TextService = {}
+	function S.TextService:GetTextSize(text, size, font, frame)
+		assert(type(text) == "string" and type(size) == "number", "GetTextSize(text, size, font, frameSize)")
+		assert(typeof(font) == "EnumItem" and tostring(font):find("Font") ~= nil, "GetTextSize needs an Enum.Font")
+		local w = #text * size * 0.55
+		local lines = math.max(1, math.ceil(w / math.max(1, frame.X)))
+		return roblox.Vector2.new(math.min(w, frame.X), lines * size)
+	end
 	S.ProximityPromptService = {PromptTriggered = newSignal("PromptTriggered")}
 	S.GuiService = {}
 	function S.GuiService:GetGuiInset() return roblox.Vector2.new(0, 58), roblox.Vector2.new(0, 0) end

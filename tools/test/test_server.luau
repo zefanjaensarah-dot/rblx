@@ -254,17 +254,24 @@ local sp0 = player:GetAttribute("SpeedPoints")
 task.wait(1)
 check((player:GetAttribute("SpeedPoints") or 0) > sp0, "treadmill gives speed: " .. sp0 .. " -> " .. tostring(player:GetAttribute("SpeedPoints")))
 
--- rebirth
-for _ = 1, 4 do
-	task.wait(0.15)
-	invoke(player, "BuyProduct", "CashXL")
-end
-local cashNow = player:GetAttribute("Cash")
-task.wait(0.15)
-r = invoke(player, "Rebirth")
-check(r.ok, "rebirth with $" .. tostring(cashNow) .. ": " .. tostring(r.msg))
+-- index rewards: area 1 can't be claimed until all its items are found, then only once
+local Config = H.requireModule(game:GetService("ReplicatedStorage"):FindFirstChild("StealABoxConfig"))
+check(invoke(player, "Rebirth").ok ~= true, "rebirth is gone")
 prof = invoke(player, "GetData").data
-check(prof.Rebirths == 1 and prof.Cash == 0 and prof.Treadmill == 1 and #prof.Items > 0, "rebirth resets cash/treadmill, keeps items")
+local area1Items = Config.AreaItems[1]
+prof.ItemsFound[area1Items[#area1Items][1]] = nil
+task.wait(0.15)
+r = invoke(player, "ClaimIndex", 1)
+check(not r.ok, "index reward locked until the area is complete: " .. tostring(r.msg))
+for _, it in ipairs(area1Items) do prof.ItemsFound[it[1]] = 1 end
+local cashBefore = prof.Cash
+local incomeBefore = player:GetAttribute("Income") or 0
+task.wait(0.15)
+r = invoke(player, "ClaimIndex", 1)
+check(r.ok and prof.Cash == cashBefore + Config.IndexCash(1) and prof.IndexClaimed["1"] == true, "index reward claimed: " .. tostring(r.msg))
+check((player:GetAttribute("Income") or 0) >= incomeBefore, "index bonus keeps/raises income")
+task.wait(0.15)
+check(not invoke(player, "ClaimIndex", 1).ok, "index reward only once")
 task.wait(0.15)
 check(invoke(player, "SetSetting", "Effects", false).ok and invoke(player, "GetData").data.Settings.Effects == false, "settings are stored")
 task.wait(0.15)
@@ -310,7 +317,7 @@ player.Parent = nil
 task.wait(0.3)
 local saved = store.data["player_1"]
 check(saved ~= nil and saved.SessionActive == false and saved.SessionJob == "server-A", "saved on leave, session released")
-check(saved and saved.Rebirths == 1 and saved.Receipts["receipt-1"] ~= nil, "save has rebirths + receipts")
+check(saved and saved.IndexClaimed and saved.IndexClaimed["1"] == true and saved.Receipts["receipt-1"] ~= nil, "save has index rewards + receipts")
 
 -- come back 2 hours later: offline earnings
 saved.LastOnline = os.time() - 7200
@@ -320,7 +327,7 @@ for _ = 1, 60 do if player2:GetAttribute("Loaded") then break end task.wait(0.05
 check(player2:GetAttribute("Loaded") == true, "rejoined")
 check((player2:GetAttribute("OfflineEarned") or 0) > 0, "offline earnings: $" .. tostring(player2:GetAttribute("OfflineEarned")))
 local prof2 = invoke(player2, "GetData").data
-check(prof2.Rebirths == 1 and #prof2.Items > 0 and prof2.Codes.RELEASE == true, "progress came back")
+check(prof2.IndexClaimed["1"] == true and #prof2.Items > 0 and prof2.Codes.RELEASE == true, "progress came back")
 check(store.data["player_1"].SessionActive == true, "save is claimed by this server again")
 
 -- another server that still has the save open: we must not load stale data

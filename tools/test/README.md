@@ -13,7 +13,7 @@ lune run test_client.luau ../../StealABox_v5.rbxl
   - steal, carry and place a box (including the anti-teleport check), and the guardian chase and fling
   - unbox, shoppers paying, codes, daily rewards and trails
   - every pass and product (as Studio test purchases), plus real receipts: granted exactly once, unknown products refused
-  - rebirth, saving on leave, rejoining with offline earnings, and the session lock
+  - Index area rewards (locked until complete, claimed once), saving on leave, rejoining with offline earnings, and the session lock
 - `test_client.luau` builds the map and runs the client UI. It sends server events, plays the effects, opens every window and tab, and presses every button.
 
 Both print `... SMOKE TEST PASSED` or list what failed. They can't check how things look; test in Studio for that.

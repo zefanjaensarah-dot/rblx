@@ -160,7 +160,7 @@ local function newProfile()
 	local p = {Cash = 0, Stolen = 0, Boxes = {}, Mutations = {}, ItemsFound = {},
 		Items = {}, Unboxing = {}, Upgrades = {}, Treadmill = 1, SpeedPoints = Config.StartSpeed, TutorialDone = false,
 		Trails = {}, Trail = nil, Customers = 1, SpeedBoost = 1, Receipts = {},
-		Rebirths = 0, Daily = {Streak = 0, Last = -1}, Codes = {}, Settings = {}}
+		IndexClaimed = {}, Daily = {Streak = 0, Last = -1}, Codes = {}, Settings = {}}
 	return p
 end
 
@@ -184,8 +184,6 @@ local function sync(player)
 	local prof = profiles[player]
 	if not prof then return end
 	syncCash(player)
-	setStat(player, "Rebirths", prof.Rebirths or 0)
-	player:SetAttribute("Rebirths", prof.Rebirths or 0)
 	SyncEvent:FireClient(player, prof)
 end
 
@@ -211,10 +209,10 @@ local function hasPass(player, key)
 	return owned ~= nil and owned[key] == true
 end
 
--- everything that multiplies the cash your shoppers pay: rebirths, VIP and 2x Cash
+-- everything that multiplies the cash your shoppers pay: completed Index areas, VIP and 2x Cash
 local function cashMultiplier(player)
 	local prof = profiles[player]
-	local m = Config.RebirthCashMult(prof and prof.Rebirths or 0)
+	local m = Config.IndexCashMult(Config.CountClaimed(prof and prof.IndexClaimed))
 	if hasPass(player, "VIP") then m = m * Config.PassEffects.VIPCash end
 	if hasPass(player, "DoubleCash") then m = m * Config.PassEffects.DoubleCash end
 	return m
@@ -950,7 +948,7 @@ local function freeStand(prof)
 	return nil
 end
 
--- what your shop earns per second: products on display x kiosk (more shoppers) x rebirths / passes.
+-- what your shop earns per second: products on display x kiosk (more shoppers) x Index rewards / passes.
 -- This is exactly what you get paid (shoppers pay everything the shop earned since the last sale).
 local function totalIncome(player)
 	local prof = profiles[player]
@@ -1012,6 +1010,13 @@ openBox = function(player, slot)
 		prof.Unboxing[slot] = nil
 		table.insert(prof.Items, item)
 		prof.ItemsFound[item.id] = (prof.ItemsFound[item.id] or 0) + 1
+		local itemDef = Config.Items[item.id]
+		if prof.ItemsFound[item.id] == 1 and itemDef and Config.AreaComplete(prof.ItemsFound, itemDef.area) then
+			local doneArea = Config.Areas[itemDef.area]
+			task.delay(Config.RevealTime(itemDef.tier), function()
+				notify(player, doneArea.name .. " Index complete! Claim your reward in the Index!", doneArea.accent)
+			end)
+		end
 		local s = freeStand(prof)
 		if s then item.stand = s end
 		local part = unboxFolder(plot):FindFirstChild("UnboxBox" .. slot)
@@ -2039,10 +2044,10 @@ end)
 -- TRAIL SHOP BOOTH: buy a trail once, then equip it. Your equipped trail
 -- glows behind you and multiplies the speed your treadmill gives you.
 ------------------------------------------------------------------
--- Robux speed boosts x rebirth bonus: multiplies the speed your treadmill gives
+-- Robux speed boosts: multiplies the speed your treadmill gives
 local function speedMult(prof)
 	if not prof then return 1 end
-	return (prof.SpeedBoost or 1) * Config.RebirthSpeedMult(prof.Rebirths or 0)
+	return prof.SpeedBoost or 1
 end
 local function trailMult(prof)
 	local t = prof and prof.Trail and Config.GetTrail(prof.Trail)
@@ -2251,25 +2256,23 @@ task.spawn(function()
 end)
 
 ------------------------------------------------------------------
--- REBIRTH: trade your cash, speed, treadmill + kiosk levels for a PERMANENT cash and speed bonus.
--- Items, trails, boxes, the Index and Robux purchases are kept.
+-- INDEX REWARDS: find every item of an area, then claim its reward once:
+-- a pile of cash and a permanent cash bonus.
 ------------------------------------------------------------------
-local function doRebirth(player)
+local function claimIndex(player, areaIndex)
 	local prof = profiles[player]
 	if not prof then return {ok = false, msg = "Still loading..."} end
-	if carrying[player] then return {ok = false, msg = "Put your box down first!"} end
-	local cost = Config.RebirthCost(prof.Rebirths or 0)
-	if prof.Cash < cost then return {ok = false, msg = "You need $" .. Config.FormatNum(cost) .. " to rebirth!"} end
-	prof.Rebirths = (prof.Rebirths or 0) + 1
-	prof.Cash = 0
-	prof.SpeedPoints = Config.StartSpeed
-	prof.Treadmill = 1
-	prof.Customers = 1
-	local plot = playerPlot[player]
-	if plot then pendingCash[plot] = 0 end
-	applySpeed(player)
-	refreshTreadmill(player)
-	refreshKiosk(player)
+	areaIndex = math.floor(tonumber(areaIndex) or 0)
+	local area = Config.Areas[areaIndex]
+	if not area then return {ok = false} end
+	local key = tostring(areaIndex)
+	if prof.IndexClaimed[key] then return {ok = false, msg = "You already claimed this reward!"} end
+	if not Config.AreaComplete(prof.ItemsFound, areaIndex) then
+		return {ok = false, msg = "Find all 4 items from " .. area.name .. " first!"}
+	end
+	prof.IndexClaimed[key] = true
+	local cash = Config.IndexCash(areaIndex)
+	prof.Cash = prof.Cash + cash
 	refreshIncome(player)
 	sync(player)
 	local _, hrp = getChar(player)
@@ -2277,10 +2280,10 @@ local function doRebirth(player)
 		FXEvent:FireAllClients("LevelUp", hrp.Position, 3)
 		playSound(hrp, "rbxasset://sounds/electronicpingshort.wav", 1, 0.8)
 	end
-	notifyAll(player.DisplayName .. " just REBIRTHED! (Rebirth " .. prof.Rebirths .. ")", Color3.fromRGB(255, 120, 220))
+	notifyAll(player.DisplayName .. " completed the " .. area.name .. " Index!", area.accent)
 	task.spawn(save, player)
-	return {ok = true, msg = "REBIRTH " .. prof.Rebirths .. "! Cash x" .. Config.RebirthCashMult(prof.Rebirths)
-		.. " and treadmill speed x" .. Config.RebirthSpeedMult(prof.Rebirths) .. " forever!"}
+	return {ok = true, cash = cash, msg = "INDEX COMPLETE! +$" .. Config.FormatNum(cash) .. " and +"
+		.. math.floor(Config.IndexReward.cashBonus * 100 + 0.5) .. "% cash forever!"}
 end
 
 ------------------------------------------------------------------
@@ -2475,8 +2478,8 @@ ActionFunc.OnServerInvoke = function(player, action, arg, expectedId)
 	elseif action == "BuyPass" then
 		return buyPass(player, arg)
 
-	elseif action == "Rebirth" then
-		return doRebirth(player)
+	elseif action == "ClaimIndex" then
+		return claimIndex(player, arg)
 
 	elseif action == "ClaimDaily" then
 		return claimDaily(player)
@@ -2934,7 +2937,6 @@ local function readSave(prof, data)
 	prof.Stolen = tonumber(data.Stolen) or 0
 	prof.Treadmill = math.clamp(tonumber(data.Treadmill) or 1, 1, Config.Treadmill.max)
 	prof.Customers = math.clamp(tonumber(data.Customers) or 1, 1, Config.CustomerMax)
-	prof.Rebirths = math.max(0, math.floor(tonumber(data.Rebirths) or 0))
 	-- old saves: speed from levels turns into treadmill speed
 	local oldTread = tonumber(data.TreadSpeed) or math.max(0, ((tonumber(data.Level) or 1) - 1) * 0.5)
 	prof.Cash = prof.Cash + (tonumber(data.Register) or 0) -- old saves: register money goes straight to cash
@@ -2978,6 +2980,12 @@ local function readSave(prof, data)
 			for k, v in pairs(data[key]) do prof[key][k] = v end
 		end
 	end
+	if type(data.IndexClaimed) == "table" then
+		for k in pairs(data.IndexClaimed) do
+			local n = tonumber(k)
+			if n and Config.Areas[n] then prof.IndexClaimed[tostring(n)] = true end
+		end
+	end
 	if type(data.Daily) == "table" then
 		prof.Daily = {Streak = tonumber(data.Daily.Streak) or 0, Last = tonumber(data.Daily.Last) or -1}
 	end
@@ -3014,9 +3022,6 @@ local function onPlayerAdded(player)
 	spd.Name = "Speed"
 	spd.Value = Config.StartSpeed
 	spd.Parent = ls
-	local reb = Instance.new("IntValue")
-	reb.Name = "Rebirths"
-	reb.Parent = ls
 	ls.Parent = player
 
 	local prof = newProfile()

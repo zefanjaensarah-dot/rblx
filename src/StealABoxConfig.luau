@@ -322,20 +322,34 @@ function Config.CustomerRate(level) return 1 + 0.3 * ((level or 1) - 1) end -- x
 function Config.CustomerCost(level) return math.floor(120 * 2.3 ^ ((level or 1) - 1)) end
 
 ------------------------------------------------------------------
--- REBIRTH: trade your cash, speed, treadmill and kiosk levels for a PERMANENT bonus.
--- You keep your items, trails, boxes and Index. Every rebirth costs more than the last.
+-- INDEX REWARDS: find all 4 items of a warehouse area to complete that area's Index page.
+-- Claim it once for a pile of cash and a PERMANENT cash bonus (every area adds more).
 ------------------------------------------------------------------
-Config.Rebirth = {
-	baseCost = 1000000, -- cash needed for the first rebirth
-	growth = 5,         -- every rebirth costs this many times more
-	cashBonus = 0.5,    -- +50% cash per rebirth (x1.5, x2, x2.5 ...)
-	speedBonus = 0.25,  -- +25% treadmill speed per rebirth
+Config.IndexReward = {
+	seconds = 900,     -- the cash = 15 minutes of what that area's 4 items earn together
+	cashBonus = 0.1,   -- +10% cash forever for every completed area (all 10 = x2)
 }
-function Config.RebirthCost(rebirths)
-	return math.floor(Config.Rebirth.baseCost * Config.Rebirth.growth ^ (rebirths or 0))
+function Config.IndexCash(areaIndex)
+	local total = 0
+	for _, it in ipairs(Config.AreaItems[areaIndex] or {}) do
+		local def = Config.Items[it[1]]
+		if def then total = total + def.income end
+	end
+	return math.floor(total * Config.IndexReward.seconds)
 end
-function Config.RebirthCashMult(rebirths) return 1 + Config.Rebirth.cashBonus * (rebirths or 0) end
-function Config.RebirthSpeedMult(rebirths) return 1 + Config.Rebirth.speedBonus * (rebirths or 0) end
+function Config.IndexCashMult(claimedCount) return 1 + Config.IndexReward.cashBonus * (claimedCount or 0) end
+-- true when every item of this area is in your Index
+function Config.AreaComplete(itemsFound, areaIndex)
+	for _, it in ipairs(Config.AreaItems[areaIndex] or {}) do
+		if not (itemsFound and (itemsFound[it[1]] or 0) > 0) then return false end
+	end
+	return true
+end
+function Config.CountClaimed(claimed)
+	local n = 0
+	for _ in pairs(claimed or {}) do n = n + 1 end
+	return n
+end
 
 ------------------------------------------------------------------
 -- DAILY REWARDS: log in every day for a 7-day streak (miss a day and it starts over).

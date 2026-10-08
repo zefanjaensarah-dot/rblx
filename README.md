@@ -9,6 +9,7 @@ Steal boxes from a guarded warehouse, unbox them at your base, sell the items in
 | ![HUD](docs/preview/hud.png) | ![HUD on a phone](docs/preview/hud_phone.png) |
 | ![Robux shop](docs/preview/shop_passes.png) | ![Cash packs](docs/preview/shop_cash.png) |
 | ![Items](docs/preview/items.png) | ![Daily rewards](docs/preview/daily.png) |
+| ![Index rewards](docs/preview/index.png) | |
 
 *Previews are drawn from the game's real UI code in a web browser, so fonts and 3D item previews look a little different in Roblox.*
 
@@ -48,10 +49,12 @@ Purchases are safe: each developer-product receipt is stored in the player's sav
 **Robux shop.** A full shop window with tabs for Passes, Cash, Boosts and Speed, plus a "THANK YOU!" celebration after a purchase.
 
 **New GUI.**
-- One consistent chunky, outlined simulator style, with springy buttons and windows.
+- Big, bright candy-coloured buttons with icons that pop out of the top, and everything bounces: the menu buttons hop in a wave, icons wiggle, the Shop button breathes, and windows and messages spring in.
 - A 2-column menu (3 columns on phones) and a big SHOP button.
-- Cash and speed counters that show `$/s`.
-- Timers on the right: day/night, rainbow box and server luck.
+- Speed and cash counters bottom-left (where they used to be), showing `$/s`.
+- Timers bottom-right (top-right on phones, away from the jump button): day/night, rainbow box and server luck.
+- A big coloured ribbon with the area's number when you enter an area, then a small coloured banner while you're there.
+- Text is drawn at a fixed, large size and only shrinks when it doesn't fit, so it's never tiny.
 - Separate layouts for PC and phone.
 
 **No more text layering.**
@@ -63,7 +66,7 @@ Purchases are safe: each developer-product receipt is stored in the player's sav
 - Other players' "Take back / Open / Upgrade" prompts are hidden from you.
 
 **New features**, inspired by popular simulators:
-- **Rebirths** for a permanent cash and speed bonus.
+- **Index rewards**: find all 4 items of an area to complete its Index page, then claim a pile of cash and **+10% cash forever** (all 10 areas = x2). Change it in `Config.IndexReward`.
 - **Daily rewards**: a 7-day streak.
 - **Codes**: `RELEASE`, `STEALABOX`, `ZOOM`. Add your own in `Config.Codes`.
 - **Offline earnings** with a "Welcome back" popup.
@@ -83,7 +86,7 @@ Purchases are safe: each developer-product receipt is stored in the player's sav
 
 ## Changing the game
 
-- Balance (areas, boxes, items, prices, rebirth costs, daily rewards, codes): **ReplicatedStorage > StealABoxConfig**
+- Balance (areas, boxes, items, prices, Index rewards, daily rewards, codes): **ReplicatedStorage > StealABoxConfig**
 - Robux items: **ReplicatedStorage > StealABoxShop**
 - Server logic: **ServerScriptService > StealABoxServer** (the map is built by **StealABoxMap**)
 - UI and effects: **StarterPlayerScripts > StealABoxClient** and its modules (`UI`, `Hud`, `Windows`, `ShopWindow`, `Tutorial`, `WorldFX`)

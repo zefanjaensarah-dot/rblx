@@ -2,7 +2,7 @@
      The code lives in the ModuleScripts inside this script:
        UI          the look of everything: colours, buttons, windows, icons, sounds
        Hud         what's always on screen (cash, speed, menu, timers, notifications...)
-       Windows     Items, Index, Trails, Gifts, Daily, Rebirth, Codes, Settings
+       Windows     Items, Index, Trails, Gifts, Daily, Codes, Settings
        ShopWindow  the Robux shop
        Tutorial    the step-by-step tutorial for new players
        WorldFX     everything that happens in the 3D world on your screen ]]

@@ -171,7 +171,7 @@ function ShopWindow.init(ctx)
 			if nextTier then
 				local b = Config.SpeedBoosts[nextTier]
 				UI.setText(bigTitle, fmt(b.mult) .. "x SPEED")
-				UI.setText(bigSub, "Your treadmill gives " .. fmt(b.mult) .. "x speed (now " .. fmt(have) .. "x). Stacks with trails and rebirths!")
+				UI.setText(bigSub, "Your treadmill gives " .. fmt(b.mult) .. "x speed (now " .. fmt(have) .. "x). Stacks with trails!")
 				local id = Shop.SpeedBoostIds[nextTier] or 0
 				if id == 0 and not IS_STUDIO then
 					bigBtn.setText("SOON")

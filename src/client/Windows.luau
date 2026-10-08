@@ -1,5 +1,5 @@
 --[[ STEAL A BOX - the windows you open from the menu
-     Items, Index, Trails, Gifts, Daily, Rebirth, Codes, Settings, Welcome Back.
+     Items, Index, Trails, Gifts, Daily, Codes, Settings, Welcome Back.
      Every card has fixed slots for its texts (and text shrinks to fit), so nothing overlaps. ]]
 
 local RunService = game:GetService("RunService")
@@ -130,14 +130,36 @@ local function buildIndex(ctx)
 	local C, new, fmt = UI.C, UI.new, Config.FormatNum
 	local win = UI.window({Name = "Index", Title = "Index", Icon = "book", Color = C.cyan})
 	local page = win.page
-	local head = UI.box(page, {Size = UDim2.new(1, -10, 0, 64), LayoutOrder = 0})
-	local title = UI.label(head, "", {Size = UDim2.new(1, 0, 0, 28), Max = 24, Stroke = 2.2, TextColor3 = C.yellow, TextWrapped = false})
-	local bar = UI.bar(head, {Position = UDim2.new(0.15, 0, 0, 34), Size = UDim2.new(0.7, 0, 0, 24)}, C.cyan)
-	local items, boxes, views = {}, {}, {}
+	local head = UI.box(page, {Size = UDim2.new(1, -10, 0, 96), LayoutOrder = 0})
+	local title = UI.label(head, "", {Size = UDim2.new(1, 0, 0, 30), Max = 26, Stroke = 2.4, TextColor3 = C.yellow, TextWrapped = false})
+	local bar = UI.bar(head, {Position = UDim2.new(0.15, 0, 0, 36), Size = UDim2.new(0.7, 0, 0, 26)}, C.cyan)
+	local bonusL = UI.label(head, "", {Position = UDim2.fromOffset(0, 68), Size = UDim2.new(1, 0, 0, 24), Max = 20, Stroke = 2, TextColor3 = C.money, TextWrapped = false})
+	local items, boxes, views, rewards = {}, {}, {}, {}
 	for areaIndex, area in ipairs(Config.Areas) do
-		UI.section(page, areaIndex .. ". " .. string.upper(area.name), area.accent, areaIndex * 3)
+		UI.section(page, areaIndex .. ". " .. string.upper(area.name), area.accent, areaIndex * 4)
+		-- the area's completion reward: find all 4 items, then claim it once
+		local rw = new("Frame", {Size = UDim2.new(1, -10, 0, 64), BackgroundColor3 = area.accent:Lerp(UI.rgb(30, 26, 50), 0.35), LayoutOrder = areaIndex * 4 + 1}, page)
+		UI.corner(rw, 16)
+		UI.stroke(rw, 3, area.accent)
+		new("UIGradient", {Rotation = 90, Color = ColorSequence.new(C.white, UI.rgb(190, 190, 200))}, rw)
+		UI.icon("gift", rw, UDim2.fromOffset(46, 46), UDim2.new(0, 10, 0.5, 0), area.accent:Lerp(C.white, 0.2), Vector2.new(0, 0.5))
+		local rwTitle = UI.label(rw, "", {Position = UDim2.fromOffset(66, 6), Size = UDim2.new(1, -270, 0, 28), Max = 22, Stroke = 2.2,
+			TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false})
+		UI.label(rw, "+$" .. fmt(Config.IndexCash(areaIndex)) .. "  and  +" .. math.floor(Config.IndexReward.cashBonus * 100 + 0.5) .. "% cash forever",
+			{Position = UDim2.fromOffset(66, 34), Size = UDim2.new(1, -270, 0, 22), Max = 18, Stroke = 1.8, TextColor3 = C.money, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false})
+		local claim = UI.button(rw, {Text = "CLAIM!", Color = C.green, Size = UDim2.fromOffset(180, 50), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0.5, 0),
+			TextSize = 24, Icon = "gift", IconSize = 28, Depth = 4})
+		claim.Activated:Connect(function()
+			local r = ctx.invoke("ClaimIndex", areaIndex)
+			if r.msg and r.msg ~= "" then ctx.notify(r.msg, r.ok and area.accent or C.red) end
+			if r.ok then
+				if ctx.confetti then ctx.confetti() end
+				if ctx.thanks then ctx.thanks("INDEX COMPLETE!") end
+			end
+		end)
+		rewards[areaIndex] = {title = rwTitle, claim = claim, frame = rw}
 		-- the 3 boxes of this area
-		local boxRow = UI.box(page, {Size = UDim2.new(1, -10, 0, 52), LayoutOrder = areaIndex * 3 + 1})
+		local boxRow = UI.box(page, {Size = UDim2.new(1, -10, 0, 52), LayoutOrder = areaIndex * 4 + 2})
 		UI.list(boxRow, 10, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
 		for r, def in ipairs(area.boxes) do
 			local rar = Config.Rarities[r]
@@ -151,7 +173,7 @@ local function buildIndex(ctx)
 			boxes[def.id] = {chip = chip, count = cnt, def = def, rar = rar}
 		end
 		-- the 4 items you can get, with the chance for a common / rare / epic box
-		local grid = UI.grid(page, UDim2.fromOffset(160, 176), 12, areaIndex * 3 + 2)
+		local grid = UI.grid(page, UDim2.fromOffset(160, 176), 12, areaIndex * 4 + 3)
 		for tier, it in ipairs(Config.AreaItems[areaIndex]) do
 			local tierDef = Config.ItemTiers[tier]
 			local card = UI.card(grid, UI.rgb(46, 42, 72), {LayoutOrder = tier})
@@ -198,7 +220,34 @@ local function buildIndex(ctx)
 		end
 		UI.setText(title, "Items discovered: " .. foundN .. " / " .. total)
 		bar.set(foundN / math.max(1, total), math.floor(foundN / math.max(1, total) * 100) .. "%")
+		local claimed = data.IndexClaimed or {}
+		local nClaimed = Config.CountClaimed(claimed)
+		UI.setText(bonusL, "Areas completed: " .. nClaimed .. " / " .. #Config.Areas .. "   |   cash x" .. Config.IndexCashMult(nClaimed))
+		for areaIndex, rw in pairs(rewards) do
+			local have = 0
+			for _, it in ipairs(Config.AreaItems[areaIndex]) do
+				if data.ItemsFound and (data.ItemsFound[it[1]] or 0) > 0 then have = have + 1 end
+			end
+			local need = #Config.AreaItems[areaIndex]
+			if claimed[tostring(areaIndex)] then
+				UI.setText(rw.title, "COMPLETED!")
+				rw.claim.setText("CLAIMED")
+				rw.claim.setColor(C.grey)
+				rw.claim.setEnabled(false)
+			elseif have >= need then
+				UI.setText(rw.title, "AREA COMPLETE! Claim it:")
+				rw.claim.setText("CLAIM!")
+				rw.claim.setColor(C.green)
+				rw.claim.setEnabled(true)
+			else
+				UI.setText(rw.title, "Find all items: " .. have .. " / " .. need)
+				rw.claim.setText(have .. " / " .. need)
+				rw.claim.setColor(C.grey)
+				rw.claim.setEnabled(false)
+			end
+		end
 	end
+	ctx.onData(function() if UI.isOpen("Index") then win.onOpen() end end)
 	RunService.RenderStepped:Connect(function()
 		if not UI.isOpen("Index") then return end
 		local cf = CFrame.Angles(0, os.clock() * 0.9, 0)
@@ -469,80 +518,6 @@ local function buildDaily(ctx)
 end
 
 ------------------------------------------------------------------
--- REBIRTH
-------------------------------------------------------------------
-local function buildRebirth(ctx)
-	local UI, Config = ctx.UI, ctx.Config
-	local C, new, fmt = UI.C, UI.new, Config.FormatNum
-	local win = UI.window({Name = "Rebirth", Title = "Rebirth", Icon = "rebirth", Color = C.purple, Size = Vector2.new(720, 460)})
-	local page = win.page
-	local now = UI.label(page, "", {Size = UDim2.new(1, -10, 0, 34), LayoutOrder = 0, Max = 28, Stroke = 2.6, TextColor3 = UI.rgb(230, 190, 255)})
-	local cols = UI.box(page, {Size = UDim2.new(1, -10, 0, 148), LayoutOrder = 1})
-	UI.list(cols, 12, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
-	local function column(title, color, order)
-		local card = UI.card(cols, color:Lerp(UI.rgb(30, 26, 50), 0.6), {Size = UDim2.fromOffset(212, 142), LayoutOrder = order})
-		UI.label(card, title, {Position = UDim2.fromOffset(8, 8), Size = UDim2.new(1, -16, 0, 26), Max = 22, Stroke = 2.2, TextColor3 = color:Lerp(C.white, 0.3), TextWrapped = false})
-		local body = UI.label(card, "", {Position = UDim2.fromOffset(10, 40), Size = UDim2.new(1, -20, 1, -48), Max = 17, Stroke = 1.5, TextColor3 = C.white,
-			TextYAlignment = Enum.TextYAlignment.Top})
-		return body
-	end
-	local getL = column("YOU GET", C.green, 1)
-	local loseL = column("YOU LOSE", C.red, 2)
-	local keepL = column("YOU KEEP", C.blue, 3)
-	UI.setText(loseL, "Your cash\nYour speed\nTreadmill level\nKiosk level")
-	UI.setText(keepL, "Your items\nYour trails\nYour Index\nRobux purchases")
-	local bar = UI.bar(page, {Size = UDim2.new(0.8, 0, 0, 30), LayoutOrder = 2}, C.purple)
-	local btn = UI.button(page, {Text = "REBIRTH", Color = C.purple, Size = UDim2.fromOffset(280, 58), LayoutOrder = 3, TextSize = 30, Icon = "rebirth", IconSize = 36})
-	local armedAt = nil
-	local function refresh()
-		local data = ctx.data
-		if not data then return end
-		local n = data.Rebirths or 0
-		local cost = Config.RebirthCost(n)
-		UI.setText(now, (n > 0) and ("Rebirths: " .. n .. "   |   cash x" .. Config.RebirthCashMult(n) .. "   |   speed x" .. Config.RebirthSpeedMult(n)) or "Rebirth to earn MORE, forever!")
-		UI.setText(getL, "Cash x" .. Config.RebirthCashMult(n + 1) .. " forever\nTreadmill speed x" .. Config.RebirthSpeedMult(n + 1) .. "\n(now: x" .. Config.RebirthCashMult(n) .. " / x" .. Config.RebirthSpeedMult(n) .. ")")
-		local cash = data.Cash or 0
-		bar.set(cash / cost, "$" .. fmt(cash) .. " / $" .. fmt(cost))
-		btn.setEnabled(cash >= cost)
-		if not armedAt then btn.setText((cash >= cost) and "REBIRTH!" or ("Need $" .. fmt(cost))) end
-	end
-	btn.Activated:Connect(function()
-		local data = ctx.data
-		if not data or (data.Cash or 0) < Config.RebirthCost(data.Rebirths or 0) then return end
-		-- tap twice: it resets your cash!
-		if not armedAt or os.clock() - armedAt > 3 then
-			armedAt = os.clock()
-			btn.setText("Sure? Tap again!")
-			btn.setColor(C.red)
-			task.delay(3, function()
-				if armedAt and os.clock() - armedAt >= 2.9 then
-					armedAt = nil
-					btn.setColor(C.purple)
-					refresh()
-				end
-			end)
-			return
-		end
-		armedAt = nil
-		btn.setColor(C.purple)
-		local r = ctx.invoke("Rebirth")
-		ctx.notify(r.msg or "", r.ok and UI.rgb(255, 120, 220) or C.red)
-		if r.ok then
-			if ctx.thanks then ctx.thanks("REBIRTH " .. ((ctx.data and ctx.data.Rebirths or 0) + 1)) end
-			UI.close()
-		end
-		refresh()
-	end)
-	win.onOpen = refresh
-	ctx.onData(function() if UI.isOpen("Rebirth") then refresh() end end)
-	ctx.onCash(function() if UI.isOpen("Rebirth") then refresh() end end)
-	return function()
-		local data = ctx.data
-		if ctx.badges.Rebirth then ctx.badges.Rebirth.set(data ~= nil and (data.Cash or 0) >= Config.RebirthCost(data.Rebirths or 0)) end
-	end
-end
-
-------------------------------------------------------------------
 -- CODES
 ------------------------------------------------------------------
 local function buildCodes(ctx)
@@ -554,9 +529,8 @@ local function buildCodes(ctx)
 	local boxF = new("Frame", {Size = UDim2.fromOffset(420, 58), BackgroundColor3 = UI.rgb(16, 14, 26), LayoutOrder = 1}, page)
 	UI.corner(boxF, 14)
 	UI.stroke(boxF, 3, C.white, 0.2)
-	local input = new("TextBox", {Position = UDim2.fromOffset(14, 6), Size = UDim2.new(1, -28, 1, -12), BackgroundTransparency = 1, FontFace = UI.Font, TextScaled = true,
+	local input = new("TextBox", {Position = UDim2.fromOffset(14, 6), Size = UDim2.new(1, -28, 1, -12), BackgroundTransparency = 1, FontFace = UI.Font, TextSize = 26,
 		Text = "", PlaceholderText = "Enter code...", PlaceholderColor3 = C.muted, TextColor3 = C.white, ClearTextOnFocus = false}, boxF)
-	new("UITextSizeConstraint", {MaxTextSize = 28}, input)
 	local redeem = UI.button(page, {Text = "REDEEM", Color = C.green, Size = UDim2.fromOffset(220, 54), LayoutOrder = 2, TextSize = 26, Icon = "check", IconSize = 30, IconColor = C.white})
 	local result = UI.label(page, "", {Size = UDim2.new(1, -10, 0, 44), LayoutOrder = 3, Max = 19, Stroke = 1.8})
 	local function go()
@@ -649,7 +623,6 @@ function Windows.init(ctx)
 	buildTrails(ctx)
 	local giftsTick = buildGifts(ctx)
 	local dailyTick = buildDaily(ctx)
-	local rebirthTick = buildRebirth(ctx)
 	buildCodes(ctx)
 	buildSettings(ctx)
 	buildWelcome(ctx)
@@ -657,7 +630,6 @@ function Windows.init(ctx)
 	ctx.updateClockBadges = function()
 		giftsTick()
 		dailyTick()
-		rebirthTick()
 	end
 	-- badges that depend on your data
 	local function dataBadges()
@@ -673,6 +645,14 @@ function Windows.init(ctx)
 			if not (data.Trails and data.Trails[t.id]) and (data.Cash or 0) >= t.price then canBuy = true end
 		end
 		ctx.badges.Trails.set(canBuy)
+		-- Index: a reward is waiting to be claimed
+		local claimable = 0
+		for areaIndex in ipairs(ctx.Config.Areas) do
+			if not (data.IndexClaimed and data.IndexClaimed[tostring(areaIndex)]) and ctx.Config.AreaComplete(data.ItemsFound, areaIndex) then
+				claimable = claimable + 1
+			end
+		end
+		ctx.badges.Index.set(claimable)
 	end
 	ctx.onData(dataBadges)
 	ctx.onCash(dataBadges)

@@ -355,7 +355,7 @@ function Tutorial.init(ctx)
 					local carrying = player:GetAttribute("Carrying")
 					local unboxing = next(data.Unboxing or {}) ~= nil
 					local cost = Config.TreadmillCost(1)
-					if (data.Treadmill or 1) >= 2 or (data.Rebirths or 0) > 0 then
+					if (data.Treadmill or 1) >= 2 then
 						finish(false)
 						continue
 					elseif #data.Items == 0 and not unboxing then

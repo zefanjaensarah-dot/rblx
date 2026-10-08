@@ -28,139 +28,148 @@ function Hud.init(ctx)
 	ctx.hud = hud
 
 	------------------------------------------------------------------
-	-- TOP-LEFT: cash + speed counters
+	-- BOTTOM-LEFT: speed + cash (big candy pills, the icon sticks out on the left)
 	------------------------------------------------------------------
-	local currency = box(root, {Name = "Currency", Position = UDim2.fromOffset(12, 8), Size = UDim2.fromOffset(260, 150), ZIndex = 2})
-	UI.list(currency, 6)
+	local TOUCH = UI.isTouch
+	local CUR_W = TOUCH and 290 or 330
+	local currency = box(root, {Name = "Currency", AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, -12), Size = UDim2.fromOffset(CUR_W, 150), ZIndex = 2})
+	UI.list(currency, 8, nil, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Bottom)
 	hud.currency = currency
 
-	-- a counter pill: the icon sticks out on the left, value on top, a small line under it
-	local function counter(iconName, iconColor, order)
-		local holder = box(currency, {Size = UDim2.fromOffset(250, 52), LayoutOrder = order})
-		local back = new("Frame", {Position = UDim2.fromOffset(20, 4), Size = UDim2.new(1, -20, 1, -8), BackgroundColor3 = C.hud, BackgroundTransparency = 0.12}, holder)
+	local function counter(iconName, iconColor, pillColor, order)
+		local holder = box(currency, {Size = UDim2.fromOffset(CUR_W - 10, 66), LayoutOrder = order})
+		local back = new("Frame", {Position = UDim2.fromOffset(26, 6), Size = UDim2.new(1, -26, 1, -12)}, holder)
 		UI.corner(back, true)
-		UI.stroke(back, 2.5)
-		local icon = UI.icon(iconName, holder, UDim2.fromOffset(52, 52), UDim2.fromOffset(0, 0), iconColor)
-		local value = UI.label(holder, "0", {Position = UDim2.fromOffset(60, 5), Size = UDim2.new(1, -70, 0, 26), TextXAlignment = Enum.TextXAlignment.Left,
-			Max = 26, Stroke = 2.5, TextWrapped = false})
-		local sub = UI.label(holder, "", {Position = UDim2.fromOffset(60, 31), Size = UDim2.new(1, -70, 0, 15), TextXAlignment = Enum.TextXAlignment.Left,
-			Max = 15, Stroke = 1.5, TextColor3 = C.sub, TextWrapped = false})
+		UI.stroke(back, 3.2)
+		UI.vivid(back, pillColor)
+		-- a shiny strip on top
+		local shine = new("Frame", {Position = UDim2.new(0, 34, 0, 4), Size = UDim2.new(1, -52, 0, 12), BackgroundColor3 = C.white, BackgroundTransparency = 0.6, BorderSizePixel = 0}, back)
+		UI.corner(shine, true)
+		local icon = UI.icon(iconName, holder, UDim2.fromOffset(66, 66), UDim2.fromOffset(0, 0), iconColor)
+		icon.ZIndex = 3
+		local value = UI.label(back, "0", {Position = UDim2.fromOffset(46, 2), Size = UDim2.new(1, -60, 0, 34), TextXAlignment = Enum.TextXAlignment.Left,
+			Max = 34, Min = 14, Stroke = 3, TextWrapped = false})
+		local sub = UI.label(back, "", {Position = UDim2.fromOffset(46, 33), Size = UDim2.new(1, -60, 0, 18), TextXAlignment = Enum.TextXAlignment.Left,
+			Max = 17, Stroke = 2, TextColor3 = pillColor:Lerp(C.white, 0.75), TextWrapped = false})
 		local vScale = new("UIScale", {}, value)
-		return {holder = holder, icon = icon, value = value, sub = sub, vScale = vScale}
+		local iScale = new("UIScale", {}, icon)
+		return {holder = holder, icon = icon, value = value, sub = sub, vScale = vScale, iScale = iScale, back = back}
 	end
-	local cashC = counter("coin", C.gold, 1)
-	cashC.value.TextColor3 = C.money
-	cashC.sub.TextColor3 = rgbLerp(C.money, C.white, 0.35)
-	local speedC = counter("boot", C.blue, 2)
+	local speedC = counter("boot", C.blue, UI.rgb(45, 130, 255), 1)
+	local cashC = counter("coin", C.gold, UI.rgb(40, 190, 70), 2)
 	hud.cash, hud.speed = cashC, speedC
-	-- rebirth chip (shows once you've rebirthed)
-	local rebChip = new("Frame", {Size = UDim2.fromOffset(190, 26), BackgroundColor3 = C.purple, LayoutOrder = 3, Visible = false}, currency)
-	UI.corner(rebChip, true)
-	UI.stroke(rebChip, 2)
-	UI.shade(rebChip, C.white, UI.rgb(200, 190, 220))
-	local rebLabel = UI.label(rebChip, "", {Size = UDim2.new(1, -16, 1, -4), Position = UDim2.fromOffset(8, 2), Max = 15, Stroke = 1.5, TextWrapped = false})
 
 	------------------------------------------------------------------
-	-- LEFT MENU: a big SHOP button, then 2 columns of square buttons
+	-- TOP-LEFT MENU: a big shiny SHOP button, then candy-coloured square buttons
 	------------------------------------------------------------------
-	local MENU_COLS = UI.isTouch and 3 or 2
-	local MENU_W = MENU_COLS * 64 + (MENU_COLS - 1) * 8
+	local MENU_COLS = TOUCH and 3 or 2
+	local CELL_W, CELL_H, GAP = TOUCH and 88 or 92, TOUCH and 92 or 96, TOUCH and 8 or 10
+	local MENU_W = MENU_COLS * CELL_W + (MENU_COLS - 1) * GAP
 	-- (above the dark layer behind windows: you can jump from one window to another in one click)
-	local menu = box(root, {Name = "Menu", Position = UDim2.fromOffset(12, 160), Size = UDim2.fromOffset(MENU_W + 4, 360), ZIndex = 55})
-	UI.list(menu, 8)
+	local menu = box(root, {Name = "Menu", Position = UDim2.fromOffset(12, 8), Size = UDim2.fromOffset(MENU_W + 8, 520), ZIndex = 55})
+	UI.list(menu, GAP)
 	hud.menu = menu
+	-- windows open to the right of the menu (on phones the menu hides while a window is open)
+	if not TOUCH then UI.winLeft = 12 + MENU_W + 16 end
 	local badges = {}
 	ctx.badges = badges
 
-	local shopBtn = UI.button(menu, {Name = "Shop", Text = "SHOP", Color = C.yellow, Size = UDim2.fromOffset(MENU_W, 54), Icon = "shop", IconSize = 36,
-		IconColor = C.red, TextSize = 28, LayoutOrder = 0})
+	local shopBtn = UI.button(menu, {Name = "Shop", Text = "SHOP", Color = C.yellow, Size = UDim2.fromOffset(MENU_W, TOUCH and 66 or 72), Icon = "shop",
+		IconSize = TOUCH and 46 or 50, IconColor = C.red, TextSize = TOUCH and 34 or 38, LayoutOrder = 0, Radius = 18, Depth = 6})
 	-- a light sweep runs over the Shop button every few seconds
 	local shopSheen = new("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.white, BorderSizePixel = 0, ZIndex = shopBtn.face.ZIndex + 1}, shopBtn.face)
-	UI.corner(shopSheen, 12)
+	UI.corner(shopSheen, 18)
 	local shopSheenGrad = new("UIGradient", {Rotation = 25, Offset = Vector2.new(-1.2, 0), Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.42, 1), NumberSequenceKeypoint.new(0.5, 0.45), NumberSequenceKeypoint.new(0.58, 1), NumberSequenceKeypoint.new(1, 1)})}, shopSheen)
+		NumberSequenceKeypoint.new(0.42, 1), NumberSequenceKeypoint.new(0.5, 0.35), NumberSequenceKeypoint.new(0.58, 1), NumberSequenceKeypoint.new(1, 1)})}, shopSheen)
 	shopBtn.Activated:Connect(function() UI.toggle("Shop") end)
 	badges.Shop = UI.badge(shopBtn.face, shopBtn.face.ZIndex)
+	local shopScale = new("UIScale", {}, shopBtn.holder)
 
 	local grid = box(menu, {Size = UDim2.fromOffset(MENU_W, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 1})
-	new("UIGridLayout", {CellSize = UDim2.fromOffset(64, 66), CellPadding = UDim2.fromOffset(8, 6), SortOrder = Enum.SortOrder.LayoutOrder}, grid)
+	new("UIGridLayout", {CellSize = UDim2.fromOffset(CELL_W, CELL_H), CellPadding = UDim2.fromOffset(GAP, GAP), SortOrder = Enum.SortOrder.LayoutOrder}, grid)
 	local MENU = {
-		{"Items", "Items", "bag", C.green},
-		{"Index", "Index", "book", C.cyan},
-		{"Trails", "Trails", "trail", C.orange},
-		{"Gifts", "Gifts", "gift", C.pink},
-		{"Daily", "Daily", "calendar", C.blue},
-		{"Rebirth", "Rebirth", "rebirth", C.purple},
-		{"Codes", "Codes", "ticket", C.red},
-		{"Settings", "Settings", "gear", C.grey},
+		{"Items", "Items", "bag", UI.rgb(60, 205, 80)},
+		{"Index", "Index", "book", UI.rgb(30, 190, 245)},
+		{"Trails", "Trails", "trail", UI.rgb(255, 140, 30)},
+		{"Gifts", "Gifts", "gift", UI.rgb(255, 80, 165)},
+		{"Daily", "Daily", "calendar", UI.rgb(80, 120, 255)},
+		{"Codes", "Codes", "ticket", UI.rgb(255, 70, 80)},
+		{"Settings", "Settings", "gear", UI.rgb(150, 110, 255)},
 	}
 	hud.menuIcons = {}
+	-- a square candy button with a big icon that pokes out over its top edge
+	local function squareButton(parent, key, label, iconName, color, order, size)
+		local holder = box(parent, {Name = key, LayoutOrder = order, Size = size or UDim2.fromScale(1, 1)})
+		local shadow = new("Frame", {Position = UDim2.fromOffset(0, 6), Size = UDim2.new(1, 0, 1, -6), BackgroundColor3 = color:Lerp(C.black, 0.5)}, holder)
+		UI.corner(shadow, 18)
+		UI.stroke(shadow, 3)
+		local face = new("TextButton", {Size = UDim2.new(1, 0, 1, -6), BackgroundColor3 = color, Text = "", AutoButtonColor = false}, holder)
+		UI.corner(face, 18)
+		UI.stroke(face, 3)
+		UI.vivid(face, color)
+		local shine = new("Frame", {Position = UDim2.fromOffset(6, 4), Size = UDim2.new(1, -12, 0.38, 0), BackgroundColor3 = C.white, BackgroundTransparency = 0.72, BorderSizePixel = 0}, face)
+		UI.corner(shine, 14)
+		local isz = math.floor(CELL_W * 0.62)
+		local icon = UI.icon(iconName, face, UDim2.fromOffset(isz, isz), UDim2.new(0.5, 0, 0, -8), color:Lerp(C.white, 0.3), Vector2.new(0.5, 0))
+		table.insert(hud.menuIcons, {icon = icon, pos = icon.Position, iconScale = new("UIScale", {}, icon), faceScale = new("UIScale", {}, face)})
+		UI.label(face, label, {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -4), Size = UDim2.new(1, -6, 0, 26), Max = 24, Min = 12, Stroke = 2.6, TextWrapped = false})
+		UI.pressable(face, holder)
+		return face
+	end
 	for i, m in ipairs(MENU) do
 		local key, label, iconName, color = m[1], m[2], m[3], m[4]
-		local holder = box(grid, {Name = key, LayoutOrder = i})
-		local shadow = new("Frame", {Position = UDim2.fromOffset(0, 4), Size = UDim2.new(1, 0, 1, -4), BackgroundColor3 = color:Lerp(C.black, 0.45)}, holder)
-		UI.corner(shadow, 14)
-		UI.stroke(shadow, 2.5)
-		local face = new("TextButton", {Size = UDim2.new(1, 0, 1, -4), BackgroundColor3 = color, Text = "", AutoButtonColor = false}, holder)
-		UI.corner(face, 14)
-		UI.stroke(face, 2.5)
-		UI.shade(face, C.white, UI.rgb(205, 205, 212))
-		local icon = UI.icon(iconName, face, UDim2.fromOffset(34, 34), UDim2.new(0.5, 0, 0, 4), color:Lerp(C.white, 0.2), Vector2.new(0.5, 0))
-		table.insert(hud.menuIcons, {icon = icon, pos = icon.Position})
-		UI.label(face, label, {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -3), Size = UDim2.new(1, -6, 0, 16), Max = 14, Stroke = 1.8, TextWrapped = false})
-		UI.pressable(face, holder)
+		local face = squareButton(grid, key, label, iconName, color, i)
 		face.Activated:Connect(function() UI.toggle(key) end)
 		badges[key] = UI.badge(face, face.ZIndex)
 	end
 
 	------------------------------------------------------------------
-	-- TOP-RIGHT: timers
+	-- BOTTOM-RIGHT: timers (on phones: top-right, the jump button lives bottom-right)
 	------------------------------------------------------------------
-	local timers = box(root, {Name = "Timers", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 8), Size = UDim2.fromOffset(230, 140), ZIndex = 2})
-	UI.list(timers, 6, nil, Enum.HorizontalAlignment.Right)
-	local function timerPill(iconName, iconColor, order)
-		local f = new("Frame", {Size = UDim2.fromOffset(224, 36), BackgroundColor3 = C.hud, BackgroundTransparency = 0.12, LayoutOrder = order}, timers)
+	local PILL_H = TOUCH and 40 or 46
+	local timers = box(root, {Name = "Timers", AnchorPoint = TOUCH and Vector2.new(1, 0) or Vector2.new(1, 1),
+		Position = TOUCH and UDim2.new(1, -12, 0, 8) or UDim2.new(1, -12, 1, -12), Size = UDim2.fromOffset(290, 3 * PILL_H + 16), ZIndex = 2})
+	UI.list(timers, 8, nil, Enum.HorizontalAlignment.Right, TOUCH and Enum.VerticalAlignment.Top or Enum.VerticalAlignment.Bottom)
+	local function timerPill(iconName, iconColor, pillColor, order)
+		local f = new("Frame", {Size = UDim2.fromOffset(TOUCH and 196 or 280, PILL_H), LayoutOrder = order}, timers)
 		UI.corner(f, true)
-		UI.stroke(f, 2.5)
-		local ic = UI.icon(iconName, f, UDim2.fromOffset(30, 30), UDim2.new(0, 5, 0.5, 0), iconColor, Vector2.new(0, 0.5))
-		local l = UI.label(f, "", {Position = UDim2.fromOffset(40, 4), Size = UDim2.new(1, -50, 1, -8), TextXAlignment = Enum.TextXAlignment.Left, Max = 18, Stroke = 2, TextWrapped = false})
-		return {frame = f, icon = ic, label = l}
+		UI.stroke(f, 3)
+		local grad = UI.vivid(f, pillColor)
+		local shine = new("Frame", {Position = UDim2.new(0, 14, 0, 3), Size = UDim2.new(1, -28, 0, 9), BackgroundColor3 = C.white, BackgroundTransparency = 0.65, BorderSizePixel = 0}, f)
+		UI.corner(shine, true)
+		local isz = PILL_H + 8
+		local ic = UI.icon(iconName, f, UDim2.fromOffset(isz, isz), UDim2.new(0, -10, 0.5, 0), iconColor, Vector2.new(0, 0.5))
+		local l = UI.label(f, "", {Position = UDim2.fromOffset(isz - 4, 3), Size = UDim2.new(1, -isz - 8, 1, -6), TextXAlignment = Enum.TextXAlignment.Left,
+			Max = TOUCH and 22 or 25, Stroke = 2.4, TextWrapped = false})
+		return {frame = f, icon = ic, label = l, grad = grad}
 	end
-	local phaseT = timerPill("moon", UI.rgb(235, 235, 200), 1)
-	local sunIcon = UI.icon("sun", phaseT.frame, UDim2.fromOffset(30, 30), UDim2.new(0, 5, 0.5, 0), UI.rgb(255, 210, 60), Vector2.new(0, 0.5))
-	local rainbowT = timerPill("star", UI.rgb(255, 120, 220), 2)
-	local luckT = timerPill("clover", C.green, 3)
+	local phaseT = timerPill("moon", UI.rgb(240, 240, 200), UI.rgb(70, 80, 200), 2)
+	local sunIcon = UI.icon("sun", phaseT.frame, UDim2.fromOffset(PILL_H + 8, PILL_H + 8), UDim2.new(0, -10, 0.5, 0), UI.rgb(255, 210, 60), Vector2.new(0, 0.5))
+	local rainbowT = timerPill("star", UI.rgb(255, 230, 90), UI.rgb(220, 70, 200), 1)
+	-- the rainbow pill really is a rainbow
+	rainbowT.grad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, UI.rgb(255, 80, 120)), ColorSequenceKeypoint.new(0.25, UI.rgb(255, 170, 40)),
+		ColorSequenceKeypoint.new(0.5, UI.rgb(80, 210, 90)), ColorSequenceKeypoint.new(0.75, UI.rgb(60, 150, 255)),
+		ColorSequenceKeypoint.new(1, UI.rgb(180, 90, 255))})
+	rainbowT.grad.Rotation = 0
+	local luckT = timerPill("clover", UI.rgb(120, 255, 120), UI.rgb(40, 175, 80), 0)
 	luckT.frame.Visible = false
-	luckT.frame.BackgroundColor3 = UI.rgb(20, 70, 40)
 
 	------------------------------------------------------------------
 	-- RIGHT: Home + Steal teleports, and the Speed offer
 	------------------------------------------------------------------
-	local RIGHT_Y = UI.isTouch and 0.4 or 0.5
-	local right = box(root, {Name = "Right", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, RIGHT_Y, 10), Size = UDim2.fromOffset(190, 260), ZIndex = 2})
-	UI.list(right, 8, nil, Enum.HorizontalAlignment.Right, Enum.VerticalAlignment.Center)
-	local tpRow = box(right, {Size = UDim2.fromOffset(136, 66), LayoutOrder = 1})
-	UI.list(tpRow, 8, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Right)
-	local function squareButton(name, label, iconName, color, order)
-		local holder = box(tpRow, {Name = name, Size = UDim2.fromOffset(64, 66), LayoutOrder = order})
-		local shadow = new("Frame", {Position = UDim2.fromOffset(0, 4), Size = UDim2.new(1, 0, 1, -4), BackgroundColor3 = color:Lerp(C.black, 0.45)}, holder)
-		UI.corner(shadow, 14)
-		UI.stroke(shadow, 2.5)
-		local face = new("TextButton", {Size = UDim2.new(1, 0, 1, -4), BackgroundColor3 = color, Text = "", AutoButtonColor = false}, holder)
-		UI.corner(face, 14)
-		UI.stroke(face, 2.5)
-		UI.shade(face, C.white, UI.rgb(205, 205, 212))
-		local icon = UI.icon(iconName, face, UDim2.fromOffset(34, 34), UDim2.new(0.5, 0, 0, 4), color:Lerp(C.white, 0.2), Vector2.new(0.5, 0))
-		table.insert(hud.menuIcons, {icon = icon, pos = icon.Position})
-		UI.label(face, label, {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -3), Size = UDim2.new(1, -6, 0, 16), Max = 14, Stroke = 1.8, TextWrapped = false})
-		UI.pressable(face, holder)
-		return face
-	end
-	squareButton("Steal", "Steal", "box", C.orange, 1).Activated:Connect(function()
+	local RIGHT_Y = 0.5
+	local right = box(root, {Name = "Right", AnchorPoint = TOUCH and Vector2.new(1, 0) or Vector2.new(1, 0.5),
+		Position = TOUCH and UDim2.new(1, -8, 0, 3 * PILL_H + 32) or UDim2.new(1, -12, RIGHT_Y, -30), Size = UDim2.fromOffset(212, TOUCH and 220 or 280), ZIndex = 2})
+	UI.list(right, 10, nil, Enum.HorizontalAlignment.Right, TOUCH and Enum.VerticalAlignment.Top or Enum.VerticalAlignment.Center)
+	if TOUCH then new("UIScale", {Scale = 0.75}, right) end
+	local tpRow = box(right, {Size = UDim2.fromOffset(2 * CELL_W + GAP, CELL_H), LayoutOrder = 1})
+	UI.list(tpRow, GAP, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Right)
+	squareButton(tpRow, "Steal", "Steal", "box", UI.rgb(255, 140, 30), 1, UDim2.fromOffset(CELL_W, CELL_H)).Activated:Connect(function()
 		local r = ctx.invoke("Warehouse")
 		if not r.ok and r.msg then ctx.notify(r.msg, C.red) end
 	end)
-	squareButton("Home", "Home", "home", C.green, 2).Activated:Connect(function()
+	squareButton(tpRow, "Home", "Home", "home", UI.rgb(60, 205, 80), 2, UDim2.fromOffset(CELL_W, CELL_H)).Activated:Connect(function()
 		local r = ctx.invoke("Home")
 		if not r.ok and r.msg then ctx.notify(r.msg, C.red) end
 	end)
@@ -168,20 +177,21 @@ function Hud.init(ctx)
 	-- the bouncing Speed offer: "2x SPEED - R$ 3"
 	-- (a fixed slot with the card centred in it: the card bounces around its centre and
 	-- always stays inside the slot, so it never pokes off the screen edge)
-	local offer = box(right, {Size = UDim2.fromOffset(186, 94), LayoutOrder = 2})
-	local offerCard = box(offer, {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(164, 80)})
+	local offer = box(right, {Size = UDim2.fromOffset(206, 108), LayoutOrder = 2})
+	local offerCard = box(offer, {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(184, 92)})
 	local offerScale = new("UIScale", {}, offerCard)
-	local offerBtn = UI.button(offerCard, {Text = "", Color = C.yellow, Size = UDim2.fromScale(1, 1), Radius = 16})
-	local offerTitle = UI.label(offerBtn.face, "2x SPEED", {Position = UDim2.fromOffset(8, 3), Size = UDim2.new(1, -16, 0, 36), Max = 30, Stroke = 3, TextWrapped = false,
+	local offerBtn = UI.button(offerCard, {Text = "", Color = C.yellow, Size = UDim2.fromScale(1, 1), Radius = 18, Depth = 6})
+	local offerTitle = UI.label(offerBtn.face, "2x SPEED", {Position = UDim2.fromOffset(8, 4), Size = UDim2.new(1, -16, 0, 40), Max = 36, Stroke = 3.2, TextWrapped = false,
 		ZIndex = offerBtn.face.ZIndex + 2})
-	local offerPrice = new("Frame", {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 41), Size = UDim2.fromOffset(104, 27), BackgroundColor3 = C.green,
+	local offerPrice = new("Frame", {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 46), Size = UDim2.fromOffset(120, 32), BackgroundColor3 = C.green,
 		ZIndex = offerBtn.face.ZIndex + 2}, offerBtn.face)
 	UI.corner(offerPrice, true)
-	UI.stroke(offerPrice, 2)
-	local offerPriceL = UI.label(offerPrice, "R$ 3", {Size = UDim2.new(1, -10, 1, -4), Position = UDim2.fromOffset(5, 2), Max = 19, Stroke = 2, TextWrapped = false,
+	UI.stroke(offerPrice, 2.5)
+	UI.vivid(offerPrice, UI.rgb(60, 205, 80))
+	local offerPriceL = UI.label(offerPrice, "R$ 3", {Size = UDim2.new(1, -10, 1, -4), Position = UDim2.fromOffset(5, 2), Max = 24, Stroke = 2.4, TextWrapped = false,
 		ZIndex = offerBtn.face.ZIndex + 3})
 	local offerSheen = new("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.white, BorderSizePixel = 0, ZIndex = offerBtn.face.ZIndex + 4}, offerBtn.face)
-	UI.corner(offerSheen, 16)
+	UI.corner(offerSheen, 18)
 	local offerSheenGrad = new("UIGradient", {Rotation = 25, Offset = Vector2.new(-1.2, 0), Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1),
 		NumberSequenceKeypoint.new(0.42, 1), NumberSequenceKeypoint.new(0.5, 0.45), NumberSequenceKeypoint.new(0.58, 1), NumberSequenceKeypoint.new(1, 1)})}, offerSheen)
 	local function nextSpeedTier()
@@ -217,20 +227,29 @@ function Hud.init(ctx)
 	------------------------------------------------------------------
 	local top = box(root, {Name = "TopStack", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 8), Size = UDim2.fromOffset(560, 0),
 		AutomaticSize = Enum.AutomaticSize.Y, ZIndex = 70})
+	if TOUCH then
+		-- phones: a bit smaller, centred in the gap between the menu and the timers
+		new("UIScale", {Scale = 0.8}, top)
+		top.Position = UDim2.new(0.5, math.floor((12 + MENU_W + 8 - 216) / 2), 0, 8)
+	end
 	UI.list(top, 8, nil, Enum.HorizontalAlignment.Center)
 	hud.topStack = top
 	local tutorialSlot = box(top, {Name = "TutorialSlot", Size = UDim2.fromOffset(560, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 2})
+	UI.list(tutorialSlot, 0, nil, Enum.HorizontalAlignment.Center)
 	hud.tutorialSlot = tutorialSlot
 	local toastList = box(top, {Name = "Toasts", Size = UDim2.fromOffset(560, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 3})
 	UI.list(toastList, 4, nil, Enum.HorizontalAlignment.Center)
 
-	-- NOTIFICATIONS: a dark pill with a coloured edge + dot. Pops in, then fades away.
+	-- NOTIFICATIONS: a bright candy pill in the message's colour. Pops in with a hop, then fades away.
 	local toastOrder = 0
 	local function notify(str, color)
 		str = Config.StripEmoji(tostring(str or ""))
 		if str == "" then return end
 		toastOrder = toastOrder + 1
-		color = color or C.white
+		color = color or C.purple
+		-- very light colours (white) get a purple pill so the white text stays readable
+		local h, sat, v = color:ToHSV()
+		local pillColor = (sat < 0.25) and C.purple or Color3.fromHSV(h, math.max(sat, 0.55), math.min(v, 0.88))
 		-- fewer at once while a window is open (they sit above it)
 		local maxToasts = UI.isOpen() and 1 or 4
 		local existing = {}
@@ -241,24 +260,27 @@ function Hud.init(ctx)
 		for k = 1, #existing - maxToasts + 1 do existing[k]:Destroy() end
 		local row = new("CanvasGroup", {Size = UDim2.fromOffset(0, 0), AutomaticSize = Enum.AutomaticSize.XY, BackgroundTransparency = 1,
 			LayoutOrder = toastOrder, GroupTransparency = 1}, toastList)
-		local pill = new("Frame", {Size = UDim2.fromOffset(0, 0), AutomaticSize = Enum.AutomaticSize.XY, BackgroundColor3 = UI.rgb(22, 20, 36),
-			BackgroundTransparency = 0.08}, row)
-		UI.corner(pill, 18)
-		UI.stroke(pill, 2.5, color, 0.1)
-		UI.padding(pill, 0, 7, 7, 34, 16)
-		new("UISizeConstraint", {MaxSize = Vector2.new(540, 200)}, pill)
-		local dot = new("Frame", {AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, -22, 0.5, 0), Size = UDim2.fromOffset(13, 13), BackgroundColor3 = color}, pill)
-		UI.corner(dot, true)
+		UI.padding(row, 3)
+		local pill = new("Frame", {Size = UDim2.fromOffset(0, 0), AutomaticSize = Enum.AutomaticSize.XY}, row)
+		UI.corner(pill, true)
+		UI.stroke(pill, 3)
+		UI.vivid(pill, pillColor)
+		UI.padding(pill, 0, 8, 9, 50, 22)
+		new("UISizeConstraint", {MaxSize = Vector2.new(600, 220)}, pill)
+		local star = UI.icon("star", pill, UDim2.fromOffset(34, 34), UDim2.new(0, -42, 0.5, 0), UI.rgb(255, 225, 70), Vector2.new(0, 0.5))
 		local l = new("TextLabel", {BackgroundTransparency = 1, Size = UDim2.fromOffset(0, 0), AutomaticSize = Enum.AutomaticSize.XY, FontFace = UI.Font,
-			TextSize = 18, TextWrapped = true, Text = str, TextColor3 = color:Lerp(C.white, 0.3)}, pill)
-		new("UISizeConstraint", {MaxSize = Vector2.new(490, 200)}, l)
-		new("UIStroke", {Thickness = 1.6, Color = C.ink}, l)
-		local s = new("UIScale", {Scale = 0.7}, row)
-		UI.tween(row, 0.18, {GroupTransparency = 0})
-		UI.tween(s, 0.4, {Scale = 1}, Enum.EasingStyle.Back)
+			TextSize = 23, TextWrapped = true, Text = str, TextColor3 = C.white}, pill)
+		new("UISizeConstraint", {MaxSize = Vector2.new(520, 200)}, l)
+		new("UIStroke", {Thickness = 2.4, Color = C.ink, LineJoinMode = Enum.LineJoinMode.Round}, l)
+		local s = new("UIScale", {Scale = 0.5}, row)
+		UI.tween(row, 0.15, {GroupTransparency = 0})
+		UI.tween(s, 0.5, {Scale = 1}, Enum.EasingStyle.Back)
+		star.Rotation = -40
+		UI.tween(star, 0.6, {Rotation = 0}, Enum.EasingStyle.Back)
 		task.delay(4, function()
 			if not row.Parent then return end
 			UI.tween(row, 0.35, {GroupTransparency = 1})
+			UI.tween(s, 0.35, {Scale = 0.8})
 			task.wait(0.36)
 			row:Destroy()
 		end)
@@ -266,103 +288,150 @@ function Hud.init(ctx)
 	ctx.notify = notify
 
 	------------------------------------------------------------------
-	-- AREA BANNER (top of the stack): entering a warehouse area shows a big title card
-	-- for a moment, then a small banner stays while you're in that area.
+	-- AREA BANNER (top of the stack): entering a warehouse area pops a big ribbon with
+	-- the area's colour and number, then a small colourful banner stays while you're there.
 	------------------------------------------------------------------
 	do
 		local holder = box(top, {Name = "AreaBanner", Size = UDim2.fromOffset(560, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 1, Visible = false})
 		UI.list(holder, 0, nil, Enum.HorizontalAlignment.Center)
 		hud.areaBanner = holder
-		-- the big card
-		local big = new("CanvasGroup", {Size = UDim2.fromOffset(520, 124), BackgroundColor3 = UI.rgb(16, 14, 28), BackgroundTransparency = 0.08, LayoutOrder = 1, Visible = false}, holder)
-		UI.corner(big, 20)
-		local bigStroke = UI.stroke(big, 3, C.white)
+		local OFF = UI.rgb(45, 40, 70)
+		-- the big ribbon
+		local big = new("CanvasGroup", {Size = UDim2.fromOffset(560, 172), BackgroundTransparency = 1, LayoutOrder = 1, Visible = false}, holder)
 		local bigScale = new("UIScale", {}, big)
-		local areaL = UI.label(big, "", {Position = UDim2.fromOffset(20, 8), Size = UDim2.new(1, -40, 0, 22), Max = 20, Stroke = 2})
-		local nameL = UI.label(big, "", {Position = UDim2.fromOffset(20, 30), Size = UDim2.new(1, -40, 0, 46), Max = 42, Stroke = 3.2, TextWrapped = false})
-		local nameGrad = new("UIGradient", {Rotation = 90}, nameL)
-		local guardL = UI.label(big, "", {Position = UDim2.fromOffset(20, 78), Size = UDim2.new(0.5, -30, 0, 20), Max = 17, Stroke = 1.8,
-			TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = UI.rgb(255, 120, 110), TextWrapped = false})
-		local speedL = UI.label(big, "", {Position = UDim2.fromOffset(20, 100), Size = UDim2.new(1, -40, 0, 18), Max = 16, Stroke = 1.6, TextWrapped = false})
+		local tails = {}
+		for k, sx in ipairs({-1, 1}) do
+			local tail = new("Frame", {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, sx * 238, 0, 58), Size = UDim2.fromOffset(84, 62),
+				Rotation = sx * 8, ZIndex = 1}, big)
+			UI.corner(tail, 12)
+			UI.stroke(tail, 3.5)
+			tails[k] = tail
+		end
+		local band = new("Frame", {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 40), Size = UDim2.fromOffset(470, 80), ZIndex = 2}, big)
+		UI.corner(band, 20)
+		UI.stroke(band, 4)
+		local bandShine = new("Frame", {Position = UDim2.fromOffset(14, 6), Size = UDim2.new(1, -28, 0, 18), BackgroundColor3 = C.white, BackgroundTransparency = 0.6,
+			BorderSizePixel = 0, ZIndex = 3}, band)
+		UI.corner(bandShine, true)
+		local nameL = UI.label(band, "", {Position = UDim2.fromOffset(18, 20), Size = UDim2.new(1, -36, 0, 50), Max = 46, Min = 18, Stroke = 4, TextWrapped = false, ZIndex = 4})
+		-- the round number badge on top
+		local badge = new("Frame", {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.fromOffset(70, 70), BackgroundColor3 = C.white, ZIndex = 6}, big)
+		UI.corner(badge, true)
+		local badgeStroke = UI.stroke(badge, 4.5)
+		UI.shade(badge, C.white, UI.rgb(215, 215, 225))
+		local badgeArea = UI.label(badge, "AREA", {Position = UDim2.fromOffset(6, 10), Size = UDim2.new(1, -12, 0, 15), Max = 14, Stroke = 1.6, ZIndex = 7, TextWrapped = false})
+		local badgeNum = UI.label(badge, "1", {Position = UDim2.fromOffset(6, 24), Size = UDim2.new(1, -12, 0, 36), Max = 34, Stroke = 3, ZIndex = 7, TextWrapped = false})
+		-- danger diamonds on the bottom edge of the band
 		local function pips(parent, x, y, size, gap, z)
 			local list = {}
 			for k = 1, 5 do
 				local d = new("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(x.Scale, x.Offset + (k - 1) * gap, 0, y), Size = UDim2.fromOffset(size, size),
-					Rotation = 45, BorderSizePixel = 0, BackgroundColor3 = UI.rgb(70, 70, 85), ZIndex = z or 1}, parent)
-				UI.stroke(d, 1.5)
+					Rotation = 45, BorderSizePixel = 0, BackgroundColor3 = OFF, ZIndex = z or 1}, parent)
+				UI.stroke(d, 2.5)
 				list[k] = d
 			end
 			return list
 		end
-		local bigPips = pips(big, UDim.new(0.5, 14), 88, 12, 20)
+		local bigPips = pips(big, UDim.new(0.5, -48), 120, 18, 24, 8)
+		-- info pill under the ribbon: guardian + recommended speed
+		local info = new("Frame", {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 134), Size = UDim2.fromOffset(440, 34), ZIndex = 2}, big)
+		UI.corner(info, true)
+		UI.stroke(info, 3)
+		local infoL = UI.label(info, "", {Position = UDim2.fromOffset(14, 3), Size = UDim2.new(1, -28, 1, -6), Max = 20, Stroke = 2.2, TextWrapped = false, ZIndex = 3})
+
 		-- the small banner: number chip | name | danger diamonds (fixed columns: nothing overlaps)
-		local mini = new("Frame", {Size = UDim2.fromOffset(400, 44), BackgroundColor3 = UI.rgb(16, 14, 28), BackgroundTransparency = 0.1, LayoutOrder = 2}, holder)
+		local mini = new("Frame", {Size = UDim2.fromOffset(420, 52), LayoutOrder = 2}, holder)
 		UI.corner(mini, true)
-		local miniStroke = UI.stroke(mini, 2.5, C.white)
-		local miniChip = new("Frame", {AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 6, 0.5, 0), Size = UDim2.fromOffset(34, 34), BackgroundColor3 = C.white}, mini)
+		UI.stroke(mini, 3.5)
+		local miniShine = new("Frame", {Position = UDim2.fromOffset(20, 4), Size = UDim2.new(1, -40, 0, 12), BackgroundColor3 = C.white, BackgroundTransparency = 0.62, BorderSizePixel = 0}, mini)
+		UI.corner(miniShine, true)
+		local miniChip = new("Frame", {AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 5, 0.5, 0), Size = UDim2.fromOffset(42, 42), BackgroundColor3 = C.white}, mini)
 		UI.corner(miniChip, true)
-		UI.stroke(miniChip, 2)
-		local miniNum = UI.label(miniChip, "1", {Size = UDim2.new(1, -8, 1, -8), Position = UDim2.fromOffset(4, 4), Max = 20, Stroke = 2})
-		local miniName = UI.label(mini, "", {Position = UDim2.fromOffset(48, 6), Size = UDim2.new(1, -160, 1, -12), Max = 22, Stroke = 2, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false})
-		local miniPips = pips(mini, UDim.new(1, -94), 22, 9, 15)
+		local miniChipStroke = UI.stroke(miniChip, 3)
+		local miniNum = UI.label(miniChip, "1", {Size = UDim2.new(1, -8, 1, -8), Position = UDim2.fromOffset(4, 4), Max = 26, Stroke = 2.4})
+		local miniName = UI.label(mini, "", {Position = UDim2.fromOffset(56, 6), Size = UDim2.new(1, -184, 1, -12), Max = 28, Min = 12, Stroke = 2.8, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false})
+		local miniPips = pips(mini, UDim.new(1, -110), 26, 12, 19)
 		local miniScale = new("UIScale", {}, mini)
 		local function setPips(list, n, color)
-			for k, d in ipairs(list) do d.BackgroundColor3 = (k <= n) and color or UI.rgb(70, 70, 85) end
+			for k, d in ipairs(list) do d.BackgroundColor3 = (k <= n) and color or OFF end
+		end
+		local function paint(frame, color)
+			UI.vivid(frame, color)
 		end
 		local token = 0
 		local shownAt = {}
+		hud.bannerBits = {big = big, band = band, badge = badge, mini = mini}
 		local function showArea(zone)
 			token = token + 1
 			local tok = token
 			local area = Config.Areas[zone]
+			local accent = area.accent
 			local danger = math.clamp(math.ceil(zone / 2), 1, 5)
-			local dangerCol = UI.rgb(255, 220, 80):Lerp(UI.rgb(255, 50, 60), (danger - 1) / 4)
+			local dangerCol = UI.rgb(255, 230, 70):Lerp(UI.rgb(255, 50, 60), (danger - 1) / 4)
 			holder.Visible = not UI.isOpen()
 			UI.setText(miniNum, tostring(zone))
-			miniChip.BackgroundColor3 = area.accent
+			miniNum.TextColor3 = C.white
+			miniChip.BackgroundColor3 = accent:Lerp(C.black, 0.15)
+			miniChipStroke.Color = C.ink
 			UI.setText(miniName, string.upper(area.name))
-			miniName.TextColor3 = area.accent:Lerp(C.white, 0.2)
-			miniStroke.Color = area.accent
+			paint(mini, accent)
 			setPips(miniPips, danger, dangerCol)
-			miniScale.Scale = 1.25
-			UI.tween(miniScale, 0.4, {Scale = 1}, Enum.EasingStyle.Back)
-			-- the big card only if you haven't been here for a while (no spam while running through)
+			miniScale.Scale = 1.3
+			UI.tween(miniScale, 0.5, {Scale = 1}, Enum.EasingStyle.Back)
+			-- the big ribbon only if you haven't been here for a while (no spam while running through)
 			if os.clock() - (shownAt[zone] or -100) < 25 then
 				big.Visible = false
 				mini.Visible = true
 				return
 			end
 			shownAt[zone] = os.clock()
-			UI.setText(areaL, "AREA " .. zone)
-			areaL.TextColor3 = area.accent
+			paint(band, accent)
+			for _, t in ipairs(tails) do paint(t, accent:Lerp(C.black, 0.3)) end
+			paint(info, accent:Lerp(C.black, 0.45))
+			badgeStroke.Color = C.ink
+			UI.setText(badgeNum, tostring(zone))
+			badgeNum.TextColor3 = accent
+			badgeArea.TextColor3 = accent:Lerp(C.black, 0.2)
 			UI.setText(nameL, string.upper(area.name))
-			nameGrad.Color = ColorSequence.new(C.white, area.accent:Lerp(C.white, 0.2))
-			UI.setText(guardL, "Guardian: " .. area.guard)
-			bigStroke.Color = area.accent
 			local rec = Config.RecommendedPoints(zone)
 			local mine = player:GetAttribute("SpeedPoints") or Config.StartSpeed
-			UI.setText(speedL, (zone > 1) and ("Recommended speed: " .. fmt(rec) .. "   (you: " .. fmt(mine) .. ")") or "The easiest area - start here!")
-			speedL.TextColor3 = (zone > 1 and mine < rec) and UI.rgb(255, 110, 100) or UI.rgb(150, 255, 120)
+			if zone > 1 then
+				UI.setText(infoL, "Guardian: " .. area.guard .. "   |   Speed " .. fmt(rec) .. " (you: " .. fmt(mine) .. ")")
+				infoL.TextColor3 = (mine < rec) and UI.rgb(255, 170, 160) or UI.rgb(190, 255, 160)
+			else
+				UI.setText(infoL, "Guardian: " .. area.guard .. "   |   The easiest area!")
+				infoL.TextColor3 = UI.rgb(190, 255, 160)
+			end
 			setPips(bigPips, 0, dangerCol)
 			for k = 1, danger do
-				task.delay(0.2 + k * 0.08, function()
-					if tok == token then bigPips[k].BackgroundColor3 = dangerCol end
+				task.delay(0.35 + k * 0.09, function()
+					if tok ~= token then return end
+					bigPips[k].BackgroundColor3 = dangerCol
+					bigPips[k].Size = UDim2.fromOffset(26, 26)
+					UI.tween(bigPips[k], 0.3, {Size = UDim2.fromOffset(18, 18)}, Enum.EasingStyle.Back)
 				end)
 			end
 			mini.Visible = false
 			big.Visible = true
 			big.GroupTransparency = 1
-			bigScale.Scale = 0.7
-			UI.tween(big, 0.25, {GroupTransparency = 0})
-			UI.tween(bigScale, 0.5, {Scale = 1}, Enum.EasingStyle.Back)
+			bigScale.Scale = 0.35
+			big.Rotation = -7
+			badge.Rotation = -25
+			UI.tween(big, 0.2, {GroupTransparency = 0})
+			UI.tween(bigScale, 0.6, {Scale = 1}, Enum.EasingStyle.Back)
+			UI.tween(big, 0.9, {Rotation = 0}, Enum.EasingStyle.Elastic)
+			UI.tween(badge, 0.9, {Rotation = 0}, Enum.EasingStyle.Elastic)
 			UI.SFX.play("open", 0.75, 0.35)
-			task.delay(2.8, function()
+			task.delay(3, function()
 				if tok ~= token then return end
 				UI.tween(big, 0.3, {GroupTransparency = 1})
+				UI.tween(bigScale, 0.3, {Scale = 0.8})
 				task.delay(0.3, function()
 					if tok ~= token then return end
 					big.Visible = false
 					mini.Visible = true
+					miniScale.Scale = 0.6
+					UI.tween(miniScale, 0.45, {Scale = 1}, Enum.EasingStyle.Back)
 				end)
 			end)
 		end
@@ -385,6 +454,7 @@ function Hud.init(ctx)
 			end
 		end)
 		hud.inArea = function() return lastZone ~= nil end
+		hud.showArea = showArea
 	end
 
 	-- windows sit above the HUD; while one is open the banner + tutorial step aside
@@ -393,6 +463,8 @@ function Hud.init(ctx)
 		hud.areaBanner.Visible = (not open) and hud.inArea()
 		tutorialSlot.Visible = not open
 		hud.bottomStack.Visible = not open
+		-- phones: the menu steps aside so the window can use the whole screen
+		if TOUCH then menu.Visible = not open end
 		if open then
 			-- keep only the newest notification: it fits above the window
 			local rows = {}
@@ -408,6 +480,11 @@ function Hud.init(ctx)
 	-- BOTTOM-CENTRE STACK: your unbox card -> carried box -> treadmill bar
 	------------------------------------------------------------------
 	local bottom = box(root, {Name = "BottomStack", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.fromOffset(560, 420), ZIndex = 3})
+	if TOUCH then
+		-- phones: between the cash counter (left) and the jump button (right)
+		new("UIScale", {Scale = 0.8}, bottom)
+		bottom.Position = UDim2.new(0.5, 40, 1, -12)
+	end
 	UI.list(bottom, 8, nil, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Bottom)
 	hud.bottomStack = bottom
 
@@ -415,10 +492,11 @@ function Hud.init(ctx)
 	local carry = box(bottom, {Name = "Carry", Size = UDim2.fromOffset(460, 104), LayoutOrder = 2, Visible = false})
 	local carryBack = new("Frame", {Size = UDim2.new(1, 0, 0, 52), BackgroundColor3 = C.hud, BackgroundTransparency = 0.12}, carry)
 	UI.corner(carryBack, 16)
-	UI.stroke(carryBack, 2.5)
+	UI.stroke(carryBack, 3)
+	UI.vivid(carryBack, UI.rgb(120, 70, 220))
 	local carryName = UI.label(carryBack, "", {Position = UDim2.fromOffset(12, 3), Size = UDim2.new(1, -24, 0, 26), Max = 22, Stroke = 2, TextColor3 = C.yellow, TextWrapped = false})
 	local carryHint = UI.label(carryBack, IS_TOUCH() and "Tap your plot's floor to place it" or "Click your plot's floor to place it",
-		{Position = UDim2.fromOffset(12, 29), Size = UDim2.new(1, -24, 0, 18), Max = 16, Stroke = 1.5, TextColor3 = C.sub, TextWrapped = false})
+		{Position = UDim2.fromOffset(12, 29), Size = UDim2.new(1, -24, 0, 18), Max = 17, Stroke = 1.8, TextColor3 = UI.rgb(235, 225, 255), TextWrapped = false})
 	local dropBtn = UI.button(carry, {Text = IS_TOUCH() and "Drop" or "Drop  [G]", Color = C.red, Icon = "down", IconColor = C.white, Size = UDim2.fromOffset(190, 46),
 		AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(0.5, 1), TextSize = 22})
 	dropBtn.Activated:Connect(function() ctx.remotes.Drop:FireServer() end)
@@ -428,7 +506,7 @@ function Hud.init(ctx)
 		if id then
 			local def = Config.Boxes[id]
 			UI.setText(carryName, "Carrying: " .. (player:GetAttribute("CarryLabel") or id))
-			if def then carryName.TextColor3 = (Config.Rarities[def.rarity] or Config.Rarities[1]).color:Lerp(C.yellow, 0.3) end
+			if def then carryName.TextColor3 = (Config.Rarities[def.rarity] or Config.Rarities[1]).color:Lerp(C.white, 0.55) end
 		end
 	end
 	player:GetAttributeChangedSignal("Carrying"):Connect(updateCarry)
@@ -537,6 +615,8 @@ function Hud.init(ctx)
 
 	-- confetti that rains over the whole screen
 	ctx.confetti = function(count, colors)
+		count = count or 60
+		colors = colors or {C.yellow, C.pink, C.cyan, C.green, C.orange, C.purple}
 		if ctx.settings.Effects == false then count = math.floor(count / 3) end
 		for _ = 1, count do
 			local sq = new("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(math.random(), 0, 0, -20 - math.random(0, 120)),
@@ -677,13 +757,6 @@ function Hud.init(ctx)
 	end
 	for _, a in ipairs({"SpeedPoints", "WalkSpeed", "OnTreadmill", "TreadRate"}) do player:GetAttributeChangedSignal(a):Connect(onSpeed) end
 	onSpeed()
-	local function onRebirths()
-		local n = player:GetAttribute("Rebirths") or 0
-		rebChip.Visible = n > 0
-		UI.setText(rebLabel, "REBIRTH " .. n .. "  |  x" .. Config.RebirthCashMult(n) .. " cash")
-	end
-	player:GetAttributeChangedSignal("Rebirths"):Connect(onRebirths)
-	onRebirths()
 
 	-- timers + badges that depend on the clock
 	task.spawn(function()
@@ -693,10 +766,11 @@ function Hud.init(ctx)
 			local ends = ReplicatedStorage:GetAttribute("PhaseEndsAt")
 			phaseT.icon.Visible = not night
 			sunIcon.Visible = night == true
-			UI.setText(phaseT.label, ends and ((night and "Day in " or "Night in ") .. Config.FormatTime(ends - nowT)) or "")
-			phaseT.label.TextColor3 = night and UI.rgb(255, 230, 120) or UI.rgb(180, 200, 255)
+			local inWord = TOUCH and " " or " in "
+			UI.setText(phaseT.label, ends and ((night and "Day" or "Night") .. inWord .. Config.FormatTime(ends - nowT)) or "")
+			phaseT.grad.Color = ColorSequence.new(night and UI.rgb(255, 205, 70) or UI.rgb(120, 130, 255), night and UI.rgb(235, 130, 30) or UI.rgb(50, 50, 170))
 			local special = ReplicatedStorage:GetAttribute("SpecialAt")
-			UI.setText(rainbowT.label, special and ("Rainbow box in " .. Config.FormatTime(special - nowT)) or "")
+			UI.setText(rainbowT.label, special and ((TOUCH and "Rainbow " or "Rainbow box in ") .. Config.FormatTime(special - nowT)) or "")
 			local luckUntil = ReplicatedStorage:GetAttribute("ServerLuckUntil") or 0
 			luckT.frame.Visible = luckUntil > nowT
 			if luckUntil > nowT then UI.setText(luckT.label, Config.ServerLuck.mult .. "x LUCK  " .. Config.FormatTime(luckUntil - nowT)) end
@@ -705,13 +779,33 @@ function Hud.init(ctx)
 		end
 	end)
 
-	-- the menu icons bob gently, the offer bounces, sheens sweep
+	-- everything is alive: the menu icons bob and hop one after another in a wave, the counters
+	-- and timer icons wiggle, the Shop button breathes, the offer bounces, sheens sweep
+	local function hop(t, i)
+		local p = (t - i * 0.11) % 3.4
+		if p > 0.42 then return 0 end
+		return math.sin(p / 0.42 * math.pi)
+	end
 	RunService.RenderStepped:Connect(function(dt)
 		local t = os.clock()
 		for i, e in ipairs(hud.menuIcons) do
-			e.icon.Position = e.pos + UDim2.fromOffset(0, math.sin(t * 2.4 + i * 0.9) * 1.5)
-			e.icon.Rotation = math.sin(t * 1.7 + i) * 5
+			local w = hop(t, i)
+			e.icon.Position = e.pos + UDim2.fromOffset(0, math.sin(t * 2.4 + i * 0.9) * 2 - w * 12)
+			e.icon.Rotation = math.sin(t * 1.7 + i) * 6 + w * 10 * ((i % 2 == 0) and 1 or -1)
+			e.iconScale.Scale = 1 + w * 0.18
+			e.faceScale.Scale = 1 + w * 0.05
 		end
+		shopScale.Scale = 1 + 0.035 * math.sin(t * 3.2)
+		cashC.icon.Rotation = math.sin(t * 2.1) * 10
+		speedC.icon.Rotation = math.sin(t * 2.6 + 1) * 8
+		cashC.iScale.Scale = 1 + 0.06 * math.abs(math.sin(t * 2.1))
+		phaseT.icon.Rotation = math.sin(t * 1.3) * 12
+		sunIcon.Rotation = (t * 30) % 360
+		rainbowT.icon.Rotation = math.sin(t * 2.4) * 15
+		rainbowT.grad.Offset = Vector2.new(math.sin(t * 0.8) * 0.25, 0)
+		luckT.icon.Rotation = math.sin(t * 2) * 12
+		local bits = hud.bannerBits
+		if bits and bits.mini.Visible then bits.mini.Rotation = math.sin(t * 2) * 1.5 end
 		if offer.Visible then
 			local target = 1 + 0.05 * math.abs(math.sin(t * 3))
 			offerScale.Scale = offerScale.Scale + (target - offerScale.Scale) * math.min(1, dt * 8)
@@ -727,10 +821,10 @@ function Hud.init(ctx)
 	-- the HUD slides in when you join
 	do
 		local slides = {
-			{currency, UDim2.fromOffset(-300, 8)},
-			{menu, UDim2.fromOffset(-200, 160)},
-			{timers, UDim2.new(1, 300, 0, 8)},
-			{right, UDim2.new(1, 240, RIGHT_Y, 10)},
+			{menu, UDim2.fromOffset(-MENU_W - 40, 8)},
+			{currency, UDim2.new(0, -CUR_W - 40, 1, -12)},
+			{right, right.Position + UDim2.fromOffset(300, 0)},
+			{timers, timers.Position + UDim2.fromOffset(340, 0)},
 		}
 		for i, s in ipairs(slides) do
 			local goal = s[1].Position

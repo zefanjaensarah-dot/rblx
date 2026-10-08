@@ -76,7 +76,7 @@ local profile = {Cash = 123456, Stolen = 3, Boxes = {OldBox = 2, HayBox = 1}, Mu
 		{id = "GoldenEgg", mutation = "Rainbow", size = "Giant", stand = 2}},
 	Unboxing = {["1"] = {id = "OldBox", mutation = "Normal", size = "Normal", readyAt = 0, duration = 10, u = 0, w = 30, rot = 0}},
 	Treadmill = 1, SpeedPoints = 150, TutorialDone = false, Trails = {Dust = true}, Trail = "Dust", Customers = 2, SpeedBoost = 2,
-	Receipts = {}, Rebirths = 1, Daily = {Streak = 2, Last = math.floor((os.clock() + 1.7e9) / 86400) - 1}, Codes = {}, Settings = {Sfx = true}}
+	Receipts = {}, IndexClaimed = {["2"] = true}, Daily = {Streak = 2, Last = math.floor((os.clock() + 1.7e9) / 86400) - 1}, Codes = {}, Settings = {Sfx = true}}
 H.onInvokeServer = function(action, arg, extra)
 	if action == "GetData" then return {ok = true, data = profile} end
 	return {ok = true, msg = "server says ok: " .. tostring(action)}
@@ -94,7 +94,6 @@ fireClient("Sync", profile)
 localPlayer:SetAttribute("Cash", 200000)
 localPlayer:SetAttribute("Income", 1234)
 localPlayer:SetAttribute("SpeedPoints", 4567)
-localPlayer:SetAttribute("Rebirths", 1)
 localPlayer:SetAttribute("PlotName", "Plot1")
 localPlayer:SetAttribute("GiftStart", os.clock() + 1.7e9 - 400)
 localPlayer:SetAttribute("GiftClaimed", "1")
@@ -186,7 +185,7 @@ H.step(10)
 local Client = client
 local UIm = H.requireModule(Client:FindFirstChild("UI"))
 local opened = 0
-for _, name in ipairs({"Shop", "Items", "Index", "Trails", "Gifts", "Daily", "Rebirth", "Codes", "Settings", "Welcome"}) do
+for _, name in ipairs({"Shop", "Items", "Index", "Trails", "Gifts", "Daily", "Codes", "Settings", "Welcome"}) do
 	UIm.open(name)
 	opened += 1
 	H.step(3)
