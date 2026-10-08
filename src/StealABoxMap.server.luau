@@ -250,43 +250,86 @@ do
 	leaderboard("BoardTopMoney", -46, "Top Money", RGB(80, 200, 60))
 	leaderboard("BoardTopSpeed", -80, "Top Speed", RGB(60, 135, 255))
 
-	-- TRAILS SHOP: a wooden market stall with a green + white striped awning (press E at the counter)
+	-- TRAILS SHOP: a happy candy-coloured stall with a rainbow awning, balloons and sparkles
 	do
 		local stall = Instance.new("Model")
 		stall.Name = "TrailStall"
 		-- on the right side of the square, the counter faces the street (-X)
 		local base = CFrame.new(60, 0, 22) * CFrame.Angles(0, math.pi / 2, 0)
 		local function S(x, y, z) return base * CFrame.new(x, y, z) end
-		local wood, woodDark, woodTop = RGB(176, 112, 60), RGB(120, 74, 40), RGB(222, 168, 108)
-		local counter = solid(P(stall, "Counter", V(16, 4, 3.6), S(0, 2.2, -2), wood, M.WoodPlanks))
-		P(stall, "CounterTop", V(17, 0.5, 4.4), S(0, 4.45, -2), woodTop, M.WoodPlanks)
+		local RAINBOW = {RGB(255, 80, 80), RGB(255, 160, 50), RGB(255, 225, 60), RGB(110, 215, 80), RGB(70, 180, 255), RGB(150, 110, 255), RGB(255, 120, 200), RGB(255, 80, 80)}
+		local PINK, MINT, CREAM = RGB(255, 150, 195), RGB(120, 225, 200), RGB(255, 248, 235)
+		local function anim(p, kind, speed, amp)
+			p:SetAttribute("Anim", kind)
+			p:SetAttribute("Speed", speed)
+			if amp then p:SetAttribute("Amp", amp) end
+			CS:AddTag(p, "Animated")
+		end
+		local counter = solid(P(stall, "Counter", V(16, 4, 3.6), S(0, 2.2, -2), PINK))
+		P(stall, "CounterTop", V(17, 0.6, 4.4), S(0, 4.5, -2), CREAM)
+		for k = 0, 3 do -- polka dots on the front
+			P(stall, "CounterDot", V(0.2, 1.6, 1.6), S(-6 + k * 4, 2.2, -3.85) * CFrame.Angles(0, math.rad(90), 0), CREAM, nil, NOHIT).Shape = Enum.PartType.Cylinder
+		end
 		for _, px in ipairs({-8, 8}) do
-			P(stall, "Post", V(0.8, 11.8, 0.8), S(px, 6.1, -3.6), woodDark, M.WoodPlanks)
-			P(stall, "Post", V(0.8, 13.6, 0.8), S(px, 7, 3.6), woodDark, M.WoodPlanks)
+			for _, pz in ipairs({-3.6, 3.6}) do
+				local h = (pz < 0) and 11.8 or 13.6
+				P(stall, "Post", V(h, 0.9, 0.9), S(px, h / 2 + 0.2, pz) * CFrame.Angles(0, 0, math.rad(90)), MINT).Shape = Enum.PartType.Cylinder
+			end
+			-- a flower pot at each end of the counter
+			P(stall, "Pot", V(2, 2.4, 2.4), S(px * 1.22, 1, -2) * CFrame.Angles(0, 0, math.rad(90)), RGB(230, 120, 80), nil, NOHIT).Shape = Enum.PartType.Cylinder
+			P(stall, "PotPlant", V(2.6, 2.6, 2.6), S(px * 1.22, 2.6, -2), RGB(90, 200, 70), nil, NOHIT).Shape = Enum.PartType.Ball
+			P(stall, "PotFlower", V(1, 1, 1), S(px * 1.22 + 0.5, 3.8, -2.4), RAINBOW[(px > 0) and 7 or 3], nil, NOHIT).Shape = Enum.PartType.Ball
 		end
 		local tilt = CFrame.Angles(math.rad(-14), 0, 0) -- slopes down to the front
 		for k = 0, 7 do
 			local x = -7.875 + k * 2.25
-			local c = (k % 2 == 0) and RGB(80, 205, 60) or WHITE
-			P(stall, "Awning", V(2.25, 0.4, 9.6), S(x, 12.9, 0) * tilt, c)
-			P(stall, "Valance", V(2.25, 1.6, 0.3), S(x, 11, -4.75), c)
+			P(stall, "Awning", V(2.25, 0.4, 9.6), S(x, 12.9, 0) * tilt, RAINBOW[k + 1])
+			P(stall, "Valance", V(2.25, 1.6, 0.3), S(x, 11, -4.75), (k % 2 == 0) and CREAM or RAINBOW[k + 1])
 		end
-		-- a few trail samples on the counter
-		for k, t in ipairs({1, 3, 5}) do
-			local trail = Config.Trails[t]
+		-- trail samples spinning on the counter
+		for k = 1, 5 do
+			local trail = Config.Trails[k]
 			if trail then
-				P(stall, "TrailSample", V(1.6, 1.2, 1.6), S(-5 + (k - 1) * 5, 5.3, -2) * CFrame.Angles(0, math.rad(20 * k), 0), trail.colors[1], M.Neon, NOHIT)
+				anim(P(stall, "TrailSample", V(1.4, 1.4, 1.4), S(-6 + (k - 1) * 3, 5.6, -2), trail.colors[1], M.Neon, NOHIT), "spin", 1.5)
 			end
 		end
-		-- the floating green "Trails Shop" title
-		local anchor = P(stall, "SignAnchor", V(1, 1, 1), S(0, 18, 0), RGB(0, 0, 0), nil, GHOST)
+		-- bunches of balloons on the back posts
+		for i, px in ipairs({-8, 8}) do
+			for j = 1, 3 do
+				local top = S(px + (j - 2) * 1.6, 15.8 + (j % 2) * 1.2, 3.6)
+				local balloon = P(stall, "Balloon", V(2.4, 2.4, 2.4), top, RAINBOW[(i * 3 + j) % 7 + 1], nil, NOHIT)
+				balloon.Shape = Enum.PartType.Ball
+				anim(balloon, "bob", 1 + j * 0.25, 0.4)
+				P(stall, "BalloonString", V(0.08, 2.6, 0.08), top * CFrame.new(0, -2.5, 0), WHITE, nil, NOHIT)
+			end
+		end
+		-- a round rug in front of the counter
+		P(stall, "Rug", V(0.2, 14, 14), S(0, 0.25, -9) * CFrame.Angles(0, 0, math.rad(90)), PINK:Lerp(WHITE, 0.3), nil, NOHIT).Shape = Enum.PartType.Cylinder
+		P(stall, "Rug", V(0.24, 9, 9), S(0, 0.27, -9) * CFrame.Angles(0, 0, math.rad(90)), MINT:Lerp(WHITE, 0.2), nil, NOHIT).Shape = Enum.PartType.Cylinder
+		-- the floating rainbow "Trails Shop" title with sparkles
+		local anchor = P(stall, "SignAnchor", V(1, 1, 1), S(0, 21, 0), RGB(0, 0, 0), nil, GHOST)
 		local bb = Instance.new("BillboardGui")
 		bb.Name = "TrailsShopSign"
 		bb.Size = UDim2.fromScale(18, 4.5)
 		bb.MaxDistance = 200
 		bb.LightInfluence = 0
 		bb.Parent = anchor
-		textLabel(bb, "Trails Shop", RGB(130, 235, 60), 4)
+		local title = textLabel(bb, "Trails Shop", WHITE, 4)
+		local keys = {}
+		for k, c in ipairs(RAINBOW) do table.insert(keys, ColorSequenceKeypoint.new((k - 1) / (#RAINBOW - 1), c)) end
+		local grad = Instance.new("UIGradient")
+		grad.Color = ColorSequence.new(keys)
+		grad.Parent = title
+		local sparkle = Instance.new("ParticleEmitter")
+		sparkle.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		sparkle.Color = ColorSequence.new(keys)
+		sparkle.Size = NumberSequence.new(0.8, 0)
+		sparkle.Lifetime = NumberRange.new(1, 1.6)
+		sparkle.Rate = 6
+		sparkle.Speed = NumberRange.new(1, 2)
+		sparkle.SpreadAngle = Vector2.new(180, 180)
+		sparkle.LightEmission = 0.6
+		sparkle.Parent = anchor
 		prompt(counter, "OpenTrailShop", "Trails", "Trails Shop")
 		stall.Parent = lobby
 	end
@@ -2230,6 +2273,22 @@ end
 local SHELF_D = {6, 20}    -- shelves run from d=6 to d=20 on both walls
 local LEVELS = {0.6, 5.6, 10.6}
 
+-- a string of little flags across the lane, sagging in the middle
+local FLAG_COLS = {RGB(255, 85, 85), RGB(255, 205, 50), RGB(80, 190, 255), RGB(120, 220, 90), RGB(200, 120, 255)}
+local function laneBunting(r, d)
+	local a, b = SCF(r, -HW + 1, WH - 3, d).Position, SCF(r, HW - 1, WH - 3, d).Position
+	local n, sag = 14, 3 * SC
+	for k = 1, n do
+		local t = (k - 0.5) / n
+		local pos = a:Lerp(b, t) - V(0, sag * (1 - math.abs(2 * t - 1)), 0)
+		P(r.folder, "Flag", V(0.2, 2.6, 2.6), CFrame.lookAt(pos, pos + (b - a)) * CFrame.new(0, -1.84, 0) * CFrame.Angles(math.rad(45), 0, 0), FLAG_COLS[(k - 1) % #FLAG_COLS + 1], nil, FX)
+	end
+	local mid = a:Lerp(b, 0.5) - V(0, sag, 0)
+	for _, seg in ipairs({{a, mid}, {mid, b}}) do
+		P(r.folder, "FlagString", V(0.25, 0.25, (seg[2] - seg[1]).Magnitude), CFrame.lookAt((seg[1] + seg[2]) / 2, seg[2]), RGB(255, 255, 255), nil, FX)
+	end
+end
+
 local function buildShelf(r, side, st, d1, d2, spots)
 	local x = side * (HW - 3)
 	local len = d2 - d1
@@ -2298,10 +2357,6 @@ local function buildCeiling(r, st, acc)
 	local glow = D(r, "CeilingGlow", V(5, 0.25, SL - 6), 0, WH - 0.05, SL / 2, acc:Lerp(RGB(255, 255, 255), 0.4), M.Neon, FX)
 	glow.Transparency = 0.15
 	animate(glow, "pulse", {Speed = 1.2, Amp = 0.25, Phase = idx})
-	for k = 0, 2 do
-		local lp = D(r, "CeilingLight", V(1, 1, 1), 0, WH - 1, 8 + k * 17, RGB(0, 0, 0), nil, GHOST)
-		light(lp, mood[1], mood[3] + 14, mood[2] + 0.4)
-	end
 	-- swinging lamps hanging from the beams
 	for _, pos in ipairs({{-20, 12.4}, {20, 12.4}, {-20, 37.6}, {20, 37.6}}) do
 		local top = SCF(r, pos[1], WH - 1, pos[2])
@@ -2335,8 +2390,18 @@ for areaIndex, area in ipairs(Config.Areas) do
 	local bio = BIOMES[areaIndex]
 
 	-- floor (studded, like the classic Roblox look) + accent border
-	local floor = D(r, "Floor", V(HW * 2, 0.4, SL), 0, 0.3, SL / 2, bio.lane, M.SmoothPlastic)
-	floor.TopSurface = Enum.SurfaceType.Studs
+	D(r, "Floor", V(HW * 2, 0.4, SL), 0, 0.3, SL / 2, bio.lane, M.SmoothPlastic)
+	-- big cartoon checker tiles
+	local TS = HW * 2 / 6
+	local tileCol = bio.lane:Lerp(RGB(255, 255, 255), 0.2)
+	for j = 0, math.ceil(SL / TS) - 1 do
+		local len = math.min(TS, SL - j * TS)
+		for i = 0, 5 do
+			if (i + j) % 2 == 0 then
+				D(r, "FloorTile", V(TS, 0.04, len), -HW + TS * (i + 0.5), F + 0.02, j * TS + len / 2, tileCol, M.SmoothPlastic, FX)
+			end
+		end
+	end
 	-- glowing line where this area starts
 	D(r, "AreaLine", V(HW * 2, 0.06, 1.6), 0, F + 0.03, 0.8, acc, M.Neon, FX)
 	D(r, "AreaLineCore", V(HW * 2, 0.08, 0.5), 0, F + 0.05, 0.8, RGB(255, 255, 255), M.Neon, FX)
@@ -2348,23 +2413,26 @@ for areaIndex, area in ipairs(Config.Areas) do
 		-- a low glowing curb shows where the lane ends
 		D(r, "LaneCurb", V(1.2, 0.8, SL), side * (HW - 0.2), F + 0.4, SL / 2, bio.ground:Lerp(RGB(255, 255, 255), 0.5), M.SmoothPlastic)
 		D(r, "LaneCurbGlow", V(1.25, 0.15, SL), side * (HW - 0.2), F + 0.85, SL / 2, acc, M.Neon, FX)
+		D(r, "WallBumper", V(SL, 0.9, 0.9), side * (HW - 0.3), F + 4.2, SL / 2, st.wallA:Lerp(RGB(255, 255, 255), 0.45), M.SmoothPlastic, FX, CFrame.Angles(0, math.rad(90), 0)).Shape = Enum.PartType.Cylinder
+		for d = 7, SL - 4, 14 do
+			disc(r, "WallDot", 0.3, 4.4, side * (HW - 0.25), F + 16, d, ((d // 14) % 2 == 0) and acc or st.wallA:Lerp(RGB(255, 255, 255), 0.6), M.SmoothPlastic, FX, CFrame.new())
+		end
 		for _, d in ipairs({25, 47}) do
 			local x = side * (HW - 4)
 			D(r, "LampPost", V(0.6, 10, 0.6), x, F + 5, d, RGB(40, 42, 55), M.Metal)
 			D(r, "LampArm", V(2.6, 0.4, 0.4), x - side * 1.1, F + 10, d, RGB(40, 42, 55), M.Metal)
 			local mood = MOOD[areaIndex]
-			local bulb = ball(r, "LampBulb", 1.4, x - side * 2.2, F + 9.4, d, mood[1], M.Neon, FX)
-			light(bulb, mood[1], mood[3] + 6, mood[2] + 0.4)
+			ball(r, "LampBulb", 1.4, x - side * 2.2, F + 9.4, d, mood[1], M.Neon, FX)
 		end
 	end
 
 	-- glowing gate posts + the floating zone name
 	for _, side in ipairs({-1, 1}) do
-		local pil = D(r, "GatePost", V(3, 12, 3), side * (HW - 1.5), F + 6, 0, acc:Lerp(RGB(30, 30, 40), 0.35), M.SmoothPlastic)
-		D(r, "GateGlow", V(3.2, 0.5, 3.2), side * (HW - 1.5), F + 0.3, 0, acc, M.Neon, FX)
-		D(r, "GateBand", V(3.2, 0.6, 3.2), side * (HW - 1.5), F + 8, 0, acc, M.Neon, FX)
-		shard(r, side * (HW - 1.5), F + 12, 0, 2.2, 3.5, acc, 0, 45, M.Neon)
-		light(pil, acc, 18, 1)
+		local gx = side * (HW - 1.5)
+		pillar(r, "GatePost", 12, 3, gx, F, 0, acc:Lerp(RGB(255, 255, 255), 0.25), M.SmoothPlastic)
+		disc(r, "GateGlow", 0.5, 3.4, gx, F + 0.3, 0, acc, M.Neon, FX)
+		disc(r, "GateBand", 0.6, 3.3, gx, F + 8, 0, RGB(255, 255, 255), M.SmoothPlastic, FX)
+		ball(r, "GateTop", 3.8, gx, F + 13.2, 0, acc, M.Neon, FX)
 	end
 	-- (no floating area title in the sky any more: it piled up with the other areas' titles;
 	--  the area banner on your screen shows where you are)
@@ -2403,6 +2471,7 @@ for areaIndex, area in ipairs(Config.Areas) do
 	-- Only things that were stuck on the (now invisible) side walls are removed.
 	-- the roof over the lane
 	buildCeiling(r, st, acc)
+	for d = 25, SL - 8, 25 do laneBunting(r, d) end
 	-- critters + moving set pieces (animated by the clients)
 	bringToLife(r)
 
