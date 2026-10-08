@@ -1604,7 +1604,7 @@ clearPlotVisuals = function(plot)
 		end
 	end
 	setSign(plot, "CustomerSign", "Lv 1/" .. Config.CustomerMax, "x1 shoppers")
-	setSign(plot, "TreadSign", "Lv 1/" .. Config.Treadmill.max, "+" .. Config.FormatNum(Config.TreadRate(1)) .. " speed/s")
+	setSign(plot, "TreadConsole", "$" .. Config.FormatNum(Config.TreadmillCost(1)), "Lv 1/" .. Config.Treadmill.max .. "  +" .. Config.FormatNum(Config.TreadRate(1)) .. "/s")
 end
 
 -- every second: finished boxes get an "Open!" prompt
@@ -2266,7 +2266,8 @@ refreshTreadmill = function(player)
 	local screen = plot:FindFirstChild("TreadScreen", true)
 	local label = screen and screen:FindFirstChild("ScreenGui", true)
 	local level = prof.Treadmill or 1
-	setSign(plot, "TreadSign", "Lv " .. level .. "/" .. Config.Treadmill.max, "+" .. Config.FormatNum(Config.TreadRate(level) * trailMult(prof) * speedMult(prof)) .. " speed/s")
+	local price = (level >= Config.Treadmill.max) and "MAXED" or ("$" .. Config.FormatNum(Config.TreadmillCost(level)))
+	setSign(plot, "TreadConsole", price, "Lv " .. level .. "/" .. Config.Treadmill.max .. "  +" .. Config.FormatNum(Config.TreadRate(level) * trailMult(prof) * speedMult(prof)) .. "/s")
 end
 
 for _, plot in ipairs(plotsFolder:GetChildren()) do

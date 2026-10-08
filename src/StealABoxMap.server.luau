@@ -2548,10 +2548,7 @@ local function buildPlot(i, side, zc)
 		PP("TreadBase", V(11, 0.8, W1 - W0 + 4), TU, 0.8, (W0 + W1) / 2, metal, M.Metal)
 		for _, sd in ipairs({-1, 1}) do
 			PP("TreadRail", V(1, 1.2, W1 - W0 + 4), TU + sd * 5.2, 1.4, (W0 + W1) / 2, col)
-			PP("TreadUpright", V(0.7, 5.2, 0.7), TU + sd * 4.2, 3.6, W0 - 0.6, darkMetal, M.Metal)
-			PP("TreadSignPole", V(0.5, 2.6, 0.5), TU + sd * 4.2, 7.4, W0 - 0.6, darkMetal, M.Metal)
 		end
-		PP("TreadHandle", V(9, 0.6, 0.6), TU, 6, W0 - 0.6, col)
 		local belt = PP("TreadBelt", V(8.4, 0.25, W1 - W0), TU, 1.32, (W0 + W1) / 2, RGB(28, 28, 32), M.Fabric)
 		-- the belt runs by itself: step on and your character runs in place (client), jump to hop off
 		local dir = (W(TU, 0, W1).Position - W(TU, 0, W0).Position).Unit
@@ -2567,18 +2564,25 @@ local function buildPlot(i, side, zc)
 		end
 		-- THE PHONE stands at the front of the belt, so you can play while you run
 		do
-			local pw = W0 - 4.5
-			PP("PhoneStand", V(7, 1, 4), TU, 0.9, pw, RGB(60, 60, 70)):SetAttribute("Solid", true)
-			PP("PhoneBody", V(9, 16, 1.2), TU, 9.4, pw, RGB(25, 25, 32)):SetAttribute("Solid", true)
-			local screen = PP("PhoneScreen", V(8, 14, 0.2), TU, 9.6, pw + 0.62, RGB(60, 150, 255), M.Neon, NOHIT)
-			PP("PhoneCamera", V(0.8, 0.8, 0.2), TU, 17, pw + 0.62, RGB(10, 10, 14), nil, NOHIT)
+			local pw = W0 - 1.6
+			PP("PhoneStand", V(7, 1, 3), TU, 0.9, pw, RGB(60, 60, 70)):SetAttribute("Solid", true)
+			PP("PhoneBody", V(9, 15, 1.2), TU, 9, pw, RGB(25, 25, 32)):SetAttribute("Solid", true)
+			local screen = PP("PhoneScreen", V(8, 13, 0.2), TU, 9.2, pw + 0.62, RGB(60, 150, 255), M.Neon, NOHIT)
+			PP("PhoneCamera", V(0.8, 0.8, 0.2), TU, 16, pw + 0.62, RGB(10, 10, 14), nil, NOHIT)
 			signText(screen, Enum.NormalId.Front, "GAMES\nPress E", 30, 3, 120)
-			prompt(screen, "PlayPhone", "Play", "Phone Games", 0).MaxActivationDistance = 30
+			local pp = prompt(screen, "PlayPhone", "Play", "Phone Games", 0)
+			pp.MaxActivationDistance = 30
+			pp.Exclusivity = Enum.ProximityPromptExclusivity.AlwaysShow
 		end
-		local console = PP("TreadConsole", V(7, 2.8, 1), TU, 7.1, W0 - 1.2, darkMetal, M.Metal, nil, CFrame.Angles(math.rad(25), 0, 0))
-		prompt(console, "ProximityPrompt", "Upgrade", "Treadmill", 0.3)
-		upgradeSign("TreadSign", "TreadTag", V(9.4, 3.6, 0.4), TU, 10.4, W0 - 0.6,
-			"TREADMILL", "Lv 1/" .. Config.Treadmill.max, "+" .. Config.FormatNum(Config.TreadRate(1)) .. " speed/s")
+		-- the upgrade is just a sign beside the belt: "UPGRADE" and the price (the server keeps it current)
+		local su, sw = TU - 10, W0 + 3
+		for _, sd in ipairs({-1, 1}) do
+			PP("TreadSignPole", V(0.5, 4, 0.5), su + sd * 3, 2, sw, darkMetal, M.Metal)
+		end
+		local sign = upgradeSign("TreadConsole", "TreadTag", V(7.4, 4, 0.4), su, 5.6, sw,
+			"UPGRADE", "$" .. Config.FormatNum(Config.TreadmillCost(1)), "Lv 1/" .. Config.Treadmill.max .. "  +" .. Config.FormatNum(Config.TreadRate(1)) .. "/s")
+		local up = prompt(sign, "ProximityPrompt", "Upgrade", "Treadmill", 0.3)
+		up.Exclusivity = Enum.ProximityPromptExclusivity.AlwaysShow
 	end
 
 	-- name sign at the front (the server writes "<name>'s Base")
