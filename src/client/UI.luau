@@ -720,6 +720,14 @@ local function fitWindow(win)
 	local left = UI.winLeft or 12
 	local w = math.min(win.size.X, math.max(320, vw - left - 12))
 	local h = math.min(win.size.Y, availH)
+	if win.docked then
+		h = math.min(win.size.Y, availH - 90) -- room for the big button under it
+		win.frame.Size = UDim2.fromOffset(w, h)
+		win.centerX = vw - (UI.dockRight or 240) - w / 2
+		win.centerY = WIN_TOP + (availH - 80) / 2
+		UI.dockLeft = win.centerX - w / 2 - 60 -- (the red ">" tab sticks out on the left)
+		return win.centerY
+	end
 	win.frame.Size = UDim2.fromOffset(w, h)
 	win.centerY = WIN_TOP + availH / 2
 	-- centred on the screen when it fits, otherwise pushed right of the menu
@@ -745,13 +753,15 @@ local function makePage(parent, z)
 end
 
 function UI.window(opt)
-	local color = opt.Color or C.green
+	local docked = opt.Docked == true
+	local color = docked and rgb(255, 150, 30) or opt.Color or C.green
 	local size = opt.Size or Vector2.new(760, 470)
 	local frame = new("Frame", {Name = opt.Name, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(size.X, size.Y),
 		BackgroundColor3 = color:Lerp(C.panel, 0.45), Visible = false, ZIndex = 60}, UI.root)
-	UI.corner(frame, 22)
+	UI.corner(frame, docked and 8 or 22)
 	UI.stroke(frame, 4)
 	UI.shade(frame, C.white, rgb(175, 172, 192))
+	if docked then frame.BackgroundColor3 = rgb(44, 44, 48) end
 	local scale = new("UIScale", {}, frame)
 	-- title bar
 	local header = new("Frame", {Name = "Header", Size = UDim2.new(1, 0, 0, 58), BackgroundColor3 = color, BorderSizePixel = 0}, frame)
@@ -769,19 +779,65 @@ function UI.window(opt)
 	end
 	local title = UI.label(header, opt.Title or opt.Name, {Position = UDim2.fromOffset(titleX, 9), Size = UDim2.new(1, -titleX - 70, 0, 40),
 		TextXAlignment = Enum.TextXAlignment.Left, Max = 32, Stroke = 3, TextWrapped = false})
-	local close = new("TextButton", {Name = "Close", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -14, 0, 12), Size = UDim2.fromOffset(48, 48),
-		BackgroundColor3 = rgb(240, 60, 70), Text = "", AutoButtonColor = false}, frame)
-	UI.corner(close, true)
-	UI.stroke(close, 3)
-	UI.shade(close, C.white, rgb(190, 190, 190))
-	UI.icon("close", close, UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), C.white, Vector2.new(0.5, 0.5))
+	local close
+	if docked then
+		-- side panel: a red square ">" tab on its left edge closes it
+		header.Size = UDim2.new(1, 0, 0, 54)
+		close = new("TextButton", {Name = "Close", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(0, -8, 0.5, 0), Size = UDim2.fromOffset(52, 52),
+			BackgroundColor3 = rgb(230, 30, 40), Text = "", AutoButtonColor = false}, frame)
+		UI.corner(close, 6)
+		UI.stroke(close, 3.5)
+		UI.shade(close, C.white, rgb(190, 190, 190))
+		UI.label(close, ">", {Size = UDim2.fromScale(1, 1), Max = 36, Stroke = 3})
+		title.Size = UDim2.new(1, -titleX - 200, 0, 40)
+		if opt.HeaderButton then
+			opt.HeaderButton.Size = UDim2.fromOffset(180, 40)
+			opt.HeaderButton.AnchorPoint = Vector2.new(1, 0.5)
+			opt.HeaderButton.Position = UDim2.new(1, -10, 0.5, 0)
+			opt.HeaderButton.Depth = 3
+			opt.HeaderButton.ZIndex = 3
+			opt.HeaderButton.TextSize = opt.HeaderButton.TextSize or 18
+		end
+	else
+		close = new("TextButton", {Name = "Close", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -14, 0, 12), Size = UDim2.fromOffset(48, 48),
+			BackgroundColor3 = rgb(240, 60, 70), Text = "", AutoButtonColor = false}, frame)
+		UI.corner(close, true)
+		UI.stroke(close, 3)
+		UI.shade(close, C.white, rgb(190, 190, 190))
+		UI.icon("close", close, UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), C.white, Vector2.new(0.5, 0.5))
+	end
 	UI.pressable(close)
 	-- body
 	local body = new("Frame", {Name = "Body", Position = UDim2.fromOffset(8, 64), Size = UDim2.new(1, -16, 1, -72), BackgroundColor3 = color:Lerp(C.panelDark, 0.9), BorderSizePixel = 0}, frame)
 	UI.corner(body, 16)
 	UI.stroke(body, 2.5, color:Lerp(C.ink, 0.5))
+	local headerBtn, footerBtn
+	if docked then
+		-- dark charcoal body with a faint grid (two striped gradients, no hundreds of frames)
+		body.Position, body.Size = UDim2.fromOffset(6, 60), UDim2.new(1, -12, 1, -66)
+		body.BackgroundColor3 = rgb(50, 50, 55)
+		UI.corner(body, 4)
+		for _, rot in ipairs({0, 90}) do
+			local keys = {}
+			for k = 0, 18 do
+				table.insert(keys, NumberSequenceKeypoint.new(k / 18, (k % 2 == 0) and 0.93 or 1))
+			end
+			local grid = new("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.white, BorderSizePixel = 0, BackgroundTransparency = 0}, body)
+			UI.corner(grid, 4)
+			new("UIGradient", {Rotation = rot, Transparency = NumberSequence.new(keys)}, grid)
+		end
+		if opt.HeaderButton then headerBtn = UI.button(header, opt.HeaderButton) end
+		if opt.Footer then
+			opt.Footer.Size = UDim2.new(1, -40, 0, 62)
+			opt.Footer.AnchorPoint = Vector2.new(0.5, 0)
+			opt.Footer.Position = UDim2.new(0.5, 0, 1, 12)
+			opt.Footer.TextSize = opt.Footer.TextSize or 30
+			opt.Footer.Depth = 6
+			footerBtn = UI.button(frame, opt.Footer)
+		end
+	end
 	local win = {name = opt.Name, frame = frame, body = body, header = header, title = title, scale = scale, sheen = sheenGrad,
-		color = color, pages = {}, tabs = {}, tab = nil, size = size}
+		color = color, pages = {}, tabs = {}, tab = nil, size = size, docked = docked, headerBtn = headerBtn, footerBtn = footerBtn}
 	if opt.Tabs then
 		local tabRow = new("Frame", {Name = "Tabs", Position = UDim2.fromOffset(10, 8), Size = UDim2.new(1, -20, 0, 44), BackgroundTransparency = 1}, body)
 		UI.list(tabRow, 8, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
@@ -836,7 +892,7 @@ local function setDim(on)
 	else
 		UI.tween(UI.dim, 0.2, {BackgroundTransparency = 1})
 		UI.tween(UI.blur, 0.25, {Size = 0})
-		task.delay(0.22, function() if not openWin then UI.dim.Visible = false end end)
+		task.delay(0.22, function() if not openWin or openWin.docked then UI.dim.Visible = false end end)
 	end
 end
 
@@ -853,12 +909,12 @@ function UI.open(name, tab)
 	openWin = win
 	win.token = (win.token or 0) + 1
 	win.frame.Visible = true
-	setDim(true)
+	setDim(not win.docked)
 	local cy = fitWindow(win)
 	if not wasOpen then
 		SFX.play("open")
 		win.scale.Scale = 0.6
-		win.frame.Position = UDim2.fromOffset(win.centerX, cy + 30)
+		win.frame.Position = UDim2.fromOffset(win.centerX + (win.docked and 300 or 0), cy + (win.docked and 0 or 30))
 		UI.tween(win.scale, 0.45, {Scale = 1}, Enum.EasingStyle.Back)
 		UI.tween(win.frame, 0.35, {Position = UDim2.fromOffset(win.centerX, cy)}, Enum.EasingStyle.Quint)
 		win.sheen.Offset = Vector2.new(-1, 0)
@@ -887,6 +943,8 @@ function UI.isOpen(name)
 end
 
 function UI.getWindow(name) return windows[name] end
+-- a normal window (dims the screen) is open - not just a side panel
+function UI.isModalOpen() return openWin ~= nil and not openWin.docked end
 
 -- a little turning 3D item in a ViewportFrame. Returns vp, list (pose it with Config.PoseItemModel)
 function UI.itemView(parent, item, props)

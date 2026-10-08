@@ -257,6 +257,25 @@ check((player:GetAttribute("SpeedPoints") or 0) > sp0, "treadmill gives speed: "
 -- index rewards: area 1 can't be claimed until all its items are found, then only once
 local Config = H.requireModule(game:GetService("ReplicatedStorage"):FindFirstChild("StealABoxConfig"))
 check(invoke(player, "Rebirth").ok ~= true, "rebirth is gone")
+task.wait(0.15)
+local standsBefore = player:GetAttribute("Stands")
+prof = invoke(player, "GetData").data
+prof.Cash = prof.Cash + Config.StandCost(standsBefore)
+r = invoke(player, "BuyStand")
+check(r.ok and player:GetAttribute("Stands") == standsBefore + 1, "bought a shelf spot: " .. tostring(r.msg))
+task.wait(0.15)
+check(invoke(player, "OpenAll").opened ~= nil, "open all answers")
+task.wait(0.15)
+local q1 = prof.Quests and prof.Quests.List and prof.Quests.List[1]
+check(q1 ~= nil, "daily quests exist")
+if q1 then
+	q1.progress = q1.goal
+	local c0 = prof.Cash
+	r = invoke(player, "ClaimQuest", 1)
+	check(r.ok and prof.Cash > c0, "claimed a quest: " .. tostring(r.msg))
+	task.wait(0.15)
+	check(not invoke(player, "ClaimQuest", 1).ok, "a quest pays only once")
+end
 prof = invoke(player, "GetData").data
 local area1Items = Config.AreaItems[1]
 prof.ItemsFound[area1Items[#area1Items][1]] = nil

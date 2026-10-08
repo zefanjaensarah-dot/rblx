@@ -7,119 +7,76 @@ local RunService = game:GetService("RunService")
 local Windows = {}
 
 ------------------------------------------------------------------
--- ITEMS: your products - on the shelf (they sell) or in your backpack
+-- QUESTS: 3 new quests every day (same for everybody). Finish one, claim its cash.
 ------------------------------------------------------------------
-local function buildItems(ctx)
-	local UI, Config = ctx.UI, ctx.Config
-	local C, new, fmt = UI.C, UI.new, Config.FormatNum
-	local win = UI.window({Name = "Items", Title = "Your Items", Icon = "bag", Color = C.green,
-		Tabs = {{Key = "Shelf", Label = "On Shelf", Icon = "box"}, {Key = "Backpack", Label = "Backpack", Icon = "bag"}}})
-	local pages = {}
-	for _, key in ipairs({"Shelf", "Backpack"}) do
-		local page = win.pages[key]
-		local top = UI.box(page, {Size = UDim2.new(1, -10, 0, 48), LayoutOrder = 0})
-		local hint = UI.label(top, "", {Position = UDim2.fromOffset(0, 4), Size = UDim2.new(1, -200, 1, -8), Max = 17, Stroke = 1.6, TextColor3 = C.sub,
-			TextXAlignment = Enum.TextXAlignment.Left})
-		local best = UI.button(top, {Text = "Equip Best", Color = C.green, Icon = "star", IconSize = 26, Size = UDim2.fromOffset(186, 46),
-			AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), TextSize = 21})
-		best.Activated:Connect(function()
-			local r = ctx.invoke("EquipAll")
-			ctx.notify(r.msg or "", r.ok and C.green or C.red)
-		end)
-		local grid = UI.grid(page, UDim2.fromOffset(150, 228), 12, 1)
-		local empty = UI.label(page, "", {Size = UDim2.new(1, -40, 0, 60), LayoutOrder = 2, Max = 20, Stroke = 1.8, TextColor3 = C.muted})
-		pages[key] = {grid = grid, hint = hint, empty = empty}
-	end
-	UI.setText(pages.Shelf.hint, "Shoppers buy from your shelf. Better items = more cash per second!")
-	UI.setText(pages.Backpack.hint, "Items here don't earn anything - put them on your shelf!")
-
-	local views = {}
-	local lastSig = nil
-	local function rebuild()
-		local data = ctx.data
-		if not data or not data.Items then return end
-		local sig = {}
-		for _, it in ipairs(data.Items) do
-			table.insert(sig, tostring(it.id) .. ":" .. tostring(it.mutation) .. ":" .. tostring(it.size) .. ":" .. tostring(it.stand))
+local function parseQuests(str)
+	local list = {}
+	for part in string.gmatch(str or "", "[^;]+") do
+		local id, goal, progress, claimed = string.match(part, "^([^:]+):([^:]+):([^:]+):([^:]+)$")
+		if id then
+			table.insert(list, {id = id, goal = tonumber(goal) or 1, progress = tonumber(progress) or 0, claimed = claimed == "1"})
 		end
-		sig = table.concat(sig, "|")
-		if sig == lastSig then return end
-		lastSig = sig
-		views = {}
-		for _, p in pairs(pages) do
-			for _, c in ipairs(p.grid:GetChildren()) do
-				if c:IsA("GuiObject") then c:Destroy() end
+	end
+	return list
+end
+
+local function buildQuests(ctx)
+	local UI, Config = ctx.UI, ctx.Config
+	local C, fmt = UI.C, Config.FormatNum
+	local win = UI.window({Name = "Quests", Title = "Daily Quests", Icon = "check", Color = UI.rgb(255, 150, 30), Size = Vector2.new(640, 470)})
+	local page = win.page
+	local cards = {}
+	for slot = 1, 3 do
+		local card = UI.card(page, UI.rgb(52, 46, 82), {Size = UDim2.new(1, -10, 0, 104), LayoutOrder = slot})
+		local text = UI.label(card, "", {Position = UDim2.fromOffset(16, 8), Size = UDim2.new(1, -220, 0, 32), Max = 24, Stroke = 2.4,
+			TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false})
+		local bar = UI.bar(card, {Position = UDim2.fromOffset(16, 46), Size = UDim2.new(1, -220, 0, 26)}, UI.rgb(255, 150, 30))
+		local reward = UI.label(card, "", {Position = UDim2.fromOffset(16, 76), Size = UDim2.new(1, -220, 0, 22), Max = 18, Stroke = 2,
+			TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.money, TextWrapped = false})
+		local claim = UI.button(card, {Text = "Claim", Color = C.green, Size = UDim2.fromOffset(180, 56), AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -14, 0.5, 0), TextSize = 26})
+		claim.Activated:Connect(function()
+			local r = ctx.invoke("ClaimQuest", slot)
+			if r.msg and r.msg ~= "" then ctx.notify(r.msg, r.ok and C.green or C.red) end
+			if r.ok and ctx.confetti then ctx.confetti(40) end
+		end)
+		cards[slot] = {text = text, bar = bar, reward = reward, claim = claim}
+	end
+	local resetL = UI.label(page, "", {Size = UDim2.new(1, -10, 0, 30), LayoutOrder = 9, Max = 20, Stroke = 2, TextColor3 = C.sub})
+	local function refresh()
+		local list = parseQuests(ctx.player:GetAttribute("Quests"))
+		local income = ctx.player:GetAttribute("Income") or 0
+		for slot, c in ipairs(cards) do
+			local q = list[slot]
+			if q then
+				UI.setText(c.text, Config.QuestText(q.id, q.goal))
+				c.bar.set(q.progress / math.max(1, q.goal), fmt(q.progress) .. " / " .. fmt(q.goal))
+				UI.setText(c.reward, "Reward: $" .. fmt(Config.QuestReward(slot, income)))
+				if q.claimed then
+					c.claim.setText("Done!")
+					c.claim.setEnabled(false)
+				else
+					c.claim.setText("Claim")
+					c.claim.setEnabled(q.progress >= q.goal)
+				end
+			else
+				UI.setText(c.text, "Loading...")
 			end
 		end
-		local order, placed = {}, 0
-		for i, item in ipairs(data.Items) do
-			table.insert(order, i)
-			if item.stand then placed = placed + 1 end
-		end
-		table.sort(order, function(a, b) return Config.ItemIncome(data.Items[a]) > Config.ItemIncome(data.Items[b]) end)
-		win.tabs.Shelf.setText("On Shelf  " .. placed .. "/" .. Config.MaxStands)
-		win.tabs.Backpack.setText("Backpack  " .. (#data.Items - placed))
-		UI.setText(pages.Shelf.empty, (placed == 0) and "Nothing on your shelf yet - steal a box, bring it home and open it!" or "")
-		pages.Shelf.empty.Visible = placed == 0
-		UI.setText(pages.Backpack.empty, (#data.Items - placed == 0) and "Your backpack is empty." or "")
-		pages.Backpack.empty.Visible = #data.Items - placed == 0
-		for n, i in ipairs(order) do
-			local item = data.Items[i]
-			local def = Config.Items[item.id]
-			local tier = Config.ItemTiers[def.tier]
-			local mut = Config.GetMutation(item.mutation)
-			local onShelf = item.stand ~= nil
-			local card = UI.card(onShelf and pages.Shelf.grid or pages.Backpack.grid, onShelf and UI.rgb(40, 92, 52) or UI.rgb(40, 66, 110), {LayoutOrder = n})
-			local vpBack = new("Frame", {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 7), Size = UDim2.fromOffset(122, 80),
-				BackgroundColor3 = UI.rgb(14, 12, 24), BackgroundTransparency = 0.45}, card)
-			UI.corner(vpBack, 12)
-			local _, list = UI.itemView(vpBack, item, {Size = UDim2.fromScale(1, 1)})
-			table.insert(views, list)
-			UI.label(card, Config.ItemLabel(item), {Position = UDim2.fromOffset(6, 90), Size = UDim2.new(1, -12, 0, 32), Max = 17, Stroke = 1.8,
-				TextColor3 = mut.color or tier.color})
-			UI.label(card, tier.name .. ((mut.id ~= "Normal") and ("  |  x" .. mut.mult) or ""), {Position = UDim2.fromOffset(6, 123), Size = UDim2.new(1, -12, 0, 15),
-				Max = 13, Stroke = 1.4, TextColor3 = tier.color, TextWrapped = false})
-			UI.label(card, "$" .. fmt(Config.ItemIncome(item)) .. "/s", {Position = UDim2.fromOffset(6, 139), Size = UDim2.new(1, -12, 0, 20), Max = 19, Stroke = 1.8,
-				TextColor3 = C.money, TextWrapped = false})
-			local main = UI.button(card, {Text = onShelf and "Take back" or "Put on shelf", Color = onShelf and C.orange or C.green, Size = UDim2.new(1, -12, 0, 34),
-				Position = UDim2.fromOffset(6, 162), TextSize = 17})
-			main.Activated:Connect(function()
-				local r = ctx.invoke(onShelf and "RemoveItem" or "PlaceItem", i, item.id)
-				ctx.notify(r.msg or "", r.ok and C.green or C.red)
-			end)
-			local sellPrice = Config.ItemIncome(item) * 30
-			local sellText = "Sell $" .. fmt(sellPrice)
-			local sell = UI.button(card, {Text = sellText, Color = C.red, Size = UDim2.new(1, -12, 0, 26), Position = UDim2.fromOffset(6, 198), TextSize = 14, Depth = 3, Radius = 10})
-			-- tap once to arm ("Sure?"), again within 2.5 s to really sell
-			local armedAt = nil
-			sell.Activated:Connect(function()
-				if not armedAt or os.clock() - armedAt > 2.5 then
-					armedAt = os.clock()
-					sell.setText("Sure? Tap again")
-					sell.setColor(C.orange)
-					task.delay(2.5, function()
-						if card.Parent and armedAt and os.clock() - armedAt >= 2.4 then
-							armedAt = nil
-							sell.setText(sellText)
-							sell.setColor(C.red)
-						end
-					end)
-					return
-				end
-				armedAt = nil
-				local r = ctx.invoke("SellItem", i, item.id)
-				ctx.notify(r.msg or "", r.ok and C.green or C.red)
-				if r.ok then UI.SFX.play("ding", 1.4, 0.4) end
-			end)
-		end
+		local leftS = 86400 - (os.time() % 86400)
+		UI.setText(resetL, "New quests in " .. Config.FormatTime(leftS))
 	end
-	win.onOpen = rebuild
-	ctx.onData(function() if UI.isOpen("Items") then rebuild() end end)
-	RunService.RenderStepped:Connect(function()
-		if not UI.isOpen("Items") then return end
-		local cf = CFrame.Angles(0, os.clock() * 0.9, 0)
-		for _, l in ipairs(views) do Config.PoseItemModel(l, cf, 1) end
-	end)
+	win.onOpen = refresh
+	ctx.player:GetAttributeChangedSignal("Quests"):Connect(function() if UI.isOpen("Quests") then refresh() end end)
+	-- badge: quests ready to claim
+	return function()
+		local n = 0
+		for _, q in ipairs(parseQuests(ctx.player:GetAttribute("Quests"))) do
+			if not q.claimed and q.progress >= q.goal then n = n + 1 end
+		end
+		if ctx.badges.Quests then ctx.badges.Quests.set(n) end
+		if UI.isOpen("Quests") then refresh() end
+	end
 end
 
 ------------------------------------------------------------------
@@ -619,7 +576,7 @@ local function buildWelcome(ctx)
 end
 
 function Windows.init(ctx)
-	buildItems(ctx)
+	local questsTick = buildQuests(ctx)
 	buildIndex(ctx)
 	buildTrails(ctx)
 	local giftsTick = buildGifts(ctx)
@@ -631,6 +588,7 @@ function Windows.init(ctx)
 	ctx.updateClockBadges = function()
 		giftsTick()
 		dailyTick()
+		questsTick()
 	end
 	-- badges that depend on your data
 	local function dataBadges()
@@ -640,7 +598,8 @@ function Windows.init(ctx)
 		for _, it in ipairs(data.Items or {}) do
 			if it.stand then onShelf = onShelf + 1 else inBag = inBag + 1 end
 		end
-		ctx.badges.Items.set((inBag > 0 and onShelf < ctx.Config.MaxStands) and inBag or 0)
+		local stands = ctx.player:GetAttribute("Stands") or ctx.Config.BaseStands
+		if ctx.badges.Items then ctx.badges.Items.set((inBag > 0 and onShelf < stands) and math.min(inBag, stands - onShelf) or 0) end
 		local canBuy = false
 		for _, t in ipairs(ctx.Config.Trails) do
 			if not (data.Trails and data.Trails[t.id]) and (data.Cash or 0) >= t.price then canBuy = true end

@@ -88,7 +88,7 @@ function Hud.init(ctx)
 	local grid = box(menu, {Size = UDim2.fromOffset(MENU_W, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 1})
 	new("UIGridLayout", {CellSize = UDim2.fromOffset(CELL_W, CELL_H), CellPadding = UDim2.fromOffset(GAP, GAP), SortOrder = Enum.SortOrder.LayoutOrder}, grid)
 	local MENU = {
-		{"Items", "Items", "bag", UI.rgb(60, 205, 80)},
+		{"Quests", "Quests", "check", UI.rgb(255, 150, 30)},
 		{"Index", "Index", "book", UI.rgb(30, 190, 245)},
 		{"Trails", "Trails", "trail", UI.rgb(255, 140, 30)},
 		{"Gifts", "Gifts", "gift", UI.rgb(255, 80, 165)},
@@ -190,12 +190,23 @@ function Hud.init(ctx)
 	-- RIGHT: Home + Steal teleports, and the Speed offer
 	------------------------------------------------------------------
 	local RIGHT_Y = 0.5
+	local RIGHT_W = TOUCH and (4 * CELL_W + 3 * GAP + 6) or 212
 	local right = box(root, {Name = "Right", AnchorPoint = TOUCH and Vector2.new(1, 0) or Vector2.new(1, 0.5),
-		Position = TOUCH and UDim2.new(1, -8, 0, 3 * PILL_H + 32) or UDim2.new(1, -12, RIGHT_Y, -30), Size = UDim2.fromOffset(212, TOUCH and 220 or 280), ZIndex = 2})
+		Position = TOUCH and UDim2.new(1, -8, 0, 3 * PILL_H + 32) or UDim2.new(1, -12, RIGHT_Y, -30), Size = UDim2.fromOffset(RIGHT_W, TOUCH and 220 or 400), ZIndex = 2})
+	-- side panels open just left of this column
+	UI.dockRight = TOUCH and (RIGHT_W * 0.75 + 16) or (RIGHT_W + 28)
 	UI.list(right, 10, nil, Enum.HorizontalAlignment.Right, TOUCH and Enum.VerticalAlignment.Top or Enum.VerticalAlignment.Center)
 	if TOUCH then new("UIScale", {Scale = 0.75}, right) end
-	local tpRow = box(right, {Size = UDim2.fromOffset(2 * CELL_W + GAP, CELL_H), LayoutOrder = 1})
+	local tpRow = box(right, {Size = UDim2.fromOffset((TOUCH and 4 or 2) * CELL_W + (TOUCH and 3 or 1) * GAP, CELL_H), LayoutOrder = 1})
 	UI.list(tpRow, GAP, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Right)
+	-- Items + Unboxing open the side panels (on phones they share the row with Steal / Home)
+	local panelRow = TOUCH and tpRow or box(right, {Size = UDim2.fromOffset(2 * CELL_W + GAP, CELL_H), LayoutOrder = 0})
+	if not TOUCH then UI.list(panelRow, GAP, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Right) end
+	for _, b in ipairs({{"Items", "Items", "bag", UI.rgb(200, 120, 50)}, {"Unboxing", "Unbox", "box", UI.rgb(230, 40, 45)}}) do
+		local face = squareButton(panelRow, b[1], b[2], b[3], b[4], -10, UDim2.fromOffset(CELL_W, CELL_H))
+		face.Activated:Connect(function() UI.toggle(b[1]) end)
+		badges[b[1]] = UI.badge(face, face.ZIndex)
+	end
 	squareButton(tpRow, "Steal", "Steal", "box", UI.rgb(255, 140, 30), 1, UDim2.fromOffset(CELL_W, CELL_H)).Activated:Connect(function()
 		local r = ctx.invoke("Warehouse")
 		if not r.ok and r.msg then ctx.notify(r.msg, C.red) end
@@ -489,13 +500,35 @@ function Hud.init(ctx)
 	end
 
 	-- windows sit above the HUD; while one is open the banner + tutorial step aside
+	local topHome, topScale = top.Position, top:FindFirstChildOfClass("UIScale") or new("UIScale", {}, top)
+	local topScaleHome = topScale.Scale
 	UI.WindowChanged:Connect(function(name)
-		local open = name ~= nil
+		local open = UI.isModalOpen()
 		hud.areaBanner.Visible = (not open) and hud.inArea()
 		tutorialSlot.Visible = not open
 		hud.bottomStack.Visible = not open
+		-- a side panel is open: the top + bottom stacks move into the free space left of it
+		local bottomStack, bScale = hud.bottomStack, hud.bottomScale
+		timers.Visible = (name == nil) or open -- the panel's big button sits where the timers are
+		if name ~= nil and not open then
+			local left = TOUCH and 8 or (UI.winLeft or 12)
+			local free = math.max(120, (UI.dockLeft or 600) - left)
+			topScale.Scale = math.min(topScaleHome, free / 560)
+			top.Position = UDim2.new(0, left + free / 2, 0, 8)
+			if bottomStack and bScale then
+				bScale.Scale = math.min(bScale:GetAttribute("Home") or 1, free / 480)
+				bottomStack.Position = UDim2.new(0, left + free / 2, 1, -160) -- (above the cash counter)
+			end
+		else
+			topScale.Scale = topScaleHome
+			top.Position = topHome
+			if bottomStack and bScale then
+				bScale.Scale = bScale:GetAttribute("Home") or 1
+				bottomStack.Position = hud.bottomHome
+			end
+		end
 		-- phones: the menu steps aside so the window can use the whole screen
-		if TOUCH then menu.Visible = not open end
+		if TOUCH then menu.Visible = name == nil end
 		if open then
 			-- keep only the newest notification: it fits above the window
 			local rows = {}
@@ -513,9 +546,11 @@ function Hud.init(ctx)
 	local bottom = box(root, {Name = "BottomStack", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.fromOffset(560, 420), ZIndex = 3})
 	if TOUCH then
 		-- phones: between the cash counter (left) and the jump button (right)
-		new("UIScale", {Scale = 0.8}, bottom)
 		bottom.Position = UDim2.new(0.5, 40, 1, -12)
 	end
+	hud.bottomScale = new("UIScale", {Scale = TOUCH and 0.8 or 1}, bottom)
+	hud.bottomScale:SetAttribute("Home", hud.bottomScale.Scale)
+	hud.bottomHome = bottom.Position
 	UI.list(bottom, 8, nil, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Bottom)
 	hud.bottomStack = bottom
 

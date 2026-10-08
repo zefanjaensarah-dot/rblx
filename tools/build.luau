@@ -70,7 +70,7 @@ script(SSS, "StealABoxMap", "Script", mapSource)
 
 -- client: the LocalScript + its modules
 local client = script(SPS, "StealABoxClient", "LocalScript", read("src/StealABoxClient.client.luau"))
-for _, name in { "UI", "Hud", "Windows", "ShopWindow", "Tutorial", "WorldFX" } do
+for _, name in { "UI", "Hud", "Panels", "Windows", "ShopWindow", "Tutorial", "WorldFX" } do
 	script(client, name, "ModuleScript", read("src/client/" .. name .. ".luau"))
 end
 

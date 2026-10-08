@@ -160,7 +160,7 @@ local function newProfile()
 	local p = {Cash = 0, Stolen = 0, Boxes = {}, Mutations = {}, ItemsFound = {},
 		Items = {}, Unboxing = {}, Upgrades = {}, Treadmill = 1, SpeedPoints = Config.StartSpeed, TutorialDone = false,
 		Trails = {}, Trail = nil, Customers = 1, SpeedBoost = 1, Receipts = {},
-		IndexClaimed = {}, Daily = {Streak = 0, Last = -1}, Codes = {}, Settings = {}, SaveVersion = 2}
+		IndexClaimed = {}, Daily = {Streak = 0, Last = -1}, Codes = {}, Settings = {}, SaveVersion = 2, ExtraStands = 0}
 	return p
 end
 
@@ -184,8 +184,54 @@ local function sync(player)
 	local prof = profiles[player]
 	if not prof then return end
 	syncCash(player)
+	player:SetAttribute("Stands", math.min(Config.MaxStands, Config.BaseStands + (prof.ExtraStands or 0)))
 	SyncEvent:FireClient(player, prof)
 end
+
+-- shelf spots you can use: 8 to start, buy more with "+1 Equip"
+local function unlockedStands(prof)
+	return math.min(Config.MaxStands, Config.BaseStands + (prof and prof.ExtraStands or 0))
+end
+
+-- DAILY QUESTS: 3 a day (the same for everybody), progress is saved, the client reads the "Quests" attribute
+local questDirty = {}
+local function questState(prof)
+	local day = Config.DayNumber()
+	if type(prof.Quests) ~= "table" or prof.Quests.Day ~= day or type(prof.Quests.List) ~= "table" then
+		local list = {}
+		for i, q in ipairs(Config.QuestsForDay(day)) do list[i] = {id = q.id, goal = q.goal, progress = 0, claimed = false} end
+		prof.Quests = {Day = day, List = list}
+	end
+	return prof.Quests
+end
+local function publishQuests(player)
+	local prof = profiles[player]
+	if not prof then return end
+	local parts = {}
+	for _, q in ipairs(questState(prof).List) do
+		table.insert(parts, q.id .. ":" .. q.goal .. ":" .. math.floor(q.progress) .. ":" .. (q.claimed and "1" or "0"))
+	end
+	player:SetAttribute("Quests", table.concat(parts, ";"))
+end
+local function questProgress(player, id, n)
+	local prof = profiles[player]
+	if not prof then return end
+	for _, q in ipairs(questState(prof).List) do
+		if q.id == id and not q.claimed and q.progress < q.goal then
+			q.progress = math.min(q.goal, q.progress + (n or 1))
+			questDirty[player] = true
+		end
+	end
+end
+task.spawn(function()
+	while true do
+		task.wait(1)
+		for player in pairs(questDirty) do
+			questDirty[player] = nil
+			if player.Parent then publishQuests(player) end
+		end
+	end
+end)
 
 local slowMode = {} -- [player] = true while Slow Mode is on
 local function walkSpeedFor(player, c)
@@ -711,7 +757,6 @@ end
 -- UNBOXING PADS + SHOP STANDS + REGISTER
 ------------------------------------------------------------------
 local function now() return workspace:GetServerTimeNow() end
-local function unlockedStands(prof) return Config.MaxStands end
 
 local function billboard(parent, name, size, offset, alwaysOnTop)
 	local bb = Instance.new("BillboardGui")
@@ -870,9 +915,7 @@ local function refreshStands(player)
 			local idx = onStand[s]
 			if s > unlocked then
 				stand.Color = Color3.fromRGB(90, 90, 100)
-				if top then top.Color = Color3.fromRGB(60, 60, 70) end
-				local bb = billboard(stand, "ItemTag", UDim2.fromScale(3.5, 3.5), Vector3.new(0, 2.6, 1))
-				label(bb, "Lock", "🔒", Color3.new(1, 1, 1))
+				if top then top.Color = Color3.fromRGB(60, 60, 70) end -- locked spot (grey): buy it with "+1 Equip"
 			elseif idx then
 				local item = prof.Items[idx]
 				local def = Config.Items[item.id]
@@ -1009,6 +1052,8 @@ openBox = function(player, slot)
 		end
 		prof.Unboxing[slot] = nil
 		table.insert(prof.Items, item)
+		questProgress(player, "open")
+		if (Config.Items[item.id].tier or 1) >= 3 then questProgress(player, "rare") end
 		prof.ItemsFound[item.id] = (prof.ItemsFound[item.id] or 0) + 1
 		local itemDef = Config.Items[item.id]
 		if prof.ItemsFound[item.id] == 1 and itemDef and Config.AreaComplete(prof.ItemsFound, itemDef.area) then
@@ -1110,6 +1155,8 @@ local function placeBoxAt(player, worldPos)
 	prof.Unboxing[key] = {id = c.id, mutation = c.mutation, size = c.size, readyAt = now() + duration, duration = duration,
 		u = math.floor(u * 10) / 10, w = math.floor(w * 10) / 10, rot = math.random(-20, 20)}
 	prof.Stolen = prof.Stolen + 1
+	questProgress(player, "steal")
+	if def.area >= 3 then questProgress(player, "deep") end
 	prof.Boxes[def.id] = (prof.Boxes[def.id] or 0) + 1
 	prof.Mutations[c.mutation] = (prof.Mutations[c.mutation] or 0) + 1
 	if prof.Boxes[def.id] == 1 then
@@ -1697,7 +1744,7 @@ end
 local function makeCustomerModel(owner)
 	local friend = nil
 	local list = owner and friendsOf[owner]
-	if list and #list > 0 and math.random() < 0.85 then
+	if false and list and #list > 0 then -- (friend avatars: too heavy, shoppers are simple noobs / bacons now)
 		friend = list[math.random(1, #list)]
 	end
 	local desc = friend and fetchDescription(friend.id)
@@ -1889,7 +1936,7 @@ local function spawnCustomer(player, plot, standIndex, item)
 	}
 	c.cf = CFrame.lookAt(Vector3.new(start.X, ground(start) + 3, start.Z), Vector3.new(start.X, ground(start) + 3, start.Z) + c.facing)
 	-- some shoppers are RICH: they have a mutation, glow, pay more and tip more
-	c.rich = pickShopperMutation()
+	c.rich = nil -- (rich glowing shoppers removed: cheaper)
 	if c.rich then dressRichShopper(c) end
 	-- thought bubble shows what they want (the clients draw the 3D product in it)
 	think.Icon.Text = ""
@@ -1925,6 +1972,7 @@ local function customerAction(c, action)
 			end
 			prof.Cash = prof.Cash + price + tip
 			syncCash(c.owner)
+			questProgress(c.owner, "sales")
 			-- "+$123" floats up from the shopper (not from the shelf, where the product tags are)
 			local head = c.parts and c.parts.head
 			if head then
@@ -1990,8 +2038,13 @@ task.spawn(function()
 	end
 end)
 
--- walk them around
-RunService.Heartbeat:Connect(function(dt)
+-- walk them around (20 times a second is plenty and much cheaper than every frame)
+local shopperAcc = 0
+RunService.Heartbeat:Connect(function(frameDt)
+	shopperAcc = shopperAcc + frameDt
+	if shopperAcc < 0.05 then return end
+	local dt = shopperAcc
+	shopperAcc = 0
 	for i = #customers, 1, -1 do
 		local c = customers[i]
 		if c.dead or not c.model.Parent or not c.owner.Parent or playerPlot[c.owner] ~= c.plot then
@@ -2246,6 +2299,7 @@ task.spawn(function()
 				prof.SpeedPoints = (prof.SpeedPoints or Config.StartSpeed) + rate * STEP
 				player:SetAttribute("TreadRate", rate)
 				applySpeed(player)
+				questProgress(player, "run", STEP)
 			end
 			if (player:GetAttribute("OnTreadmill") == true) ~= on then
 				player:SetAttribute("OnTreadmill", on or nil)
@@ -2477,6 +2531,48 @@ ActionFunc.OnServerInvoke = function(player, action, arg, expectedId)
 
 	elseif action == "BuyPass" then
 		return buyPass(player, arg)
+
+	elseif action == "BuyStand" then
+		local have = unlockedStands(prof)
+		if have >= Config.MaxStands then return {ok = false, msg = "Your shelves are full!"} end
+		local cost = Config.StandCost(have)
+		if prof.Cash < cost then return {ok = false, msg = "You need $" .. Config.FormatNum(cost) .. " for another shelf spot!"} end
+		prof.Cash = prof.Cash - cost
+		prof.ExtraStands = (prof.ExtraStands or 0) + 1
+		refreshStands(player)
+		refreshIncome(player)
+		sync(player)
+		return {ok = true, msg = "+1 shelf spot! (" .. unlockedStands(prof) .. " now)", stands = unlockedStands(prof)}
+
+	elseif action == "OpenBox" then
+		local e = prof.Unboxing[tostring(arg)]
+		if not e then return {ok = false, msg = "That box is gone."} end
+		if now() < e.readyAt then return {ok = false, msg = "Not ready yet!"} end
+		openBox(player, tostring(arg))
+		return {ok = true}
+
+	elseif action == "OpenAll" then
+		local n = 0
+		for k, e in pairs(prof.Unboxing) do
+			if now() >= e.readyAt then
+				n = n + 1
+				task.delay((n - 1) * 0.5, function() openBox(player, k) end) -- one after another
+			end
+		end
+		return {ok = n > 0, msg = (n > 0) and ("Opening " .. n .. " box" .. (n > 1 and "es" or "") .. "!") or "No boxes are ready yet.", opened = n}
+
+	elseif action == "ClaimQuest" then
+		local slot = math.floor(tonumber(arg) or 0)
+		local q = questState(prof).List[slot]
+		if not q then return {ok = false} end
+		if q.claimed then return {ok = false, msg = "You already claimed this quest!"} end
+		if q.progress < q.goal then return {ok = false, msg = "Not done yet!"} end
+		q.claimed = true
+		local cash = Config.QuestReward(slot, totalIncome(player))
+		prof.Cash = prof.Cash + cash
+		sync(player)
+		publishQuests(player)
+		return {ok = true, msg = "Quest complete! +$" .. Config.FormatNum(cash), cash = cash}
 
 	elseif action == "ClaimIndex" then
 		return claimIndex(player, arg)
@@ -2909,7 +3005,14 @@ end
 -- copy a loaded save into a fresh profile (only fields we know, with sane values)
 local function readSave(prof, data)
 	-- saves from before the Mega Mart: turn the old box / item ids into the new supermarket ones
+	local legacyStands = nil
 	if (tonumber(data.SaveVersion) or 1) < 2 then
+		-- shelf spots became buyable: keep everything that was already on the shelf
+		local onShelf = 0
+		for _, it in ipairs(type(data.Items) == "table" and data.Items or {}) do
+			if type(it) == "table" and it.stand then onShelf = onShelf + 1 end
+		end
+		legacyStands = math.max(0, onShelf - Config.BaseStands)
 		local function remap(t, map)
 			if type(t) ~= "table" then return t end
 			local out = {}
@@ -2930,6 +3033,9 @@ local function readSave(prof, data)
 	end
 	prof.SaveVersion = 2
 	prof.FreeGiftAt = tonumber(data.FreeGiftAt) or 0
+	prof.ExtraStands = math.max(0, math.floor(tonumber(data.ExtraStands) or 0))
+	if legacyStands then prof.ExtraStands = legacyStands end
+	if type(data.Quests) == "table" then prof.Quests = data.Quests end
 	prof.TutorialDone = (data.TutorialDone == true) or ((tonumber(data.Treadmill) or 1) >= 2)
 	prof.Cash = math.max(0, tonumber(data.Cash) or 0)
 	prof.Stolen = tonumber(data.Stolen) or 0
