@@ -2370,6 +2370,9 @@ for areaIndex, area in ipairs(Config.Areas) do
 	buildShelf(r, 1, st, 6, 20, {{1, 9}, {1, 17}, {2, 13}})
 	buildShelf(r, -1, st, 30, 42, {{1, 33}, {1, 39}})
 	buildShelf(r, 1, st, 30, 42, {{1, 33}, {1, 39}})
+	-- the areas are longer now: one more pair of shelves at the back
+	buildShelf(r, -1, st, 54, 66, {{1, 57}, {2, 63}})
+	buildShelf(r, 1, st, 54, 66, {{1, 57}, {2, 63}})
 
 	-- 2 pallets in the open for the big ones (Huge / Giant boxes can only spawn here)
 	for _, x in ipairs({-12, 12}) do
@@ -2394,7 +2397,7 @@ for areaIndex, area in ipairs(Config.Areas) do
 	bringToLife(r)
 
 	-- the guardian sleeps at the back, facing the entrance
-	makeGuardian(areaIndex, SCF(r, 0, 0, 25).Position, acc)
+	makeGuardian(areaIndex, SCF(r, 0, 0, SL * 0.45).Position, acc)
 end
 
 

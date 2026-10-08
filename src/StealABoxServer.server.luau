@@ -2730,6 +2730,7 @@ alertGuard = function(area, player)
 		if g.area == area and g.mode ~= "chase" then
 			setMode(g, "chase")
 			g.target = player
+			g.chaseUntil = os.clock() + Config.GuardChaseTime -- he gives up after a while
 			g.wakeUntil = os.clock() + 0.8 -- he needs a moment to get up
 			setAwake(g, true)
 			setChased(player, true)
@@ -2768,8 +2769,10 @@ RunService.Heartbeat:Connect(function(dt)
 			local _, hrp = getChar(p)
 			-- they chase you into the next area, but not further
 			-- chase through this department and the one before it, never out into the courtyard
-			local leashZ = math.min(Config.AreaStartZ(g.area) + Config.AreaLen(math.max(1, g.area - 1)), L.frontZ + 12)
+			-- (and never out of the warehouse door, and never for longer than GuardChaseTime)
+			local leashZ = math.min(Config.AreaStartZ(g.area) + Config.AreaLen(math.max(1, g.area - 1)), L.frontZ)
 			local keep = hrp and carrying[p] and not isImmune(p) and hrp.Position.Z < leashZ and math.abs(hrp.Position.X) < Config.AreaHalfWidth(g.area) + 2
+				and os.clock() < (g.chaseUntil or math.huge)
 			if keep then
 				local flat = Vector3.new(hrp.Position.X - g.pos.X, 0, hrp.Position.Z - g.pos.Z)
 				if os.clock() < (g.wakeUntil or 0) then
@@ -2816,6 +2819,25 @@ RunService.Heartbeat:Connect(function(dt)
 			g.hrp.CFrame = cf
 		else
 			g.model:PivotTo(cf)
+		end
+	end
+end)
+
+------------------------------------------------------------------
+-- STEAL SUCCESSFUL: out of the warehouse door with a box = you got away with it
+------------------------------------------------------------------
+task.spawn(function()
+	while true do
+		task.wait(0.2)
+		for p, c in pairs(carrying) do
+			if not c.escaped then
+				local _, hrp = getChar(p)
+				if hrp and hrp.Position.Z > L.frontZ + 1 then
+					c.escaped = true
+					setChased(p, false)
+					FXEvent:FireClient(p, "StealSuccess", hrp.Position)
+				end
+			end
 		end
 	end
 end)

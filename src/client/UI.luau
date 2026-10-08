@@ -524,6 +524,10 @@ function UI.button(parent, opt)
 		BorderSizePixel = 0, ZIndex = z + 1}, holder)
 	UI.corner(face, opt.Radius or 7)
 	UI.stroke(face, 3.5)
+	local rim = new("Frame", {Name = "Rim", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1, -6, 1, -6),
+		BackgroundTransparency = 1, ZIndex = z + 1}, face)
+	UI.corner(rim, math.max(3, (opt.Radius or 7) - 3))
+	UI.stroke(rim, 2, C.white, 0.45)
 	UI.shade(face, C.white, rgb(178, 178, 192))
 	-- a soft shine on the top half
 	local shine = new("Frame", {Name = "Shine", Position = UDim2.fromOffset(4, 3), Size = UDim2.new(1, -8, 0.42, -3), BackgroundColor3 = C.white,

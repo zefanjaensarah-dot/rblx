@@ -74,7 +74,7 @@ function Hud.init(ctx)
 	local badges = {}
 	ctx.badges = badges
 
-	local shopBtn = UI.button(menu, {Name = "Shop", Text = "SHOP", Color = C.yellow, Size = UDim2.fromOffset(MENU_W, TOUCH and 60 or 72), Icon = "shop",
+	local shopBtn = UI.button(menu, {Name = "Shop", Text = "SHOP", Color = UI.rgb(110, 225, 40), Size = UDim2.fromOffset(MENU_W, TOUCH and 60 or 72), Icon = "shop",
 		IconSize = TOUCH and 46 or 50, IconColor = C.red, TextSize = TOUCH and 34 or 38, LayoutOrder = 0, Radius = 9, Depth = 6})
 	-- a light sweep runs over the Shop button every few seconds
 	local shopSheen = new("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.white, BorderSizePixel = 0, ZIndex = shopBtn.face.ZIndex + 1}, shopBtn.face)
@@ -107,6 +107,9 @@ function Hud.init(ctx)
 		UI.corner(face, 9)
 		UI.stroke(face, 3.5)
 		UI.vivid(face, color)
+		local rim = new("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1, -7, 1, -7), BackgroundTransparency = 1}, face)
+		UI.corner(rim, 6)
+		UI.stroke(rim, 2.2, C.white, 0.4)
 		local shine = new("Frame", {Position = UDim2.fromOffset(6, 4), Size = UDim2.new(1, -12, 0.38, 0), BackgroundColor3 = C.white, BackgroundTransparency = 0.72, BorderSizePixel = 0}, face)
 		UI.corner(shine, 14)
 		local isz = math.floor(CELL_W * 0.62)
@@ -713,6 +716,25 @@ function Hud.init(ctx)
 			bScale.Scale = 0.3 * UI.scale
 			UI.tween(bScale, 0.35, {Scale = UI.scale}, Enum.EasingStyle.Back)
 			task.delay(1.2, function() bonk.Visible = false end)
+		end
+	end
+
+	-- STEAL SUCCESSFUL! (you got out of the warehouse with a box): green screen + big text
+	do
+		local word = UI.label(UI.over, "STEAL SUCCESSFUL!", {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.35), Size = UDim2.fromOffset(700, 110),
+			TextColor3 = UI.rgb(120, 255, 100), Visible = false, ZIndex = 52, Max = 84, Stroke = 5, TextWrapped = false})
+		local wScale = new("UIScale", {}, word)
+		local tok = 0
+		ctx.stealSuccess = function()
+			tok = tok + 1
+			local my = tok
+			ctx.flash(UI.rgb(60, 255, 90), 0.35, 0.9)
+			word.Visible = true
+			word.Rotation = math.random(-6, 6)
+			wScale.Scale = 0.3 * UI.scale
+			UI.tween(wScale, 0.45, {Scale = UI.scale}, Enum.EasingStyle.Back)
+			UI.SFX.play("ding", 1.6, 0.6)
+			task.delay(1.8, function() if my == tok then word.Visible = false end end)
 		end
 	end
 

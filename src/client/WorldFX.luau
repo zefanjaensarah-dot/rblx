@@ -247,6 +247,9 @@ function WorldFX.init(ctx)
 		elseif kind == "Stash" then
 			burst(pos + Vector3.new(0, 2, 0), 60, {Color = CONFETTI, Size = NumberSequence.new(0.5, 0.3), Lifetime = NumberRange.new(1.2, 2), Speed = NumberRange.new(20, 32), Acceleration = Vector3.new(0, -30, 0), Drag = 1.5, SpreadAngle = Vector2.new(35, 35), EmissionDirection = Enum.NormalId.Top})
 			burst(pos + Vector3.new(0, 1, 0), 20, {Color = ColorSequence.new(Color3.fromRGB(120, 255, 120)), LightEmission = 1, Size = NumberSequence.new(1.2, 0), Lifetime = NumberRange.new(0.5, 0.9), Speed = NumberRange.new(6, 10)})
+		elseif kind == "StealSuccess" then
+			shakeUntil, shakePower = os.clock() + 0.5, 7
+			if ctx.stealSuccess then ctx.stealSuccess() end
 		elseif kind == "Bonk" then
 			burst(pos, 30, {Color = ColorSequence.new(Color3.fromRGB(255, 230, 80), WHITE), LightEmission = 1, Size = NumberSequence.new(1, 0), Lifetime = NumberRange.new(0.5, 1), Speed = NumberRange.new(15, 30), Drag = 3})
 		elseif kind == "Unbox" then

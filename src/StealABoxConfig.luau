@@ -6,7 +6,7 @@ local function rgb(r, g, b) return Color3.fromRGB(r, g, b) end
 -- The warehouse is one long lane: Area 1 starts at the front door, Area 10 is at the very back.
 Config.Layout = {
 	frontZ = -4,        -- inside face of the warehouse front wall
-	sectionLen = 75,    -- each area is 75 studs deep
+	sectionLen = 105,   -- each area is 105 studs deep
 	halfWidth = 63,     -- the warehouse is 126 studs wide (x -63..63)
 	floorY = 0.75,
 	wallHeight = 45,
@@ -869,6 +869,8 @@ end
 -- the courtyard got a plaza at the back (spawn, Trails Shop, FREE gift, leaderboards)
 Config.Court.length = 360
 Config.LobbySpawnZ = 330
+-- a guardian gives up the chase after this many seconds (and always at the warehouse door)
+Config.GuardChaseTime = 12
 -- every area is the same size (helpers used by the server / client)
 function Config.AreaLen(areaIndex) return Config.Layout.sectionLen end
 function Config.AreaHalfWidth(areaIndex) return Config.Layout.halfWidth end
