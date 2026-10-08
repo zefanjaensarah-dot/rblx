@@ -3617,3 +3617,24 @@ do
 		end
 	end
 end
+
+------------------------------------------------------------------
+-- ICON SHEETS: if an id is a Decal, use the image inside it. Clients read IconSheet1..3.
+------------------------------------------------------------------
+do
+	local okIS, InsertService = pcall(function() return game:GetService("InsertService") end)
+	for i, id in ipairs(Config.IconSheets or {}) do
+		task.spawn(function()
+			local image = "rbxassetid://" .. id
+			if okIS and InsertService then
+				local ok, model = pcall(function() return InsertService:LoadAsset(id) end)
+				if ok and model then
+					local d = model:FindFirstChildWhichIsA("Decal", true)
+					if d and d.Texture ~= "" then image = d.Texture end
+					model:Destroy()
+				end
+			end
+			ReplicatedStorage:SetAttribute("IconSheet" .. i, image)
+		end)
+	end
+end

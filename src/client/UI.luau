@@ -529,12 +529,52 @@ local IMAGE_ICON = {
 	check = "", close = "", heart = "", skull = "", ticket = "", moon = "", sun = "", plus = "", arrow = "", down = "",
 }
 UI.IMAGE_ICON = IMAGE_ICON
+-- SHEET ICONS: {sheet, row, column} on the uploaded icon sheets (Config.IconSheets)
+local SHEET_GRID = { -- pixel centres of the 10 x 5 grid on each sheet
+	{xs = {70, 146, 222, 298, 375, 451, 527, 603, 679, 755}, ys = {72, 148, 224, 300, 377}},
+	{xs = {73, 149, 225, 301, 377, 454, 530, 606, 682, 758}, ys = {55, 131, 207, 283, 360}},
+}
+local ICON_CELLS = {
+	bag = {1, 1, 4}, crown = {1, 1, 6}, gift = {1, 1, 7}, lock = {1, 1, 8},
+	book = {1, 2, 1}, calendar = {1, 2, 3}, box = {1, 2, 4}, boot = {1, 3, 10},
+	close = {1, 4, 3}, check = {1, 4, 4}, plus = {1, 4, 5},
+	cash = {2, 1, 1}, coin = {2, 1, 2}, ticket = {2, 1, 6}, star = {2, 1, 8}, gear = {2, 1, 9}, heart = {2, 1, 10},
+	shop = {2, 2, 2}, rebirth = {2, 2, 5}, bolt = {2, 2, 10}, home = {2, 3, 3}, skull = {2, 3, 9}, clover = {2, 4, 6},
+}
+UI.ICON_CELLS = ICON_CELLS
+local RS = game:GetService("ReplicatedStorage")
+local function sheetImage(i)
+	local fromServer = RS:GetAttribute("IconSheet" .. i)
+	if fromServer then return fromServer end
+	local id = Config.IconSheets and Config.IconSheets[i]
+	return id and ("rbxassetid://" .. id) or nil
+end
+local sheetIcons = {}
+pcall(function()
+	RS.AttributeChanged:Connect(function(attr)
+		local i = tonumber(string.match(attr, "^IconSheet(%d+)$"))
+		if not i then return end
+		for _, e in ipairs(sheetIcons) do
+			if e.sheet == i and e.img.Parent then e.img.Image = sheetImage(i) or "" end
+		end
+	end)
+end)
 function UI.icon(name, parent, size, pos, color, anchor)
 	local image = IMAGE_ICON[name]
 	if image and image ~= "" then
 		local img = new("ImageLabel", {Name = "Icon_" .. name, BackgroundTransparency = 1, Size = size, Position = pos or UDim2.new(), AnchorPoint = anchor or Vector2.new(),
 			Image = image, ScaleType = Enum.ScaleType.Fit}, parent)
 		img.ZIndex = (parent and parent:IsA("GuiObject")) and parent.ZIndex + 1 or 1
+		return img
+	end
+	local cell = ICON_CELLS[name]
+	local sheet = cell and SHEET_GRID[cell[1]] and sheetImage(cell[1])
+	if sheet then
+		local g = SHEET_GRID[cell[1]]
+		local img = new("ImageLabel", {Name = "Icon_" .. name, BackgroundTransparency = 1, Size = size, Position = pos or UDim2.new(), AnchorPoint = anchor or Vector2.new(),
+			Image = sheet, ImageRectOffset = Vector2.new(g.xs[cell[3]] - 37, g.ys[cell[2]] - 37), ImageRectSize = Vector2.new(74, 74), ScaleType = Enum.ScaleType.Fit}, parent)
+		img.ZIndex = (parent and parent:IsA("GuiObject")) and parent.ZIndex + 1 or 1
+		table.insert(sheetIcons, {img = img, sheet = cell[1]})
 		return img
 	end
 	local emoji = EMOJI_ICON[name]

@@ -1025,4 +1025,11 @@ Config.EventGap = {150, 360} -- seconds between events (random)
 Config.SaveVersion = 2
 Config.OldBoxToNew, Config.OldItemToNew = {}, {}
 
+-- ICON SHEETS: the two icon pictures (IconSheet1.png = backpack/crown/gift/book/calendar...,
+-- IconSheet2.png = cash/coin/star/gear/basket/house...) with a TRANSPARENT background, uploaded
+-- to Roblox as Images. Put their ids here in that order, e.g. {123456789, 987654321}.
+-- Empty = the game uses emoji icons. (The first uploads, 113628952516465 / 71822476584863, were
+-- screenshots with a light background, so every icon would sit on a white square.)
+Config.IconSheets = {}
+
 return Config
