@@ -320,14 +320,25 @@ do
 		end
 		sh(ctx, {Position = P2(0.6, 0.22), Size = P2(0.07, 0.22), Rotation = 24, BackgroundColor3 = WHITE2, BackgroundTransparency = 0.3, Stroke = false})
 	end
-	D.boot = function(ctx, c)
+	D.boot = function(ctx, c) -- a sporty sneaker, side view, running to the right
+		local dark, light = c:Lerp(INK, 0.35), c:Lerp(WHITE2, 0.35)
+		-- two little speed lines behind it
+		sh(ctx, {Position = P2(0.08, 0.5), Size = P2(0.14, 0.06), BackgroundColor3 = WHITE2, Round = true, Stroke = 0.6})
+		sh(ctx, {Position = P2(0.1, 0.64), Size = P2(0.1, 0.06), BackgroundColor3 = WHITE2, Round = true, Stroke = 0.6})
+		-- the shoe: heel + toe in one smooth shape, a tongue on top
+		sh(ctx, {Position = P2(0.42, 0.33), Size = P2(0.18, 0.22), Rotation = -10, BackgroundColor3 = light, Round = 0.4})
+		sh(ctx, {Position = P2(0.35, 0.55), Size = P2(0.36, 0.4), BackgroundColor3 = c, Round = 0.38, Shade = true})
+		sh(ctx, {Position = P2(0.62, 0.64), Size = P2(0.6, 0.26), BackgroundColor3 = c, Round = 0.5, Shade = true})
+		-- white toe cap, a stripe on the side, laces, a dark heel tab
+		sh(ctx, {Position = P2(0.83, 0.67), Size = P2(0.2, 0.18), BackgroundColor3 = WHITE2, Round = 0.5, Stroke = 0.7})
+		sh(ctx, {Position = P2(0.5, 0.62), Size = P2(0.34, 0.07), Rotation = -14, BackgroundColor3 = WHITE2, Round = true, Stroke = false})
 		for k = 0, 2 do
-			sh(ctx, {Position = P2(0.17, 0.3 + k * 0.11), Size = P2(0.28 - k * 0.04, 0.09), Rotation = -12, BackgroundColor3 = WHITE2, Round = true})
+			sh(ctx, {Position = P2(0.47 + k * 0.08, 0.45 + k * 0.04), Size = P2(0.12, 0.045), Rotation = -30, BackgroundColor3 = WHITE2, Round = true, Stroke = false})
 		end
-		sh(ctx, {Position = P2(0.42, 0.42), Size = P2(0.3, 0.44), BackgroundColor3 = c, Round = 0.25, Shade = true})
-		sh(ctx, {Position = P2(0.56, 0.66), Size = P2(0.74, 0.28), BackgroundColor3 = c, Round = 0.5, Shade = true})
-		sh(ctx, {Position = P2(0.56, 0.81), Size = P2(0.78, 0.1), BackgroundColor3 = WHITE2, Round = 0.5})
-		sh(ctx, {Position = P2(0.6, 0.62), Size = P2(0.3, 0.07), Rotation = -18, BackgroundColor3 = WHITE2, Round = 0.5, Stroke = false})
+		sh(ctx, {Position = P2(0.18, 0.5), Size = P2(0.06, 0.2), BackgroundColor3 = dark, Round = 0.4, Stroke = false})
+		-- thick white sole with a coloured line
+		sh(ctx, {Position = P2(0.54, 0.83), Size = P2(0.86, 0.15), BackgroundColor3 = WHITE2, Round = 0.5})
+		sh(ctx, {Position = P2(0.54, 0.8), Size = P2(0.8, 0.035), BackgroundColor3 = dark, Round = true, Stroke = false})
 	end
 	D.cash = function(ctx, c)
 		sh(ctx, {Position = P2(0.56, 0.58), Size = P2(0.8, 0.46), Rotation = -10, BackgroundColor3 = c:Lerp(INK, 0.3), Round = 0.14})

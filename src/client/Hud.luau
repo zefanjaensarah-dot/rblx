@@ -36,27 +36,26 @@ function Hud.init(ctx)
 	UI.list(currency, 8, nil, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Bottom)
 	hud.currency = currency
 
-	local function counter(iconName, iconColor, pillColor, order)
-		local holder = box(currency, {Size = UDim2.fromOffset(CUR_W - 10, 66), LayoutOrder = order})
-		local back = new("Frame", {Position = UDim2.fromOffset(26, 6), Size = UDim2.new(1, -26, 1, -12)}, holder)
-		UI.corner(back, true)
-		UI.stroke(back, 3.2)
-		UI.vivid(back, pillColor)
-		-- a shiny strip on top
-		local shine = new("Frame", {Position = UDim2.new(0, 34, 0, 4), Size = UDim2.new(1, -52, 0, 12), BackgroundColor3 = C.white, BackgroundTransparency = 0.6, BorderSizePixel = 0}, back)
-		UI.corner(shine, true)
-		local icon = UI.icon(iconName, holder, UDim2.fromOffset(66, 66), UDim2.fromOffset(0, 0), iconColor)
-		icon.ZIndex = 3
-		local value = UI.label(back, "0", {Position = UDim2.fromOffset(46, 2), Size = UDim2.new(1, -60, 0, 34), TextXAlignment = Enum.TextXAlignment.Left,
-			Max = 34, Min = 14, Stroke = 3, TextWrapped = false})
-		local sub = UI.label(back, "", {Position = UDim2.fromOffset(46, 33), Size = UDim2.new(1, -60, 0, 18), TextXAlignment = Enum.TextXAlignment.Left,
-			Max = 17, Stroke = 2, TextColor3 = pillColor:Lerp(C.white, 0.75), TextWrapped = false})
+	-- just the numbers with a dark outline (no background); cash has its coin
+	local function counter(iconName, iconColor, textColor, order)
+		local holder = box(currency, {Size = UDim2.fromOffset(CUR_W - 10, 62), LayoutOrder = order})
+		local icon
+		if iconName then
+			icon = UI.icon(iconName, holder, UDim2.fromOffset(54, 54), UDim2.fromOffset(0, 4), iconColor)
+		else
+			icon = box(holder, {Size = UDim2.fromOffset(0, 0), Visible = false})
+		end
+		local x = iconName and 62 or 4
+		local value = UI.label(holder, "0", {Position = UDim2.fromOffset(x, 0), Size = UDim2.new(1, -x, 0, 40), TextXAlignment = Enum.TextXAlignment.Left,
+			Max = 40, Min = 14, Stroke = 3.4, TextWrapped = false, TextColor3 = textColor})
+		local sub = UI.label(holder, "", {Position = UDim2.fromOffset(x + 2, 40), Size = UDim2.new(1, -x - 2, 0, 20), TextXAlignment = Enum.TextXAlignment.Left,
+			Max = 18, Stroke = 2.2, TextColor3 = textColor:Lerp(C.white, 0.6), TextWrapped = false})
 		local vScale = new("UIScale", {}, value)
 		local iScale = new("UIScale", {}, icon)
-		return {holder = holder, icon = icon, value = value, sub = sub, vScale = vScale, iScale = iScale, back = back}
+		return {holder = holder, icon = icon, value = value, sub = sub, vScale = vScale, iScale = iScale}
 	end
-	local speedC = counter("boot", C.blue, UI.rgb(45, 130, 255), 1)
-	local cashC = counter("coin", C.gold, UI.rgb(40, 190, 70), 2)
+	local speedC = counter("boot", UI.rgb(235, 55, 60), UI.rgb(150, 215, 255), 1)
+	local cashC = counter("coin", C.gold, C.money, 2)
 	hud.cash, hud.speed = cashC, speedC
 
 	------------------------------------------------------------------
@@ -112,8 +111,8 @@ function Hud.init(ctx)
 		UI.stroke(rim, 2.2, C.white, 0.4)
 		local shine = new("Frame", {Position = UDim2.fromOffset(6, 4), Size = UDim2.new(1, -12, 0.38, 0), BackgroundColor3 = C.white, BackgroundTransparency = 0.72, BorderSizePixel = 0}, face)
 		UI.corner(shine, 14)
-		local isz = math.floor(CELL_W * 0.62)
-		local icon = UI.icon(iconName, face, UDim2.fromOffset(isz, isz), UDim2.new(0.5, 0, 0, -8), color:Lerp(C.white, 0.3), Vector2.new(0.5, 0))
+		local isz = math.floor(CELL_W * 0.5)
+		local icon = UI.icon(iconName, face, UDim2.fromOffset(isz, isz), UDim2.new(0.5, 0, 0, 6), color:Lerp(C.white, 0.65), Vector2.new(0.5, 0))
 		table.insert(hud.menuIcons, {icon = icon, pos = icon.Position, iconScale = new("UIScale", {}, icon), faceScale = new("UIScale", {}, face)})
 		UI.label(face, label, {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -4), Size = UDim2.new(1, -6, 0, 26), Max = 24, Min = 12, Stroke = 2.6, TextWrapped = false})
 		UI.pressable(face, holder)
@@ -880,7 +879,7 @@ function Hud.init(ctx)
 		local t = os.clock()
 		for i, e in ipairs(hud.menuIcons) do
 			local w = hop(t, i)
-			e.icon.Position = e.pos + UDim2.fromOffset(0, math.sin(t * 2.4 + i * 0.9) * 2 - w * 12)
+			e.icon.Position = e.pos + UDim2.fromOffset(0, math.sin(t * 2.4 + i * 0.9) * 1.5 - w * 5)
 			e.icon.Rotation = math.sin(t * 1.7 + i) * 6 + w * 10 * ((i % 2 == 0) and 1 or -1)
 			e.iconScale.Scale = 1 + w * 0.18
 			e.faceScale.Scale = 1 + w * 0.05
