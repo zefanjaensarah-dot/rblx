@@ -511,8 +511,24 @@ do
 		return holder
 	end
 end
+-- icons are full-colour emoji (designed by real artists, drawn by Roblox) - the old frame drawings
+-- above are only used for names that have no emoji here
+local EMOJI_ICON = {
+	bag = "🎒", book = "📖", gift = "🎁", home = "🏠", trail = "✨", bolt = "⚡", boot = "👟", cash = "💵",
+	coin = "💰", star = "⭐", moon = "🌙", sun = "☀️", down = "⬇️", arrow = "➡️", close = "✖️", check = "✅",
+	heart = "❤️", box = "📦", lock = "🔒", skull = "💀", crown = "👑", clover = "🍀", clock = "⏰", gear = "⚙️",
+	calendar = "📅", rebirth = "🔄", ticket = "🎟️", shop = "🛒", plus = "➕",
+}
+UI.EMOJI_ICON = EMOJI_ICON
 function UI.icon(name, parent, size, pos, color, anchor)
-	return ICON.new(name, parent, size, pos, color, anchor)
+	local emoji = EMOJI_ICON[name]
+	if not emoji then return ICON.new(name, parent, size, pos, color, anchor) end
+	local holder = new("Frame", {Name = "Icon_" .. name, BackgroundTransparency = 1, Size = size, Position = pos or UDim2.new(), AnchorPoint = anchor or Vector2.new()}, parent)
+	holder.ZIndex = (parent and parent:IsA("GuiObject")) and parent.ZIndex or 1
+	-- (a plain TextLabel: UI.label filters emoji out)
+	new("TextLabel", {Name = "Emoji", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Text = emoji, TextScaled = true,
+		FontFace = UI.Font, TextColor3 = C.white, ZIndex = holder.ZIndex + 1}, holder)
+	return holder
 end
 
 ------------------------------------------------------------------
