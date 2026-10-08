@@ -331,6 +331,15 @@ do
 	P(front, "WallCap", V(MAPW * 2 + 8, 1.6, 3), C(0, FH + 0.8, FZ), RGB(235, 225, 210))
 	local sign = P(front, "WarehouseSign", V(56, 9, 0.6), C(0, DOOR_H + 6, FZ + 1.3), RGB(150, 95, 50), M.WoodPlanks, NOHIT)
 	signText(sign, Enum.NormalId.Back, "WAREHOUSE", 16, 7, 600)
+	-- the big metal door: open by day, the server closes it at night
+	local door = P(front, "Barrier", V(DOOR_HW * 2, DOOR_H, 1), C(0, DOOR_H / 2, FZ), RGB(120, 125, 135), M.DiamondPlate, {Transparency = 1, CanCollide = false})
+	door:SetAttribute("Door", true)
+	local closedSign = surfaceGui(door, Enum.NormalId.Back, 12, 400)
+	closedSign.Name = "ClosedSign"
+	closedSign.Enabled = false
+	local closedText = textLabel(closedSign, "CLOSED\nOpens at sunrise", RGB(255, 80, 70), 4)
+	closedText.Size = UDim2.fromScale(0.9, 0.5)
+	closedText.Position = UDim2.fromScale(0.05, 0.25)
 end
 
 ------------------------------------------------------------------
@@ -2436,10 +2445,43 @@ local function buildPlot(i, side, zc)
 	local o = P(m, "PlotOrigin", V(1, 1, 1), origin, RGB(0, 0, 0), nil, GHOST)
 	o:SetAttribute("Side", side)
 
-	-- a fresh lime-green lawn you click to place boxes on, with a wooden fence (open at the front)
-	local floor = PP("PlotFloor", V(CW, 0.4, CD), 0, 0.2, CD / 2, RGB(125, 225, 50), M.Grass)
+	-- the tiled shop floor you click to place boxes on (a checker in the base's colour)
+	local floor = PP("PlotFloor", V(CW, 0.4, CD), 0, 0.2, CD / 2, col:Lerp(WHITE, 0.85))
 	floor:SetAttribute("Placeable", true)
-	local function border(u0, w0, u1, w1)
+	local TILE_N = 8
+	local ts = CW / TILE_N
+	for i = 0, TILE_N - 1 do
+		for j = 0, TILE_N - 1 do
+			if (i + j) % 2 == 0 then
+				PP("FloorTile", V(ts, 0.06, ts), -HU + ts * (i + 0.5), 0.43, ts * (j + 0.5), col:Lerp(WHITE, 0.55), nil, NOHIT)
+			end
+		end
+	end
+	-- real shop walls on the sides and at the back (white, a coloured band, a glowing light strip on top)
+	local WALL_COL = RGB(248, 246, 240)
+	local function wall(u0, w0, u1, w1, lamp)
+		local a, b = W(u0, 0, w0).Position, W(u1, 0, w1).Position
+		local mid = (a + b) / 2
+		local len = (b - a).Magnitude + 1.2
+		local cf = CFrame.lookAt(mid, mid + (b - a).Unit)
+		P(m, "Wall", V(1.2, 16, len), cf + V(0, 8, 0), WALL_COL)
+		P(m, "WallBand", V(1.4, 4, len), cf + V(0, 2, 0), col, nil, NOHIT)
+		P(m, "WallTrim", V(1.6, 0.8, len + 0.4), cf + V(0, 16.2, 0), col, nil, NOHIT)
+		local strip = P(m, "WallLight", V(1.7, 0.5, len - 2), cf + V(0, 14.6, 0), RGB(255, 250, 235), M.Neon, NOHIT)
+		if lamp then
+			local l = Instance.new("PointLight")
+			l.Color = RGB(255, 244, 220)
+			l.Range = 48
+			l.Brightness = 0.9
+			l.Shadows = false
+			l.Parent = strip
+		end
+	end
+	wall(-HU, 0, -HU, CD, true)
+	wall(HU, 0, HU, CD, true)
+	wall(-HU, CD, HU, CD, false)
+	-- a low wooden fence at the front (open in the middle for the door)
+	local function fence(u0, w0, u1, w1)
 		local a, b = W(u0, 0, w0).Position, W(u1, 0, w1).Position
 		local mid = (a + b) / 2
 		local len = (b - a).Magnitude + 1.2
@@ -2453,11 +2495,20 @@ local function buildPlot(i, side, zc)
 			P(m, "FencePost", V(0.9, 3.6, 0.9), CFrame.new(pos + V(0, 1.8, 0)), WOOD_DARK, M.Wood, NOHIT)
 		end
 	end
-	border(-HU, 0, -HU, CD)
-	border(HU, 0, HU, CD)
-	border(-HU, CD, HU, CD)
-	border(-HU, 0, -12, 0)
-	border(12, 0, HU, 0)
+	fence(-HU, 0, -12, 0)
+	fence(12, 0, HU, 0)
+
+	-- AUTOMATIC REGISTERS (front left corner): two self-checkout machines
+	for k, u in ipairs({-39, -29}) do
+		local w = 8
+		PP("RegisterBase", V(6, 4, 3.4), u, 2.4, w, RGB(70, 74, 86), M.Metal):SetAttribute("Solid", true)
+		PP("RegisterTop", V(6.4, 0.4, 3.8), u, 4.6, w, RGB(235, 235, 240), nil, NOHIT)
+		PP("RegisterScanner", V(2.2, 0.12, 1.6), u, 4.85, w - 0.4, RGB(255, 60, 60), M.Neon, NOHIT)
+		PP("RegisterPole", V(0.4, 4, 0.4), u + 2, 6.6, w + 1.2, RGB(70, 74, 86), M.Metal, NOHIT)
+		local screen = PP("RegisterScreen", V(3.4, 2.4, 0.3), u + 2, 9, w + 1.1, RGB(40, 140, 255), M.Neon, NOHIT, CFrame.Angles(math.rad(-15), 0, 0))
+		signText(screen, Enum.NormalId.Back, "SELF\nCHECKOUT", 40, 2, 120)
+		PP("RegisterLight", V(0.8, 0.8, 0.8), u - 2.4, 7.4, w + 1.2, (k == 1) and RGB(80, 255, 90) or RGB(255, 200, 40), M.Neon, NOHIT)
+	end
 	PP("SpawnPoint", V(2, 0.2, 2), -18, 0.6, 10, RGB(0, 0, 0), nil, GHOST)
 
 	-- THE SHOP: one long display shelf (5 units x 3 layers x 3 spots = 45 stands)

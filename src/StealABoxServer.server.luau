@@ -2821,23 +2821,59 @@ RunService.Heartbeat:Connect(function(dt)
 end)
 
 ------------------------------------------------------------------
--- RESTOCK: an empty shelf spot gets a new box a little while after it was emptied
--- (deeper departments take a bit longer). No day/night any more.
+-- DAY / NIGHT: by day the shelves slowly empty out. At night the warehouse door is CLOSED
+-- (everyone inside is sent home) and every empty shelf spot gets a new box for the morning.
 ------------------------------------------------------------------
 task.spawn(function()
-	local emptySince = {}
+	local Lighting = game:GetService("Lighting")
+	local TweenService = game:GetService("TweenService")
+	local front = world:FindFirstChild("WarehouseFront")
+	local door = front and front:FindFirstChild("Barrier")
+	local function setDoor(closed)
+		if not door then return end
+		door.Transparency = closed and 0 or 1
+		door.CanCollide = closed
+		local sign = door:FindFirstChild("ClosedSign")
+		if sign then sign.Enabled = closed end
+	end
+	local night = false
+	local phaseEnds = workspace:GetServerTimeNow() + Config.DayLength
+	ReplicatedStorage:SetAttribute("IsNight", false)
+	ReplicatedStorage:SetAttribute("PhaseEndsAt", phaseEnds)
 	while true do
-		task.wait(2)
-		local t = os.clock()
-		for _, sp in ipairs(boxSpawns) do
-			if spawnFilled[sp] then
-				emptySince[sp] = nil
-			else
-				emptySince[sp] = emptySince[sp] or t
-				if t - emptySince[sp] >= Config.RestockTime(sp:GetAttribute("Area") or 1, 1) then
-					emptySince[sp] = nil
-					spawnBox(sp)
+		task.wait(1)
+		if workspace:GetServerTimeNow() >= phaseEnds then
+			night = not night
+			phaseEnds = workspace:GetServerTimeNow() + (night and Config.NightLength or Config.DayLength)
+			ReplicatedStorage:SetAttribute("IsNight", night)
+			ReplicatedStorage:SetAttribute("PhaseEndsAt", phaseEnds)
+			setDoor(night)
+			if night then
+				notifyAll("Night time! The warehouse is closed until sunrise - the shelves are being restocked.", Color3.fromRGB(170, 190, 255))
+				-- everybody still inside goes home (a carried box is dropped)
+				for _, p in ipairs(Players:GetPlayers()) do
+					local _, hrp = getChar(p)
+					if hrp and hrp.Position.Z < L.frontZ + 1 then
+						if carrying[p] then releaseCarry(p) end
+						sendHome(p)
+					end
 				end
+				-- restock every empty spot (a few at a time)
+				for i, sp in ipairs(boxSpawns) do
+					if not spawnFilled[sp] then
+						spawnBox(sp)
+						if i % 6 == 0 then task.wait(0.05) end
+					end
+				end
+				pcall(function()
+					TweenService:Create(Lighting, TweenInfo.new(6), {ClockTime = 20.5, Brightness = 1.2, OutdoorAmbient = Color3.fromRGB(100, 110, 190)}):Play()
+				end)
+			else
+				notifyAll("Good morning! The warehouse is open again - go steal!", Color3.fromRGB(255, 230, 120))
+				pcall(function()
+					Lighting.ClockTime = 6
+					TweenService:Create(Lighting, TweenInfo.new(6), {ClockTime = 14, Brightness = 2.5, OutdoorAmbient = Color3.fromRGB(165, 165, 165)}):Play()
+				end)
 			end
 		end
 	end

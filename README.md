@@ -2,7 +2,7 @@
 
 Steal boxes from a guarded warehouse, unbox them at your base, sell the items in your shop and get faster on your treadmill.
 
-**v6:** the warehouse has solid walls on both sides of every area (the floating islands and critters outside are gone, which also makes the map much lighter: about 3,850 parts instead of 10,000+). The lobby is simple: your bases (grass with a wooden fence), the Trails Shop stall, a FREE gift (every 15 minutes) and Top Money / Top Speed leaderboards. Boxes restock a little while after they are taken (no more day/night). The shopper kiosk on your base is gone: upgrade your shoppers at the top of the Items panel.
+**v6:** the warehouse has solid walls on both sides of every area (the floating islands and critters outside are gone, which also makes the map much lighter: about 3,850 parts instead of 10,000+). The lobby is simple: your bases (tiled shop floors, walls with lights inside and two self-checkout registers), the Trails Shop stall, a FREE gift (every 15 minutes) and Top Money / Top Speed leaderboards. Day and night are back: at night the warehouse door closes (everyone inside is sent home) and the shelves restock for the morning. The shopper kiosk on your base is gone: upgrade your shoppers at the top of the Items panel.
 
 **Side panels and new features:** the square buttons on the right open the **Items** panel ("3/8 Active": Equip / Unequip / Sell, **+1 Equip** buys another shelf spot - you start with 8, **Equip Best**) and the **Unboxing** panel (time left per box, Open, **Open All**, Instant Open for Robux). **Daily quests**: 3 new quests every day (left menu), each pays cash. Shoppers are cheaper: simple characters, no friend avatars, updated 20 times a second.
 
