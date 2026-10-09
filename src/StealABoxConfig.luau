@@ -1030,6 +1030,6 @@ Config.OldBoxToNew, Config.OldItemToNew = {}, {}
 -- to Roblox as Images. Put their ids here in that order, e.g. {123456789, 987654321}.
 -- Empty = the game uses emoji icons. (The first uploads, 113628952516465 / 71822476584863, were
 -- screenshots with a light background, so every icon would sit on a white square.)
-Config.IconSheets = {}
+Config.IconSheets = {121181129357514, 119828445968430}
 
 return Config
