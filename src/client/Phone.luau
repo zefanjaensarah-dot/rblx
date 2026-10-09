@@ -583,6 +583,19 @@ function Phone.init(ctx)
 	game:GetService("ProximityPromptService").PromptTriggered:Connect(function(prompt)
 		if prompt.Name == "PlayPhone" and not UI.isOpen("Phone") then UI.open("Phone") end
 	end)
+	-- click (or tap) the phone screen on your treadmill to play
+	task.spawn(function()
+		local root = workspace:WaitForChild("StealABox", 30)
+		local plots = root and root:WaitForChild("Plots", 30)
+		if not plots then return end
+		for _, d in ipairs(plots:GetDescendants()) do
+			if d:IsA("ClickDetector") and d.Name == "PhoneClick" then
+				d.MouseClick:Connect(function(who)
+					if who == game:GetService("Players").LocalPlayer and not UI.isOpen("Phone") then UI.open("Phone") end
+				end)
+			end
+		end
+	end)
 	show("Home")
 end
 

@@ -60,7 +60,7 @@ H.realOf = realOf
 
 local EVENTS = {}
 for _, n in ipairs({"Activated", "MouseButton1Click", "MouseButton1Down", "MouseButton1Up", "MouseButton2Click", "MouseEnter", "MouseLeave",
-	"Changed", "FocusLost", "Focused", "Triggered", "TriggerEnded", "Event", "OnClientEvent", "OnServerEvent", "InputBegan", "InputEnded", "InputChanged",
+	"Changed", "FocusLost", "Focused", "Triggered", "TriggerEnded", "MouseClick", "MouseHoverEnter", "MouseHoverLeave", "Event", "OnClientEvent", "OnServerEvent", "InputBegan", "InputEnded", "InputChanged",
 	"ChildAdded", "ChildRemoved", "DescendantAdded", "DescendantRemoving", "AncestryChanged", "Destroying", "Touched", "TouchEnded",
 	"Died", "Running", "StateChanged", "CharacterAdded", "CharacterRemoving", "CharacterAppearanceLoaded", "PromptTriggered", "Completed",
 	"MoveToFinished", "Ended", "Played", "Stopped", "DidLoop"}) do

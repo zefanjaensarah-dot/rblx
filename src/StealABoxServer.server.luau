@@ -1693,7 +1693,8 @@ function loadTracks(model)
 	local animator = hum and hum:FindFirstChildOfClass("Animator")
 	if not animator then return nil end
 	local tracks = {}
-	for name, id in pairs(Config.R6Anims) do
+	local set = (hum.RigType == Enum.HumanoidRigType.R15 and Config.R15Anims) or Config.R6Anims
+	for name, id in pairs(set) do
 		local anim = Instance.new("Animation")
 		anim.AnimationId = id
 		local ok, track = pcall(function() return animator:LoadAnimation(anim) end)
@@ -1802,6 +1803,63 @@ function loadFriends(player)
 	end)
 end
 
+-- R15 SHOPPERS: classic noobs / bacons and funny avatars (tiny, giant, big-headed, rainbow),
+-- built once from HumanoidDescriptions, then cloned for every shopper
+local r15Shoppers = {}
+task.spawn(function()
+	local NOOB = {head = Color3.fromRGB(245, 205, 48), arms = Color3.fromRGB(245, 205, 48), torso = Color3.fromRGB(13, 105, 172), legs = Color3.fromRGB(75, 151, 75)}
+	local looks = {
+		{name = "Noob", colors = NOOB},
+		{name = "Noob", colors = NOOB, scale = 0.7},
+		{name = "BigHeadNoob", colors = NOOB, headScale = 1.6},
+	}
+	for _ = 1, 4 do
+		local skin = pick(SKINS)
+		table.insert(looks, {name = "BaconHair", hair = Config.BaconHairId, colors = {head = skin, arms = skin, torso = pick(SHIRTS), legs = pick(PANTS)}})
+	end
+	local FUNNY = {Color3.fromRGB(255, 80, 200), Color3.fromRGB(80, 255, 120), Color3.fromRGB(80, 200, 255), Color3.fromRGB(255, 160, 40), Color3.fromRGB(170, 90, 255)}
+	for _, f in ipairs({{scale = 0.6}, {scale = 1.35}, {headScale = 1.7}, {height = 1.3, width = 0.7}}) do
+		local skin = pick(SKINS)
+		table.insert(looks, {name = "Funny", colors = {head = skin, arms = pick(FUNNY), torso = pick(FUNNY), legs = pick(FUNNY)}, scale = f.scale, headScale = f.headScale,
+			height = f.height, width = f.width, hair = (math.random() < 0.5) and Config.BaconHairId or nil})
+	end
+	for _, look in ipairs(looks) do
+		local ok, model = pcall(function()
+			local d = Instance.new("HumanoidDescription")
+			d.HeadColor, d.TorsoColor = look.colors.head, look.colors.torso
+			d.LeftArmColor, d.RightArmColor = look.colors.arms, look.colors.arms
+			d.LeftLegColor, d.RightLegColor = look.colors.legs, look.colors.legs
+			if look.hair then d.HairAccessory = tostring(look.hair) end
+			d.HeadScale = look.headScale or 1
+			d.HeightScale = look.height or 1
+			d.WidthScale = look.width or 1
+			d.DepthScale = look.width or 1
+			return Players:CreateHumanoidModelFromDescription(d, Enum.HumanoidRigType.R15)
+		end)
+		if ok and model then
+			if look.scale then pcall(function() model:ScaleTo(look.scale) end) end
+			model.Name = look.name
+			table.insert(r15Shoppers, model)
+		end
+	end
+end)
+local function makeR15Shopper()
+	if #r15Shoppers == 0 then return nil end
+	local m = r15Shoppers[math.random(1, #r15Shoppers)]:Clone()
+	local hum = m:FindFirstChildOfClass("Humanoid")
+	local hrp = m:FindFirstChild("HumanoidRootPart")
+	if not hum or not hrp then m:Destroy() return nil end
+	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+	hum.BreakJointsOnDeath = false
+	hrp.Anchored = true
+	local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator")
+	animator.Parent = hum
+	m:SetAttribute("RootHeight", hum.HipHeight + hrp.Size.Y / 2)
+	m:PivotTo(CFrame.new(0, -500, 0))
+	return m, {hrp = hrp, torso = m:FindFirstChild("UpperTorso") or hrp, head = m:FindFirstChild("Head") or hrp, humanoid = hum, animator = animator}
+end
+
 local function makeCustomerModel(owner)
 	local friend = nil
 	local list = owner and friendsOf[owner]
@@ -1810,15 +1868,19 @@ local function makeCustomerModel(owner)
 	end
 	local desc = friend and fetchDescription(friend.id)
 	if friend and not desc then friend = nil end -- not loaded yet: a Noob / Bacon this time
-	local isBacon = (not friend) and math.random() < 0.5
-	local opt = {name = isBacon and "BaconHair" or "Noob", cframe = CFrame.new(0, -500, 0)}
-	if isBacon then
-		local skin = pick(SKINS)
-		opt.head, opt.torso = skin, pick(SHIRTS)
-		opt.leftLeg = pick(PANTS)
-		opt.rightLeg = opt.leftLeg
+	local m, R = makeR15Shopper()
+	local isBacon = false
+	if not m then -- (no R15 avatars, e.g. offline: the old R6 noob / bacon)
+		isBacon = (not friend) and math.random() < 0.5
+		local opt = {name = isBacon and "BaconHair" or "Noob", cframe = CFrame.new(0, -500, 0)}
+		if isBacon then
+			local skin = pick(SKINS)
+			opt.head, opt.torso = skin, pick(SHIRTS)
+			opt.leftLeg = pick(PANTS)
+			opt.rightLeg = opt.leftLeg
+		end
+		m, R = Config.MakeR6(opt)
 	end
-	local m, R = Config.MakeR6(opt)
 	m:SetAttribute("Customer", true)
 	local held = Instance.new("Part")
 	held.Name = "Held"
@@ -1827,7 +1889,7 @@ local function makeCustomerModel(owner)
 	held.CFrame = R.torso.CFrame * CFrame.new(0, 0.2, -1.4)
 	held.Parent = m
 	Config.Attach(held, R.torso)
-	if math.random() < 0.35 then
+	if R.rightArm and math.random() < 0.35 then
 		local bag = Instance.new("Part")
 		bag.Name = "Bag"
 		bag.Size = Vector3.new(0.5, 1.1, 1.2)
@@ -1996,9 +2058,9 @@ local function spawnCustomer(player, plot, standIndex, item)
 		owner = player, plot = plot, item = item, standIndex = standIndex,
 		model = model, parts = parts, think = think, held = held,
 		pos = start, facing = (toWorld(side * 5, -6) - start).Unit, waypoints = W, index = 1, waitLeft = 0, ground = ground, plotFrame = frame,
-		moving = true, holding = false, t = math.random() * 10,
+		moving = true, holding = false, t = math.random() * 10, rootH = model:GetAttribute("RootHeight") or 3,
 	}
-	c.cf = CFrame.lookAt(Vector3.new(start.X, ground(start) + 3, start.Z), Vector3.new(start.X, ground(start) + 3, start.Z) + c.facing)
+	c.cf = CFrame.lookAt(Vector3.new(start.X, ground(start) + c.rootH, start.Z), Vector3.new(start.X, ground(start) + c.rootH, start.Z) + c.facing)
 	-- some shoppers are RICH: they have a mutation, glow, pay more and tip more
 	c.rich = nil -- (rich glowing shoppers removed: cheaper)
 	if c.rich then dressRichShopper(c) end
@@ -2149,7 +2211,7 @@ RunService.Heartbeat:Connect(function(frameDt)
 					end
 				end
 			end
-			local at = Vector3.new(c.pos.X, c.ground(c.pos) + 3, c.pos.Z)
+			local at = Vector3.new(c.pos.X, c.ground(c.pos) + (c.rootH or 3), c.pos.Z)
 			c.cf = CFrame.lookAt(at, at + c.facing)
 			poseCustomer(c, dt)
 		end
@@ -2276,6 +2338,8 @@ local function upgradeTreadmill(player)
 	sync(player)
 	local plot = playerPlot[player]
 	local console = plot and plot:FindFirstChild("TreadConsole", true)
+	local belt = plot and plot:FindFirstChild("TreadBelt", true)
+	if belt then FXEvent:FireClient(player, "TreadUpgrade", belt.Position, prof.Treadmill) end -- the upgrade cutscene
 	if console then
 		FXEvent:FireAllClients("LevelUp", console.Position, 1)
 		playSound(console, "rbxasset://sounds/electronicpingshort.wav", 1, 1.6)
@@ -2295,16 +2359,17 @@ end
 
 for _, plot in ipairs(plotsFolder:GetChildren()) do
 	local console = plot:FindFirstChild("TreadConsole", true)
-	local prompt = console and console:FindFirstChildOfClass("ProximityPrompt")
-	if prompt then
-		prompt.Triggered:Connect(function(who)
-			if playerPlot[who] ~= plot then
-				notify(who, "That's not your treadmill!", RED)
-				return
-			end
-			upgradeTreadmill(who)
-		end)
+	local function onUpgrade(who)
+		if playerPlot[who] ~= plot then
+			notify(who, "That's not your treadmill!", RED)
+			return
+		end
+		upgradeTreadmill(who)
 	end
+	local prompt = console and console:FindFirstChildOfClass("ProximityPrompt")
+	if prompt then prompt.Triggered:Connect(onUpgrade) end
+	local click = console and console:FindFirstChildOfClass("ClickDetector")
+	if click then click.MouseClick:Connect(onUpgrade) end
 end
 
 -- CUSTOMER KIOSK: more shoppers

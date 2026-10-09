@@ -288,6 +288,17 @@ function WorldFX.init(ctx)
 			burst(pos, 10, {Color = ColorSequence.new(WHITE), LightEmission = 1, Size = NumberSequence.new(0.5, 0), Lifetime = NumberRange.new(0.3, 0.6), Speed = NumberRange.new(4, 8)})
 		elseif kind == "Ready" then
 			burst(pos, 25, {Color = ColorSequence.new(Color3.fromRGB(255, 240, 120)), LightEmission = 1, Size = NumberSequence.new(0.7, 0), Lifetime = NumberRange.new(0.6, 1), Speed = NumberRange.new(6, 12)})
+		elseif kind == "TreadUpgrade" then
+			-- the treadmill upgrade cutscene: the camera swoops round the treadmill while it powers up
+			if ctx.cinematic then ctx.cinematic(pos + Vector3.new(0, 1.5, 0), 2.2, 0.7, 22) end
+			burst(pos, 90, {Color = ColorSequence.new(Color3.fromRGB(120, 255, 90), Color3.fromRGB(255, 240, 120)), LightEmission = 1, Size = NumberSequence.new(1.2, 0),
+				Lifetime = NumberRange.new(1, 1.8), Speed = NumberRange.new(14, 26), Acceleration = Vector3.new(0, 18, 0), SpreadAngle = Vector2.new(30, 30), EmissionDirection = Enum.NormalId.Top})
+			task.delay(0.8, function()
+				burst(pos, 70, {Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(90, 220, 255)), LightEmission = 1, Size = NumberSequence.new(0.8, 0),
+					Lifetime = NumberRange.new(0.6, 1), Speed = NumberRange.new(30, 40), Drag = 5})
+				if ctx.thanks then ctx.thanks("TREADMILL UPGRADED!", "LEVEL " .. tostring(size or "")) end
+				if ctx.confetti then ctx.confetti(60) end
+			end)
 		elseif kind == "LevelUp" then
 			burst(pos, 60, {Color = ColorSequence.new(Color3.fromRGB(255, 220, 60), Color3.fromRGB(255, 255, 200)), LightEmission = 1, Size = NumberSequence.new(1, 0), Lifetime = NumberRange.new(0.8, 1.4), Speed = NumberRange.new(10, 20), Acceleration = Vector3.new(0, 12, 0)})
 		elseif kind == "Wake" then

@@ -502,6 +502,15 @@ Config.R6Anims = { -- Roblox's own R6 animations (every game can use them)
 	wave = "rbxassetid://128777973",
 	dance = "rbxassetid://182435998",
 }
+Config.R15Anims = { -- Roblox's own R15 animations (the default Animate script's)
+	idle = "rbxassetid://507766666",
+	walk = "rbxassetid://507777826",
+	point = "rbxassetid://507770453",
+	cheer = "rbxassetid://507770677",
+	laugh = "rbxassetid://507770818",
+	wave = "rbxassetid://507770239",
+	dance = "rbxassetid://507771019",
+}
 Config.BaconHairId = 63690008 -- "Pal Hair", the classic bacon hair (made by Roblox)
 
 function Config.MakeR6(opt)

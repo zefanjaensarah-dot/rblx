@@ -2613,8 +2613,23 @@ local function buildPlot(i, side, zc)
 		local W0, W1 = 15, 35         -- belt from w 15 (console end) to w 35
 		local metal, darkMetal = RGB(70, 74, 86), RGB(40, 42, 50)
 		PP("TreadBase", V(11, 0.8, W1 - W0 + 4), TU, 0.8, (W0 + W1) / 2, metal, M.Metal)
+		local CYL = Enum.PartType.Cylinder
+		local ALONG = CFrame.Angles(0, math.rad(90), 0) -- a cylinder lying along the belt
+		local STAND = CFrame.Angles(0, 0, math.rad(90)) -- a cylinder standing up
 		for _, sd in ipairs({-1, 1}) do
-			PP("TreadRail", V(1, 1.2, W1 - W0 + 4), TU + sd * 5.2, 1.4, (W0 + W1) / 2, col)
+			-- chunky rounded side rails in the base colour with a glowing strip under them
+			PP("TreadRail", V(W1 - W0 + 4, 1.6, 1.6), TU + sd * 5.2, 1.6, (W0 + W1) / 2, col, nil, nil, ALONG).Shape = CYL
+			PP("TreadGlow", V(0.3, 0.3, W1 - W0 + 3), TU + sd * 5.6, 0.55, (W0 + W1) / 2, glow, M.Neon, NOHIT)
+			-- side handles to hold on to while you run (up front, beside the phone)
+			for _, w in ipairs({W0 + 1, W0 + 9}) do
+				PP("TreadPost", V(4, 0.6, 0.6), TU + sd * 5.2, 4, w, RGB(60, 64, 78), M.Metal, NOHIT, STAND).Shape = CYL
+				PP("TreadKnob", V(1, 1, 1), TU + sd * 5.2, 6, w, col:Lerp(WHITE, 0.25), nil, NOHIT).Shape = Enum.PartType.Ball
+			end
+			PP("TreadHandle", V(9, 0.7, 0.7), TU + sd * 5.2, 6, W0 + 5, col:Lerp(WHITE, 0.25), nil, NOHIT, ALONG).Shape = CYL
+		end
+		-- glowing speed chevrons on the base behind the belt
+		for k = 0, 2 do
+			PP("TreadArrow", V(2.4 - k * 0.6, 0.08, 2.4 - k * 0.6), TU, 1.22 + k * 0.01, W1 + 1.2, glow:Lerp(WHITE, k * 0.3), M.Neon, NOHIT, CFrame.Angles(0, math.rad(45), 0))
 		end
 		local belt = PP("TreadBelt", V(8.4, 0.25, W1 - W0), TU, 1.32, (W0 + W1) / 2, RGB(28, 28, 32), M.Fabric)
 		-- the belt runs by itself: step on and your character runs in place (client), jump to hop off
@@ -2636,10 +2651,13 @@ local function buildPlot(i, side, zc)
 			PP("PhoneBody", V(9, 15, 1.2), TU, 9, pw, RGB(25, 25, 32)):SetAttribute("Solid", true)
 			local screen = PP("PhoneScreen", V(8, 13, 0.2), TU, 9.2, pw + 0.62, RGB(60, 150, 255), M.Neon, NOHIT)
 			PP("PhoneCamera", V(0.8, 0.8, 0.2), TU, 16, pw + 0.62, RGB(10, 10, 14), nil, NOHIT)
-			signText(screen, Enum.NormalId.Front, "GAMES\nPress E", 30, 3, 120)
-			local pp = prompt(screen, "PlayPhone", "Play", "Phone Games", 0)
-			pp.MaxActivationDistance = 30
-			pp.Exclusivity = Enum.ProximityPromptExclusivity.AlwaysShow
+			signText(screen, Enum.NormalId.Front, "GAMES\nTap to play", 30, 3, 120)
+			-- click (or tap) the screen to play
+			screen.CanQuery = true
+			local click = Instance.new("ClickDetector")
+			click.Name = "PhoneClick"
+			click.MaxActivationDistance = 40
+			click.Parent = screen
 		end
 		-- the upgrade is just a sign beside the belt: "UPGRADE" and the price (the server keeps it current)
 		local su, sw = TU - 10, W0 + 3
@@ -2648,8 +2666,11 @@ local function buildPlot(i, side, zc)
 		end
 		local sign = upgradeSign("TreadConsole", "TreadTag", V(7.4, 4, 0.4), su, 5.6, sw,
 			"UPGRADE", "$" .. Config.FormatNum(Config.TreadmillCost(1)), "Lv 1/" .. Config.Treadmill.max .. "  +" .. Config.FormatNum(Config.TreadRate(1)) .. "/s")
-		local up = prompt(sign, "ProximityPrompt", "Upgrade", "Treadmill", 0.3)
-		up.Exclusivity = Enum.ProximityPromptExclusivity.AlwaysShow
+		-- click (or tap) the sign to upgrade
+		local click = Instance.new("ClickDetector")
+		click.Name = "UpgradeClick"
+		click.MaxActivationDistance = 40
+		click.Parent = sign
 	end
 
 	-- name sign at the front (the server writes "<name>'s Base")
