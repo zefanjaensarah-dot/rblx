@@ -3708,3 +3708,155 @@ do
 		end)
 	end
 end
+
+
+------------------------------------------------------------------
+-- BATS: every player gets their best bat (better bats come from harder Index rewards).
+-- Swing it at someone carrying a box: the box drops and they go flying.
+------------------------------------------------------------------
+do
+	local batTier = {}   -- [player] = the bat tier they hold now
+	local lastSwing = {}
+	local function batHit(attacker, victim, def)
+		local vchar, vhrp = getChar(victim)
+		local _, ahrp = getChar(attacker)
+		if not vchar or not vhrp or not ahrp or ragdolled[victim] or isImmune(victim) then return end
+		ragdolled[victim] = true
+		immuneUntil[victim] = os.clock() + RAGDOLL_TIME + 1
+		local away = Vector3.new(vhrp.Position.X - ahrp.Position.X, 0, vhrp.Position.Z - ahrp.Position.Z)
+		away = (away.Magnitude > 0.1) and away.Unit or ahrp.CFrame.LookVector
+		local velocity = away * def.power + Vector3.new(0, 30 + def.power * 0.35, 0)
+		releaseCarry(victim)
+		setRagdoll(vchar, true)
+		playSound(vhrp, "rbxasset://sounds/collide.wav", 1, 0.9)
+		FlingEvent:FireClient(victim, velocity, RAGDOLL_TIME, attacker.DisplayName .. "'s " .. def.name)
+		FXEvent:FireAllClients("Bonk", vhrp.Position, 3)
+		notify(victim, "BONK! " .. attacker.DisplayName .. " hit you with a " .. def.name .. " and you dropped your box!", RED)
+		notify(attacker, "BONK! You knocked the box out of " .. victim.DisplayName .. "'s hands!", GREEN)
+		task.delay(RAGDOLL_TIME, function()
+			ragdolled[victim] = nil
+			if vchar.Parent then setRagdoll(vchar, false) end
+		end)
+	end
+	local function makeBat(player, def)
+		local tool = Instance.new("Tool")
+		tool.Name = "Bat"
+		tool.ToolTip = def.name
+		tool.CanBeDropped = false
+		tool.RequiresHandle = true
+		tool.Grip = CFrame.new(0, 0, -1.6)
+		tool:SetAttribute("BatName", def.name)
+		local function part(name, size, cf, color, shape, mat)
+			local p = Instance.new("Part")
+			p.Name = name
+			p.Size = size
+			p.CFrame = cf
+			p.Color = color
+			p.Material = mat or Enum.Material.SmoothPlastic
+			p.CanCollide = false
+			p.Massless = true
+			p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+			if shape then p.Shape = shape end
+			p.Parent = tool
+			return p
+		end
+		-- the handle is the thin grip; the thick barrel, the knob and the tape are welded on
+		local handle = part("Handle", Vector3.new(0.45, 0.45, 4.6), CFrame.new(), def.color)
+		local along = CFrame.Angles(0, math.rad(90), 0) -- a cylinder lying along the bat
+		local pieces = {
+			part("Barrel", Vector3.new(2.6, 0.95, 0.95), CFrame.new(0, 0, 1.2) * along, def.color, Enum.PartType.Cylinder, def.glow and Enum.Material.Neon or nil),
+			part("Tip", Vector3.new(0.95, 0.95, 0.95), CFrame.new(0, 0, 2.5), def.color, Enum.PartType.Ball, def.glow and Enum.Material.Neon or nil),
+			part("Tape", Vector3.new(1.4, 0.55, 0.55), CFrame.new(0, 0, -1.6) * along, def.grip, Enum.PartType.Cylinder),
+			part("Knob", Vector3.new(0.7, 0.7, 0.7), CFrame.new(0, 0, -2.35), def.grip, Enum.PartType.Ball),
+		}
+		for _, p in ipairs(pieces) do
+			local w = Instance.new("WeldConstraint")
+			w.Part0, w.Part1 = handle, p
+			w.Parent = p
+		end
+		if def.glow then
+			local e = Instance.new("ParticleEmitter")
+			e.Color = ColorSequence.new(def.color)
+			e.LightEmission = 1
+			e.Size = NumberSequence.new(0.35, 0)
+			e.Lifetime = NumberRange.new(0.4, 0.8)
+			e.Rate = 10
+			e.Speed = NumberRange.new(0.5, 1.5)
+			e.Parent = pieces[1]
+		end
+		tool.Activated:Connect(function()
+			local now = os.clock()
+			if (lastSwing[player] or 0) + def.cooldown > now then return end
+			lastSwing[player] = now
+			-- the default Animate script plays its slash animation when it sees this value
+			local anim = Instance.new("StringValue")
+			anim.Name = "toolanim"
+			anim.Value = "Slash"
+			anim.Parent = tool
+			playSound(handle, "rbxasset://sounds/swoosh.wav", 0.8, 1.3)
+			local _, hrp = getChar(player)
+			if not hrp or ragdolled[player] then return end
+			for _, other in ipairs(Players:GetPlayers()) do
+				if other ~= player and carrying[other] then
+					local _, ohrp = getChar(other)
+					if ohrp then
+						local off = ohrp.Position - hrp.Position
+						local flat = Vector3.new(off.X, 0, off.Z)
+						local inFront = flat.Magnitude < 3 or hrp.CFrame.LookVector:Dot(flat.Unit) > 0.2
+						if flat.Magnitude <= def.reach and math.abs(off.Y) < 8 and inFront then
+							batHit(player, other, def)
+						end
+					end
+				end
+			end
+		end)
+		return tool
+	end
+	local function giveBat(player)
+		local prof = profiles[player]
+		local tier, def = Config.BatFor(prof and prof.IndexClaimed)
+		local backpack = player:FindFirstChildOfClass("Backpack")
+		if not backpack then return end
+		local char = player.Character
+		for _, holder in ipairs({backpack, char}) do
+			if holder then
+				for _, t in ipairs(holder:GetChildren()) do
+					if t:IsA("Tool") and t.Name == "Bat" then t:Destroy() end
+				end
+			end
+		end
+		makeBat(player, def).Parent = backpack
+		if batTier[player] and tier > batTier[player] then
+			notify(player, "NEW BAT! You got the " .. def.name .. "! (+power, +reach)", def.color)
+			local _, hrp = getChar(player)
+			if hrp then FXEvent:FireAllClients("LevelUp", hrp.Position, 3) end
+		end
+		batTier[player] = tier
+	end
+	local function hook(player)
+		player.CharacterAdded:Connect(function()
+			task.wait(0.5)
+			for _ = 1, 30 do
+				if profiles[player] then break end
+				task.wait(0.5)
+			end
+			if player.Parent then giveBat(player) end
+		end)
+		if player.Character then task.spawn(giveBat, player) end
+	end
+	Players.PlayerAdded:Connect(hook)
+	for _, p in ipairs(Players:GetPlayers()) do hook(p) end
+	Players.PlayerRemoving:Connect(function(p) batTier[p] = nil lastSwing[p] = nil end)
+	-- claimed a harder Index reward? swap in the better bat
+	task.spawn(function()
+		while true do
+			task.wait(2)
+			for _, p in ipairs(Players:GetPlayers()) do
+				local prof = profiles[p]
+				-- (also hands out the first bat if the backpack wasn't there yet)
+				if prof and (batTier[p] == nil or Config.BatFor(prof.IndexClaimed) ~= batTier[p]) then giveBat(p) end
+			end
+		end
+	end)
+end
+

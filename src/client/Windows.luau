@@ -105,7 +105,8 @@ local function buildIndex(ctx)
 		UI.icon("gift", rw, UDim2.fromOffset(46, 46), UDim2.new(0, 10, 0.5, 0), area.accent:Lerp(C.white, 0.2), Vector2.new(0, 0.5))
 		local rwTitle = UI.label(rw, "", {Position = UDim2.fromOffset(66, 6), Size = UDim2.new(1, -270, 0, 28), Max = 22, Stroke = 2.2,
 			TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false})
-		UI.label(rw, "+$" .. fmt(Config.IndexCash(areaIndex)) .. "  and  +" .. math.floor(Config.IndexReward.cashBonus * 100 + 0.5) .. "% cash forever",
+		local bat = Config.BatForArea and Config.BatForArea(areaIndex)
+		UI.label(rw, "+$" .. fmt(Config.IndexCash(areaIndex)) .. "  and  +" .. math.floor(Config.IndexReward.cashBonus * 100 + 0.5) .. "% cash forever" .. (bat and ("  +  " .. bat.name .. "!") or ""),
 			{Position = UDim2.fromOffset(66, 34), Size = UDim2.new(1, -270, 0, 22), Max = 18, Stroke = 1.8, TextColor3 = C.money, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false})
 		local claim = UI.button(rw, {Text = "CLAIM!", Color = C.green, Size = UDim2.fromOffset(180, 50), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0.5, 0),
 			TextSize = 24, Icon = "gift", IconSize = 28, Depth = 4})
