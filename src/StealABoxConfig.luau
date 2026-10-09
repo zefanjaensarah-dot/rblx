@@ -326,6 +326,13 @@ end
 Config.CustomerMax = 10
 function Config.CustomerRate(level) return 1 + 0.3 * ((level or 1) - 1) end -- x shoppers
 function Config.CustomerCost(level) return math.floor(120 * 2.3 ^ ((level or 1) - 1)) end
+-- PLOT UPGRADES on the big UPGRADES board: shopper payouts and unbox speed
+Config.PayoutMax = 10
+function Config.PayoutMult(level) return 1 + 0.15 * ((level or 1) - 1) end -- x what shoppers pay
+function Config.PayoutCost(level) return math.floor(300 * 2.5 ^ ((level or 1) - 1)) end
+Config.UnboxMax = 10
+function Config.UnboxMult(level) return 1 - 0.06 * ((level or 1) - 1) end -- x unbox time
+function Config.UnboxCost(level) return math.floor(200 * 2.4 ^ ((level or 1) - 1)) end
 
 ------------------------------------------------------------------
 -- INDEX REWARDS: find all 4 items of a warehouse area to complete that area's Index page.

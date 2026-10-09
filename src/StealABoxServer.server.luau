@@ -159,7 +159,7 @@ end
 local function newProfile()
 	local p = {Cash = 0, Stolen = 0, Boxes = {}, Mutations = {}, ItemsFound = {},
 		Items = {}, Unboxing = {}, Upgrades = {}, Treadmill = 1, SpeedPoints = Config.StartSpeed, TutorialDone = false,
-		Trails = {}, Trail = nil, Customers = 1, SpeedBoost = 1, Receipts = {},
+		Trails = {}, Trail = nil, Customers = 1, SpeedBoost = 1, Receipts = {}, PayoutLevel = 1, UnboxLevel = 1,
 		IndexClaimed = {}, Daily = {Streak = 0, Last = -1}, Codes = {}, Settings = {}, SaveVersion = 2, ExtraStands = 0,
 		Achievements = {}, Flings = 0}
 	return p
@@ -277,6 +277,7 @@ local function cashMultiplier(player)
 	if hasPass(player, "VIP") then m = m * Config.PassEffects.VIPCash end
 	if hasPass(player, "DoubleCash") then m = m * Config.PassEffects.DoubleCash end
 	if ReplicatedStorage:GetAttribute("EventId") == "DoubleCash" then m = m * 2 end -- (surprise event)
+	m = m * Config.PayoutMult(prof and prof.PayoutLevel) -- the Payouts upgrade
 	return m
 end
 
@@ -289,6 +290,8 @@ end
 local function unboxDuration(player, def, sizeId)
 	local d = Config.UnboxTime(def, sizeId, 0)
 	if hasPass(player, "FastUnbox") then d = math.max(1, math.floor(d * Config.PassEffects.FastUnbox + 0.5)) end
+	local uprof = profiles[player]
+	if uprof then d = math.max(1, math.floor(d * Config.UnboxMult(uprof.UnboxLevel) + 0.5)) end -- the Unbox Speed upgrade
 	return d
 end
 
@@ -2379,6 +2382,22 @@ local function refreshKiosk(player)
 	local level = prof and prof.Customers or 1
 	setSign(plot, "CustomerSign", "Lv " .. level .. "/" .. Config.CustomerMax, "x" .. string.format("%.1f", Config.CustomerRate(level)) .. " shoppers")
 end
+-- PAYOUTS / UNBOX SPEED: upgraded on the UPGRADES board on your plot
+local function upgradeStat(who, field, max, costFn, what)
+	local prof = profiles[who]
+	if not prof then return {ok = false, msg = "Still loading..."} end
+	local level = prof[field] or 1
+	if level >= max then return {ok = false, msg = what .. " is maxed!"} end
+	local cost = costFn(level)
+	if prof.Cash < cost then return {ok = false, msg = "Not enough cash! You need $" .. Config.FormatNum(cost)} end
+	prof.Cash = prof.Cash - cost
+	prof[field] = level + 1
+	refreshIncome(who)
+	sync(who)
+	local _, hrp = getChar(who)
+	if hrp then FXEvent:FireAllClients("LevelUp", hrp.Position, 1) end
+	return {ok = true, msg = what .. " upgraded to level " .. prof[field] .. "!"}
+end
 -- MORE SHOPPERS: upgraded from the Items panel (the kiosk on the plot is gone)
 local function upgradeShoppers(who)
 	local prof = profiles[who]
@@ -2649,6 +2668,12 @@ ActionFunc.OnServerInvoke = function(player, action, arg, expectedId)
 
 	elseif action == "BuyPass" then
 		return buyPass(player, arg)
+
+	elseif action == "UpgradePayout" then
+		return upgradeStat(player, "PayoutLevel", Config.PayoutMax, Config.PayoutCost, "Shopper payouts")
+
+	elseif action == "UpgradeUnbox" then
+		return upgradeStat(player, "UnboxLevel", Config.UnboxMax, Config.UnboxCost, "Unbox speed")
 
 	elseif action == "UpgradeShoppers" then
 		return upgradeShoppers(player)
@@ -3316,6 +3341,8 @@ local function readSave(prof, data)
 	prof.Stolen = tonumber(data.Stolen) or 0
 	prof.Treadmill = math.clamp(tonumber(data.Treadmill) or 1, 1, Config.Treadmill.max)
 	prof.Customers = math.clamp(tonumber(data.Customers) or 1, 1, Config.CustomerMax)
+	prof.PayoutLevel = math.clamp(math.floor(tonumber(data.PayoutLevel) or 1), 1, Config.PayoutMax)
+	prof.UnboxLevel = math.clamp(math.floor(tonumber(data.UnboxLevel) or 1), 1, Config.UnboxMax)
 	-- old saves: speed from levels turns into treadmill speed
 	local oldTread = tonumber(data.TreadSpeed) or math.max(0, ((tonumber(data.Level) or 1) - 1) * 0.5)
 	prof.Cash = prof.Cash + (tonumber(data.Register) or 0) -- old saves: register money goes straight to cash

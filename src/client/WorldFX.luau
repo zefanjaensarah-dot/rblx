@@ -18,6 +18,176 @@ function WorldFX.init(ctx)
 
 	-- THE UPGRADE BUTTON on your treadmill sign (both sides): it grows and wiggles when you hover
 	-- over it, squishes when you click it, and breathes while you can afford the upgrade
+	-- bouncy buttons on signs in the world: they grow and wiggle when you hover over them, squish
+	-- when you click them, and breathe while you can afford what they buy
+	local bounceList = {}
+	local function bouncy(b, onClick)
+		local sc = Instance.new("UIScale")
+		sc.Parent = b
+		local st = {b = b, sc = sc, hover = false, press = -10, can = true}
+		b.MouseEnter:Connect(function() st.hover = true end)
+		b.MouseLeave:Connect(function() st.hover = false end)
+		b.Activated:Connect(function()
+			if os.clock() - st.press < 0.3 then return end
+			st.press = os.clock()
+			onClick()
+		end)
+		table.insert(bounceList, st)
+		return st
+	end
+	RunService.RenderStepped:Connect(function()
+		if #bounceList == 0 then return end
+		local t = os.clock()
+		for i, st in ipairs(bounceList) do
+			local since = t - st.press
+			local squish = (since < 0.4) and (1 - math.sin(since / 0.4 * math.pi) * 0.25) or 1
+			local target = (st.hover and 1.12 or 1) * squish * (st.can and (1 + 0.04 * math.sin(t * 5 + i)) or 1)
+			st.sc.Scale = st.sc.Scale + (target - st.sc.Scale) * 0.35
+			st.b.Rotation = st.hover and math.sin(t * 10) * 3 or 0
+		end
+	end)
+	local GREEN_BTN, GREY_BTN, INK = Color3.fromRGB(70, 210, 60), Color3.fromRGB(130, 130, 142), Color3.fromRGB(25, 22, 30)
+	local function chunkyButton(parent, props)
+		local b = Instance.new("TextButton")
+		b.AutoButtonColor = false
+		b.FontFace = UI.Font
+		b.TextScaled = true
+		b.TextColor3 = Color3.new(1, 1, 1)
+		b.TextStrokeTransparency = 0
+		b.TextStrokeColor3 = INK
+		b.BackgroundColor3 = GREEN_BTN
+		for k, v in pairs(props) do b[k] = v end
+		local c = Instance.new("UICorner")
+		c.CornerRadius = UDim.new(0.3, 0)
+		c.Parent = b
+		local st = Instance.new("UIStroke")
+		st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		st.Thickness = 4
+		st.Color = INK
+		st.Parent = b
+		local g = Instance.new("UIGradient")
+		g.Rotation = 90
+		g.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 190, 190))
+		g.Parent = b
+		local pad = Instance.new("UIPadding")
+		pad.PaddingTop, pad.PaddingBottom = UDim.new(0.14, 0), UDim.new(0.14, 0)
+		pad.Parent = b
+		b.Parent = parent
+		return b
+	end
+
+	-- THE UPGRADES BOARD on your plot: 4 cartoon cards (like the inspiration game), both sides
+	local CARDS = {
+		{key = "shoppers", title = "More Shoppers", icon = "shop", color = Color3.fromRGB(60, 150, 255), action = "UpgradeShoppers"},
+		{key = "payout", title = "Payouts", icon = "cash", color = Color3.fromRGB(80, 200, 60), action = "UpgradePayout"},
+		{key = "unbox", title = "Unbox Speed", icon = "bolt", color = Color3.fromRGB(255, 150, 40), action = "UpgradeUnbox"},
+		{key = "trails", title = "Trails", icon = "star", color = Color3.fromRGB(230, 90, 200), open = "Trails"},
+	}
+	local boardUI = nil
+	local function makeUpgradeBoard(board)
+		local cards, guis = {}, {}
+		for _, face in ipairs({Enum.NormalId.Front, Enum.NormalId.Back}) do
+			local sg = Instance.new("SurfaceGui")
+			sg.Name = "UpgradeBoardCards"
+			sg.Adornee = board
+			sg.Face = face
+			sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+			sg.PixelsPerStud = 50
+			sg.LightInfluence = 0
+			sg.ZOffset = 2
+			sg.ResetOnSpawn = false
+			sg.Parent = playerGui
+			table.insert(guis, sg)
+			-- the wood (covers the plain "UPGRADES" text everyone else sees)
+			local wood = Instance.new("Frame")
+			wood.Size = UDim2.fromScale(1, 1)
+			wood.BackgroundColor3 = Color3.fromRGB(176, 116, 66)
+			wood.BorderSizePixel = 0
+			wood.Parent = sg
+			UI.label(wood, "UPGRADES", {Position = UDim2.fromScale(0.05, 0.01), Size = UDim2.fromScale(0.9, 0.17), Max = 72, Stroke = 5, TextWrapped = false})
+			local row = Instance.new("Frame")
+			row.BackgroundTransparency = 1
+			row.Position = UDim2.fromScale(0.02, 0.2)
+			row.Size = UDim2.fromScale(0.96, 0.77)
+			row.Parent = wood
+			local layout = Instance.new("UIListLayout")
+			layout.FillDirection = Enum.FillDirection.Horizontal
+			layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+			layout.Padding = UDim.new(0.015, 0)
+			layout.SortOrder = Enum.SortOrder.LayoutOrder
+			layout.Parent = row
+			for i, def in ipairs(CARDS) do
+				local card = Instance.new("Frame")
+				card.LayoutOrder = i
+				card.Size = UDim2.fromScale(0.235, 1)
+				card.BackgroundColor3 = def.color
+				card.Parent = row
+				local cc = Instance.new("UICorner")
+				cc.CornerRadius = UDim.new(0, 22)
+				cc.Parent = card
+				local cs = Instance.new("UIStroke")
+				cs.Thickness = 5
+				cs.Color = INK
+				cs.Parent = card
+				local cg = Instance.new("UIGradient")
+				cg.Rotation = 90
+				cg.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(185, 185, 195))
+				cg.Parent = card
+				UI.icon(def.icon, card, UDim2.fromOffset(104, 104), UDim2.new(0.5, 0, 0, 6), nil, Vector2.new(0.5, 0))
+				UI.label(card, def.title, {Position = UDim2.fromScale(0.04, 0.35), Size = UDim2.fromScale(0.92, 0.14), Max = 34, Stroke = 3, TextWrapped = false})
+				local level = UI.label(card, "", {Position = UDim2.fromScale(0.04, 0.49), Size = UDim2.fromScale(0.92, 0.11), Max = 28, Stroke = 2.6, TextColor3 = Color3.fromRGB(255, 230, 90), TextWrapped = false})
+				local effect = UI.label(card, "", {Position = UDim2.fromScale(0.04, 0.6), Size = UDim2.fromScale(0.92, 0.11), Max = 26, Stroke = 2.6, TextWrapped = false})
+				local btn = chunkyButton(card, {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.fromScale(0.86, 0.21), Text = ""})
+				local st = bouncy(btn, function()
+					if def.open then
+						UI.open(def.open)
+						return
+					end
+					task.spawn(function()
+						local ok, res = pcall(ctx.invoke, def.action)
+						if ok and type(res) == "table" and res.msg and res.msg ~= "" and ctx.notify then
+							ctx.notify(res.msg, res.ok and Color3.fromRGB(120, 255, 140) or Color3.fromRGB(255, 90, 90))
+						end
+					end)
+				end)
+				cards[def.key] = cards[def.key] or {}
+				table.insert(cards[def.key], {level = level, effect = effect, btn = btn, st = st})
+			end
+		end
+		return {cards = cards, guis = guis}
+	end
+	local function updateBoard(data)
+		for key, list in pairs(boardUI.cards) do
+			local lvl, max, cost, effect = 1, 1, 0, ""
+			if key == "shoppers" then
+				lvl, max = data.Customers or 1, Config.CustomerMax
+				cost, effect = Config.CustomerCost(lvl), "x" .. string.format("%.1f", Config.CustomerRate(lvl)) .. " shoppers"
+			elseif key == "payout" then
+				lvl, max = data.PayoutLevel or 1, Config.PayoutMax
+				cost, effect = Config.PayoutCost(lvl), "x" .. string.format("%.2f", Config.PayoutMult(lvl)) .. " pay"
+			elseif key == "unbox" then
+				lvl, max = data.UnboxLevel or 1, Config.UnboxMax
+				cost, effect = Config.UnboxCost(lvl), "-" .. math.floor((1 - Config.UnboxMult(lvl)) * 100 + 0.5) .. "% time"
+			end
+			for _, c in ipairs(list) do
+				if key == "trails" then
+					UI.setText(c.level, "Cool trails")
+					UI.setText(c.effect, "behind you!")
+					c.btn.Text = "OPEN"
+					c.st.can = true
+				else
+					local maxed = lvl >= max
+					local can = (not maxed) and (data.Cash or 0) >= cost
+					UI.setText(c.level, "Lv " .. lvl .. "/" .. max)
+					UI.setText(c.effect, effect)
+					c.btn.Text = maxed and "MAXED" or ("$" .. Config.FormatNum(cost))
+					c.btn.BackgroundColor3 = can and GREEN_BTN or GREY_BTN
+					c.st.can = can
+				end
+			end
+		end
+	end
+
 	local treadBtn = nil
 	local function makeTreadButton(sign)
 		local btns, guis = {}, {}
@@ -284,6 +454,15 @@ function WorldFX.init(ctx)
 			local prompt = console:FindFirstChildOfClass("ProximityPrompt")
 			if prompt then prompt.ActionText = maxed and "Maxed" or ("Upgrade $" .. formatNum(cost)) end
 			if not treadBtn then treadBtn = makeTreadButton(console) else treadBtn.adorn(console) end
+			local ubBoard = plot:FindFirstChild("UpgradeBoard", true)
+			if ubBoard then
+				if not boardUI then
+					boardUI = makeUpgradeBoard(ubBoard)
+				else
+					for _, sg in ipairs(boardUI.guis) do sg.Adornee = ubBoard end
+				end
+				updateBoard(data)
+			end
 			treadBtn.set(maxed and "MAXED" or ("UPGRADE  $" .. formatNum(cost)), (not maxed) and (data.Cash or 0) >= cost)
 			-- (the sign's own price line sits under the button)
 			for _, g in ipairs(console:GetChildren()) do

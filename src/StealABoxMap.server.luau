@@ -217,125 +217,40 @@ do
 end
 
 ------------------------------------------------------------------
--- THE SQUARE in front of the warehouse: two leaderboards on the warehouse wall (left)
--- and the Trails Shop stall (right). Nothing else.
+-- LEADERBOARDS: two big boards standing at the back of the lobby (behind the spawn), facing the
+-- street. (Trails are bought on the UPGRADES board on your own plot.)
 ------------------------------------------------------------------
 do
 	local lobby = folder(root, "Lobby")
-	local BZ = FRONT_Z + 2.6 -- on the warehouse front wall, facing the bases (+Z)
-	local TURN = CFrame.Angles(0, math.pi, 0)
-	local function B(x, y, d) return CFrame.new(x, y, BZ + d) * TURN end
-	local function leaderboard(name, x, title, color)
-		P(lobby, name, V(24, 30, 1), B(x, 19, 0), RGB(28, 32, 50))
+	local function leaderboard(name, base, title, color)
+		-- base: where the board stands; its front (-Z) faces the players
+		local function B(x, y, d) return base * CFrame.new(x, y, -d) end
+		P(lobby, name, V(24, 30, 1), B(0, 19, 0), RGB(28, 32, 50))
 		local glow = color:Lerp(WHITE, 0.35)
-		-- a chunky coloured frame with a glowing inner edge
+		-- two chunky posts behind it, a coloured frame with a glowing inner edge
 		for _, sx in ipairs({-1, 1}) do
-			P(lobby, "BoardFrame", V(1.8, 33.4, 1.8), B(x + sx * 12.9, 19, 0.1), color)
-			P(lobby, "BoardGlow", V(0.4, 30, 0.3), B(x + sx * 11.9, 19, 0.55), glow, M.Neon, NOHIT)
+			P(lobby, "BoardPost", V(2, 36, 2), B(sx * 9, 18, -1.6), RGB(128, 80, 44)).TopSurface = Enum.SurfaceType.Studs
+			P(lobby, "BoardFrame", V(1.8, 33.4, 1.8), B(sx * 12.9, 19, 0.1), color)
+			P(lobby, "BoardGlow", V(0.4, 30, 0.3), B(sx * 11.9, 19, 0.55), glow, M.Neon, NOHIT)
 		end
-		P(lobby, "BoardFrame", V(27.6, 1.8, 1.8), B(x, 3.1, 0.1), color)
-		P(lobby, "BoardGlow", V(23.6, 0.4, 0.3), B(x, 4.1, 0.55), glow, M.Neon, NOHIT)
+		P(lobby, "BoardFrame", V(27.6, 1.8, 1.8), B(0, 3.1, 0.1), color)
+		P(lobby, "BoardGlow", V(23.6, 0.4, 0.3), B(0, 4.1, 0.55), glow, M.Neon, NOHIT)
 		-- the title ribbon on top, with pointed ends
-		local banner = P(lobby, "BoardBanner", V(24, 6, 1.4), B(x, 38.4, 0.9), color)
+		local banner = P(lobby, "BoardBanner", V(24, 6, 1.4), B(0, 38.4, 0.9), color)
 		local tip = color:Lerp(RGB(0, 0, 0), 0.2)
 		for _, ex in ipairs({-12, 12}) do
-			P(lobby, "BannerTip", V(4.2, 4.2, 1.2), B(x + ex, 38.4, 0.8) * CFrame.Angles(0, 0, math.rad(45)), tip)
+			P(lobby, "BannerTip", V(4.2, 4.2, 1.2), B(ex, 38.4, 0.8) * CFrame.Angles(0, 0, math.rad(45)), tip)
 		end
-		P(lobby, "BannerTip", V(3, 3, 1.2), B(x, 35.4, 0.8) * CFrame.Angles(0, 0, math.rad(45)), color)
+		P(lobby, "BannerTip", V(3, 3, 1.2), B(0, 35.4, 0.8) * CFrame.Angles(0, 0, math.rad(45)), color)
 		signText(banner, Enum.NormalId.Front, title, 30, 5, 300)
-		-- a gold star on top and a little stage in front
-		local star = P(lobby, "BoardStar", V(1.2, 4.4, 4.4), B(x, 43.2, 0.9) * CFrame.Angles(0, math.rad(90), 0), RGB(255, 210, 50), M.SmoothPlastic, NOHIT)
+		local star = P(lobby, "BoardStar", V(1.2, 4.4, 4.4), B(0, 43.2, 0.9) * CFrame.Angles(0, math.rad(90), 0), RGB(255, 210, 50), M.SmoothPlastic, NOHIT)
 		star.Shape = Enum.PartType.Cylinder
-		P(lobby, "BoardStage", V(30, 1.2, 8), B(x, 0.6, 4), color:Lerp(WHITE, 0.6))
-		P(lobby, "BoardStageEdge", V(30.4, 0.3, 0.4), B(x, 1.3, 8), glow, M.Neon, NOHIT)
+		P(lobby, "BoardStage", V(30, 1.2, 8), B(0, 0.6, 4), color:Lerp(WHITE, 0.6)).TopSurface = Enum.SurfaceType.Studs
+		P(lobby, "BoardStageEdge", V(30.4, 0.3, 0.4), B(0, 1.3, 8), glow, M.Neon, NOHIT)
 	end
-	-- facing the warehouse wall from the street: Top Money and Top Speed on the left side
-	leaderboard("BoardTopMoney", -46, "Top Money", RGB(80, 200, 60))
-	leaderboard("BoardTopSpeed", -80, "Top Speed", RGB(60, 135, 255))
-
-	-- TRAILS SHOP: a happy candy-coloured stall with a rainbow awning, balloons and sparkles
-	do
-		local stall = Instance.new("Model")
-		stall.Name = "TrailStall"
-		-- on the right side of the square, the counter faces the street (-X)
-		local base = CFrame.new(60, 0, 22) * CFrame.Angles(0, math.pi / 2, 0)
-		local function S(x, y, z) return base * CFrame.new(x, y, z) end
-		local RAINBOW = {RGB(255, 80, 80), RGB(255, 160, 50), RGB(255, 225, 60), RGB(110, 215, 80), RGB(70, 180, 255), RGB(150, 110, 255), RGB(255, 120, 200), RGB(255, 80, 80)}
-		local PINK, MINT, CREAM = RGB(255, 150, 195), RGB(120, 225, 200), RGB(255, 248, 235)
-		local function anim(p, kind, speed, amp)
-			p:SetAttribute("Anim", kind)
-			p:SetAttribute("Speed", speed)
-			if amp then p:SetAttribute("Amp", amp) end
-			CS:AddTag(p, "Animated")
-		end
-		local counter = solid(P(stall, "Counter", V(16, 4, 3.6), S(0, 2.2, -2), PINK))
-		P(stall, "CounterTop", V(17, 0.6, 4.4), S(0, 4.5, -2), CREAM)
-		for k = 0, 3 do -- polka dots on the front
-			P(stall, "CounterDot", V(0.2, 1.6, 1.6), S(-6 + k * 4, 2.2, -3.85) * CFrame.Angles(0, math.rad(90), 0), CREAM, nil, NOHIT).Shape = Enum.PartType.Cylinder
-		end
-		for _, px in ipairs({-8, 8}) do
-			for _, pz in ipairs({-3.6, 3.6}) do
-				local h = (pz < 0) and 11.8 or 13.6
-				P(stall, "Post", V(h, 0.9, 0.9), S(px, h / 2 + 0.2, pz) * CFrame.Angles(0, 0, math.rad(90)), MINT).Shape = Enum.PartType.Cylinder
-			end
-			-- a flower pot at each end of the counter
-			P(stall, "Pot", V(2, 2.4, 2.4), S(px * 1.22, 1, -2) * CFrame.Angles(0, 0, math.rad(90)), RGB(230, 120, 80), nil, NOHIT).Shape = Enum.PartType.Cylinder
-			P(stall, "PotPlant", V(2.6, 2.6, 2.6), S(px * 1.22, 2.6, -2), RGB(90, 200, 70), nil, NOHIT).Shape = Enum.PartType.Ball
-			P(stall, "PotFlower", V(1, 1, 1), S(px * 1.22 + 0.5, 3.8, -2.4), RAINBOW[(px > 0) and 7 or 3], nil, NOHIT).Shape = Enum.PartType.Ball
-		end
-		local tilt = CFrame.Angles(math.rad(-14), 0, 0) -- slopes down to the front
-		for k = 0, 7 do
-			local x = -7.875 + k * 2.25
-			P(stall, "Awning", V(2.25, 0.4, 9.6), S(x, 12.9, 0) * tilt, RAINBOW[k + 1])
-			P(stall, "Valance", V(2.25, 1.6, 0.3), S(x, 11, -4.75), (k % 2 == 0) and CREAM or RAINBOW[k + 1])
-		end
-		-- trail samples spinning on the counter
-		for k = 1, 5 do
-			local trail = Config.Trails[k]
-			if trail then
-				anim(P(stall, "TrailSample", V(1.4, 1.4, 1.4), S(-6 + (k - 1) * 3, 5.6, -2), trail.colors[1], M.Neon, NOHIT), "spin", 1.5)
-			end
-		end
-		-- bunches of balloons on the back posts
-		for i, px in ipairs({-8, 8}) do
-			for j = 1, 3 do
-				local top = S(px + (j - 2) * 1.6, 15.8 + (j % 2) * 1.2, 3.6)
-				local balloon = P(stall, "Balloon", V(2.4, 2.4, 2.4), top, RAINBOW[(i * 3 + j) % 7 + 1], nil, NOHIT)
-				balloon.Shape = Enum.PartType.Ball
-				anim(balloon, "bob", 1 + j * 0.25, 0.4)
-				P(stall, "BalloonString", V(0.08, 2.6, 0.08), top * CFrame.new(0, -2.5, 0), WHITE, nil, NOHIT)
-			end
-		end
-		-- a round rug in front of the counter
-		P(stall, "Rug", V(0.2, 14, 14), S(0, 0.25, -9) * CFrame.Angles(0, 0, math.rad(90)), PINK:Lerp(WHITE, 0.3), nil, NOHIT).Shape = Enum.PartType.Cylinder
-		P(stall, "Rug", V(0.24, 9, 9), S(0, 0.27, -9) * CFrame.Angles(0, 0, math.rad(90)), MINT:Lerp(WHITE, 0.2), nil, NOHIT).Shape = Enum.PartType.Cylinder
-		-- the floating rainbow "Trails Shop" title with sparkles
-		local anchor = P(stall, "SignAnchor", V(1, 1, 1), S(0, 21, 0), RGB(0, 0, 0), nil, GHOST)
-		local bb = Instance.new("BillboardGui")
-		bb.Name = "TrailsShopSign"
-		bb.Size = UDim2.fromScale(18, 4.5)
-		bb.MaxDistance = 200
-		bb.LightInfluence = 0
-		bb.Parent = anchor
-		local title = textLabel(bb, "Trails Shop", WHITE, 4)
-		local keys = {}
-		for k, c in ipairs(RAINBOW) do table.insert(keys, ColorSequenceKeypoint.new((k - 1) / (#RAINBOW - 1), c)) end
-		local grad = Instance.new("UIGradient")
-		grad.Color = ColorSequence.new(keys)
-		grad.Parent = title
-		local sparkle = Instance.new("ParticleEmitter")
-		sparkle.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-		sparkle.Color = ColorSequence.new(keys)
-		sparkle.Size = NumberSequence.new(0.8, 0)
-		sparkle.Lifetime = NumberRange.new(1, 1.6)
-		sparkle.Rate = 6
-		sparkle.Speed = NumberRange.new(1, 2)
-		sparkle.SpreadAngle = Vector2.new(180, 180)
-		sparkle.LightEmission = 0.6
-		sparkle.Parent = anchor
-		prompt(counter, "OpenTrailShop", "Trails", "Trails Shop")
-		stall.Parent = lobby
-	end
+	-- (no rotation: the front of each board looks down -Z, back up the street)
+	leaderboard("BoardTopMoney", CFrame.new(-42, 0, COURT_LEN - 9), "Top Money", RGB(80, 200, 60))
+	leaderboard("BoardTopSpeed", CFrame.new(42, 0, COURT_LEN - 9), "Top Speed", RGB(60, 135, 255))
 end
 
 -- (helpers the warehouse uses)
@@ -2495,7 +2410,7 @@ local plots = folder(root, "Plots")
 local PLOT_COLORS = {RGB(255, 170, 40), RGB(245, 245, 245), RGB(160, 90, 255), RGB(40, 200, 255), RGB(255, 90, 90), RGB(255, 220, 50)}
 local CW, CD = Config.Court.plotWidth, Config.Court.plotDepth
 local HU = CW / 2
-local SQUARE = 44 -- the open square between the warehouse and the first bases
+local SQUARE = 6 -- the first bases start right by the warehouse
 local PLOT_Z = {SQUARE + CW / 2, SQUARE + CW * 1.5 + 6, SQUARE + CW * 2.5 + 12}
 
 local function buildPlot(i, side, zc)
@@ -2558,6 +2473,17 @@ local function buildPlot(i, side, zc)
 			local pos = a:Lerp(b, k / posts)
 			P(m, "FencePost", V(1.3, 4.6, 1.3), CFrame.new(pos + V(0, 2.3, 0)), WOOD_DARK, nil, NOHIT).TopSurface = Enum.SurfaceType.Studs
 		end
+	end
+	-- THE UPGRADES BOARD: a big wooden sign behind the front fence. The owner's client puts the
+	-- bouncy upgrade cards on it (both sides), everyone else sees "UPGRADES".
+	for _, u in ipairs({13.5, 32.5}) do
+		PP("UpgradeBoardPost", V(1.4, 15, 1.4), u, 7.5, 1.5, RGB(128, 80, 44)).TopSurface = Enum.SurfaceType.Studs
+	end
+	local ub = PP("UpgradeBoard", V(22, 11, 0.8), 23, 10, 1.5, RGB(176, 116, 66))
+	PP("UpgradeBoardTrim", V(23.2, 0.9, 1.3), 23, 15.9, 1.5, RGB(128, 80, 44)).TopSurface = Enum.SurfaceType.Studs
+	PP("UpgradeBoardTrim", V(23.2, 0.9, 1.3), 23, 4.1, 1.5, RGB(128, 80, 44))
+	for _, face in ipairs({Enum.NormalId.Front, Enum.NormalId.Back}) do
+		signText(ub, face, "UPGRADES", 30, 4, 200)
 	end
 	fence(-HU, 0, -12, 0)
 	fence(12, 0, HU, 0)
@@ -2812,26 +2738,6 @@ do
 		end
 	end
 
-	-- THE SQUARE: a tan studded dirt checker plaza, trees in the corners, bushes and flowers, a crosswalk
-	for _, sx in ipairs({-1, 1}) do
-		P(deco, "Plaza", V(MAPW - 16, 0.1, SQUARE - FRONT_Z - 2), C(sx * (MAPW + 16) / 2, 0.25, (SQUARE + FRONT_Z + 2) / 2), RGB(232, 196, 135), nil, DECO).TopSurface = Enum.SurfaceType.Studs
-		for i = 0, 7 do
-			for j = 0, 3 do
-				if (i + j) % 2 == 0 then
-					P(deco, "PlazaTile", V(12, 0.06, 11.5), C(sx * (16 + 6 + i * 12), 0.31, FRONT_Z + 2 + 5.75 + j * 11.5), RGB(215, 176, 115), nil, DECO).TopSurface = Enum.SurfaceType.Studs
-				end
-			end
-		end
-	end
-	tree(-104, 34, 1.2) tree(-74, 38, 1) tree(104, 36, 1.2) tree(104, 6, 1.1) tree(84, 40, 0.9)
-	bush(-46, 38) bush(-24, 30) bush(30, 38) bush(40, 6) bush(-102, 14)
-	flowers(-108, 12, -60, 44, 22)
-	flowers(24, 34, 108, 44, 18)
-	flowers(70, 2, 108, 12, 10)
-	for k = 0, 5 do
-		D("Crosswalk", V(3.2, 0.06, 7), C(-13.5 + k * 5.4, 0.33, 19), WHITE)
-	end
-
 	-- THE WAREHOUSE DOOR: a striped awning, barrels and crates, hanging banners
 	local WZ = FRONT_Z + 2 -- the outside face of the warehouse wall
 	for k = 0, 10 do
@@ -2883,7 +2789,7 @@ do
 		end
 	end
 	for _, sx in ipairs({-1, 1}) do
-		for _, x in ipairs({26, 44, 62, 80, 98}) do tree(sx * x + math.random(-2, 2), COURT_LEN - 9 + math.random(-2, 2), 0.9 + math.random() * 0.3) end
+		for _, x in ipairs({76, 92, 106}) do tree(sx * x + math.random(-2, 2), COURT_LEN - 9 + math.random(-2, 2), 0.9 + math.random() * 0.3) end
 		for _, x in ipairs({34, 54, 72, 90}) do bush(sx * x, PLOTS_END + 7) end
 		flowers(sx * 20, PLOTS_END + 4, sx * 108, COURT_LEN - 4, 26)
 	end

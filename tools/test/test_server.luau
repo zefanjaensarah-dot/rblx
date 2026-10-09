@@ -248,6 +248,12 @@ task.wait(0.15)
 check(invoke(player, "UpgradeShoppers").ok, "shop upgraded from the UI")
 prof = invoke(player, "GetData").data
 check(prof.Treadmill == 2 and prof.Customers == 2, "treadmill + kiosk upgraded")
+task.wait(0.15)
+local pay = invoke(player, "UpgradePayout")
+task.wait(0.15)
+local unb = invoke(player, "UpgradeUnbox")
+prof = invoke(player, "GetData").data
+check(pay.ok and unb.ok and prof.PayoutLevel == 2 and prof.UnboxLevel == 2, "payouts + unbox speed upgraded: " .. tostring(pay.msg) .. " / " .. tostring(unb.msg))
 -- mines: every player gets them (the fake player gets a Backpack first), and placing one works
 do
 	local bp = H.newInstance("Backpack")
