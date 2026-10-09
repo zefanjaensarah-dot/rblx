@@ -15,6 +15,85 @@ local WorldFX = {}
 function WorldFX.init(ctx)
 	local UI, Config, player = ctx.UI, ctx.Config, ctx.player
 	local playerGui = player:WaitForChild("PlayerGui")
+
+	-- THE UPGRADE BUTTON on your treadmill sign (both sides): it grows and wiggles when you hover
+	-- over it, squishes when you click it, and breathes while you can afford the upgrade
+	local treadBtn = nil
+	local function makeTreadButton(sign)
+		local btns, guis = {}, {}
+		local state = {hover = false, press = -10, can = false}
+		for _, face in ipairs({Enum.NormalId.Front, Enum.NormalId.Back}) do
+			local sg = Instance.new("SurfaceGui")
+			sg.Name = "TreadUpgradeButton"
+			sg.Adornee = sign
+			sg.Face = face
+			sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+			sg.PixelsPerStud = 50
+			sg.LightInfluence = 0
+			sg.ZOffset = 2
+			sg.ResetOnSpawn = false
+			sg.Parent = playerGui
+			table.insert(guis, sg)
+			local b = Instance.new("TextButton")
+			b.AnchorPoint = Vector2.new(0.5, 0.5)
+			b.Position = UDim2.fromScale(0.5, 0.58)
+			b.Size = UDim2.fromScale(0.8, 0.27)
+			b.BackgroundColor3 = Color3.fromRGB(70, 210, 60)
+			b.AutoButtonColor = false
+			b.FontFace = UI.Font
+			b.TextScaled = true
+			b.TextColor3 = Color3.new(1, 1, 1)
+			b.TextStrokeTransparency = 0
+			b.TextStrokeColor3 = Color3.fromRGB(20, 40, 20)
+			b.Text = "UPGRADE"
+			b.Parent = sg
+			local c = Instance.new("UICorner")
+			c.CornerRadius = UDim.new(0.3, 0)
+			c.Parent = b
+			local st = Instance.new("UIStroke")
+			st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			st.Thickness = 4
+			st.Color = Color3.fromRGB(20, 40, 20)
+			st.Parent = b
+			local g = Instance.new("UIGradient")
+			g.Rotation = 90
+			g.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 190, 190))
+			g.Parent = b
+			local pad = Instance.new("UIPadding")
+			pad.PaddingTop, pad.PaddingBottom = UDim.new(0.12, 0), UDim.new(0.12, 0)
+			pad.Parent = b
+			local sc = Instance.new("UIScale")
+			sc.Parent = b
+			b.MouseEnter:Connect(function() state.hover = true end)
+			b.MouseLeave:Connect(function() state.hover = false end)
+			b.Activated:Connect(function()
+				if os.clock() - state.press < 0.3 then return end
+				state.press = os.clock()
+				task.spawn(function() pcall(ctx.invoke, "UpgradeTreadmill") end)
+			end)
+			table.insert(btns, {b = b, sc = sc})
+		end
+		RunService.RenderStepped:Connect(function()
+			local t = os.clock()
+			local since = t - state.press
+			local squish = (since < 0.4) and (1 - math.sin(since / 0.4 * math.pi) * 0.25) or 1
+			local target = (state.hover and 1.12 or 1) * squish * (state.can and (1 + 0.04 * math.sin(t * 5)) or 1)
+			for _, e in ipairs(btns) do
+				e.sc.Scale = e.sc.Scale + (target - e.sc.Scale) * 0.35
+				e.b.Rotation = state.hover and math.sin(t * 10) * 3 or 0
+			end
+		end)
+		return {
+			set = function(text, can)
+				state.can = can
+				for _, e in ipairs(btns) do
+					e.b.Text = text
+					e.b.BackgroundColor3 = can and Color3.fromRGB(70, 210, 60) or Color3.fromRGB(130, 130, 142)
+				end
+			end,
+			adorn = function(part) for _, sg in ipairs(guis) do sg.Adornee = part end end,
+		}
+	end
 	local new, ICON, SFX = UI.new, UI.ICON, UI.SFX
 	local WHITE, BLACK, MONEY = UI.C.white, UI.C.black, UI.C.money
 	local CARD_DARK = UI.rgb(24, 24, 30)
@@ -204,6 +283,12 @@ function WorldFX.init(ctx)
 			local cost = Config.TreadmillCost(level)
 			local prompt = console:FindFirstChildOfClass("ProximityPrompt")
 			if prompt then prompt.ActionText = maxed and "Maxed" or ("Upgrade $" .. formatNum(cost)) end
+			if not treadBtn then treadBtn = makeTreadButton(console) else treadBtn.adorn(console) end
+			treadBtn.set(maxed and "MAXED" or ("UPGRADE  $" .. formatNum(cost)), (not maxed) and (data.Cash or 0) >= cost)
+			-- (the sign's own price line sits under the button)
+			for _, g in ipairs(console:GetChildren()) do
+				if g:IsA("SurfaceGui") and g:FindFirstChild("Level") then g.Level.Visible = false end
+			end
 		end
 	end
 	ctx.onData(updateWorldPrices)

@@ -242,7 +242,8 @@ check(not invoke(player, "SellItem", 1, "WrongId").ok, "selling checks the item 
 
 -- treadmill + kiosk upgrades through their prompts
 local console = plot:FindFirstChild("TreadConsole", true)
-H.signalFor(console:FindFirstChildOfClass("ClickDetector"), "MouseClick"):Fire(player)
+task.wait(0.15) -- (actions closer than 0.12s apart are ignored as double clicks)
+invoke(player, "UpgradeTreadmill")
 task.wait(0.15)
 check(invoke(player, "UpgradeShoppers").ok, "shop upgraded from the UI")
 prof = invoke(player, "GetData").data

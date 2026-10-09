@@ -21,7 +21,7 @@ function Tutorial.init(ctx)
 		{title = "Open your box", icon = "gift", color = C.pink, tip = "Your box is unboxing... When it says OPEN!, press E on it."},
 		{title = "Get faster", icon = "boot", color = C.cyan, tip = "Step onto your treadmill - it runs for you and makes you faster!"},
 		{title = "Earn cash", icon = "coin", color = C.gold, tip = "Shoppers buy from your shelves. Save up for an upgrade!"},
-		{title = "Upgrade it!", icon = "star", color = C.purple, tip = "You have enough! Click the UPGRADE sign next to your treadmill."},
+		{title = "Upgrade it!", icon = "star", color = C.purple, tip = "You have enough! Click the green UPGRADE button on the sign next to your treadmill."},
 	}
 
 	------------------------------------------------------------------

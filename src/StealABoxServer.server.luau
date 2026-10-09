@@ -2653,6 +2653,10 @@ ActionFunc.OnServerInvoke = function(player, action, arg, expectedId)
 	elseif action == "UpgradeShoppers" then
 		return upgradeShoppers(player)
 
+	elseif action == "UpgradeTreadmill" then
+		upgradeTreadmill(player)
+		return {ok = true}
+
 	elseif action == "BuyStand" then
 		local have = unlockedStands(prof)
 		if have >= Config.MaxStands then return {ok = false, msg = "Your shelves are full!"} end

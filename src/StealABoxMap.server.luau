@@ -2671,11 +2671,7 @@ local function buildPlot(i, side, zc)
 		end
 		local sign = upgradeSign("TreadConsole", "TreadTag", V(7.4, 4, 0.4), su, 5.6, sw,
 			"UPGRADE", "$" .. Config.FormatNum(Config.TreadmillCost(1)), "Lv 1/" .. Config.Treadmill.max .. "  +" .. Config.FormatNum(Config.TreadRate(1)) .. "/s")
-		-- click (or tap) the sign to upgrade
-		local click = Instance.new("ClickDetector")
-		click.Name = "UpgradeClick"
-		click.MaxActivationDistance = 40
-		click.Parent = sign
+		-- (each player's client puts a bouncy UPGRADE button on their own sign)
 	end
 
 	-- name sign at the front (the server writes "<name>'s Base")
