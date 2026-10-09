@@ -248,15 +248,17 @@ task.wait(0.15)
 check(invoke(player, "UpgradeShoppers").ok, "shop upgraded from the UI")
 prof = invoke(player, "GetData").data
 check(prof.Treadmill == 2 and prof.Customers == 2, "treadmill + kiosk upgraded")
--- bats: every player gets one (the fake player gets a Backpack first), and swinging it works
+-- mines: every player gets them (the fake player gets a Backpack first), and placing one works
 do
 	local bp = H.newInstance("Backpack")
 	bp.Parent = player
 	task.wait(2.3)
-	local bat = bp:FindFirstChild("Bat")
-	check(bat ~= nil and bat:FindFirstChild("Handle") ~= nil, "got a bat: " .. tostring(bat and bat.ToolTip))
-	if bat then H.signalFor(bat, "Activated"):Fire() end
+	local tool = bp:FindFirstChild("Mines")
+	check(tool ~= nil and tool:FindFirstChild("Handle") ~= nil, "got mines: " .. tostring(tool and tool.ToolTip))
+	if tool then H.signalFor(tool, "Activated"):Fire() end
 	task.wait(0.1)
+	local folder = root:FindFirstChild("Mines")
+	check(folder ~= nil and #folder:GetChildren() == 1, "placed a mine")
 end
 -- treadmill earns speed
 local belt = plot:FindFirstChild("TreadBelt", true)

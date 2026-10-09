@@ -1041,26 +1041,27 @@ Config.OldBoxToNew, Config.OldItemToNew = {}, {}
 -- screenshots with a light background, so every icon would sit on a white square.)
 Config.IconSheets = {121181129357514, 119828445968430}
 
--- BATS: everyone carries a bat. Hit a thief (someone carrying a box) to knock the box out of their
--- hands and send them flying. Claiming the Index reward of a harder area gives you a better bat.
-Config.Bats = {
-	{name = "Wooden Bat",  area = nil, color = rgb(170, 115, 60),  grip = rgb(60, 40, 30),   power = 45,  reach = 9,  cooldown = 1.2},
-	{name = "Metal Bat",   area = 1,   color = rgb(195, 200, 212), grip = rgb(40, 40, 50),   power = 60,  reach = 10, cooldown = 1.05},
-	{name = "Golden Bat",  area = 3,   color = rgb(255, 200, 40),  grip = rgb(120, 70, 20),  power = 75,  reach = 11, cooldown = 0.95},
-	{name = "Diamond Bat", area = 5,   color = rgb(120, 230, 255), grip = rgb(30, 80, 140),  power = 90,  reach = 12, cooldown = 0.85, glow = true},
-	{name = "Lava Bat",    area = 7,   color = rgb(255, 95, 30),   grip = rgb(60, 15, 10),   power = 105, reach = 13, cooldown = 0.75, glow = true},
-	{name = "Galaxy Bat",  area = 10,  color = rgb(160, 90, 255),  grip = rgb(30, 15, 60),   power = 125, reach = 14, cooldown = 0.65, glow = true},
+-- MINES: everyone carries mines. Put one on the ground: anyone else who steps on it is blown
+-- away (and drops the box they're carrying). Harder Index rewards give better mines.
+-- power = how hard it flings, trigger = how close you must step, max = mines down at once
+Config.Mines = {
+	{name = "Basic Mine",   area = nil, color = rgb(120, 125, 135), power = 70,  trigger = 3.5, max = 2},
+	{name = "Metal Mine",   area = 1,   color = rgb(195, 200, 212), power = 85,  trigger = 3.5, max = 3},
+	{name = "Golden Mine",  area = 3,   color = rgb(255, 200, 40),  power = 100, trigger = 4,   max = 3},
+	{name = "Diamond Mine", area = 5,   color = rgb(120, 230, 255), power = 115, trigger = 4,   max = 4, glow = true},
+	{name = "Lava Mine",    area = 7,   color = rgb(255, 95, 30),   power = 130, trigger = 4.5, max = 4, glow = true},
+	{name = "Galaxy Mine",  area = 10,  color = rgb(160, 90, 255),  power = 150, trigger = 5,   max = 5, glow = true},
 }
-function Config.BatFor(claimed) -- your best bat: the best one whose Index area you claimed
+function Config.MineFor(claimed) -- your best mine: the best one whose Index area you claimed
 	local best = 1
-	for i, b in ipairs(Config.Bats) do
-		if not b.area or (claimed and claimed[tostring(b.area)]) then best = i end
+	for i, m in ipairs(Config.Mines) do
+		if not m.area or (claimed and claimed[tostring(m.area)]) then best = i end
 	end
-	return best, Config.Bats[best]
+	return best, Config.Mines[best]
 end
-function Config.BatForArea(areaIndex) -- the bat an area's Index reward unlocks (or nil)
-	for _, b in ipairs(Config.Bats) do
-		if b.area == areaIndex then return b end
+function Config.MineForArea(areaIndex) -- the mine an area's Index reward unlocks (or nil)
+	for _, m in ipairs(Config.Mines) do
+		if m.area == areaIndex then return m end
 	end
 	return nil
 end

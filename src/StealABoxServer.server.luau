@@ -3711,41 +3711,22 @@ end
 
 
 ------------------------------------------------------------------
--- BATS: every player gets their best bat (better bats come from harder Index rewards).
--- Swing it at someone carrying a box: the box drops and they go flying.
+-- MINES: every player carries mines (better ones come from harder Index rewards). Click to put one
+-- on the ground in front of you: a moment later it's armed, and anyone else who steps on it is
+-- blown away (and drops the box they're carrying).
 ------------------------------------------------------------------
 do
-	local batTier = {}   -- [player] = the bat tier they hold now
-	local lastSwing = {}
-	local function batHit(attacker, victim, def)
-		local vchar, vhrp = getChar(victim)
-		local _, ahrp = getChar(attacker)
-		if not vchar or not vhrp or not ahrp or ragdolled[victim] or isImmune(victim) then return end
-		ragdolled[victim] = true
-		immuneUntil[victim] = os.clock() + RAGDOLL_TIME + 1
-		local away = Vector3.new(vhrp.Position.X - ahrp.Position.X, 0, vhrp.Position.Z - ahrp.Position.Z)
-		away = (away.Magnitude > 0.1) and away.Unit or ahrp.CFrame.LookVector
-		local velocity = away * def.power + Vector3.new(0, 30 + def.power * 0.35, 0)
-		releaseCarry(victim)
-		setRagdoll(vchar, true)
-		playSound(vhrp, "rbxasset://sounds/collide.wav", 1, 0.9)
-		FlingEvent:FireClient(victim, velocity, RAGDOLL_TIME, attacker.DisplayName .. "'s " .. def.name)
-		FXEvent:FireAllClients("Bonk", vhrp.Position, 3)
-		notify(victim, "BONK! " .. attacker.DisplayName .. " hit you with a " .. def.name .. " and you dropped your box!", RED)
-		notify(attacker, "BONK! You knocked the box out of " .. victim.DisplayName .. "'s hands!", GREEN)
-		task.delay(RAGDOLL_TIME, function()
-			ragdolled[victim] = nil
-			if vchar.Parent then setRagdoll(vchar, false) end
-		end)
-	end
-	local function makeBat(player, def)
-		local tool = Instance.new("Tool")
-		tool.Name = "Bat"
-		tool.ToolTip = def.name
-		tool.CanBeDropped = false
-		tool.RequiresHandle = true
-		tool.Grip = CFrame.new(0, 0, -1.6)
-		tool:SetAttribute("BatName", def.name)
+	local mineTier = {}   -- [player] = the mine tier they carry now
+	local lastPlace = {}
+	local mines = {}      -- {model, part, owner, ownerName, def, armAt, dieAt}
+	local minesFolder = Instance.new("Folder")
+	minesFolder.Name = "Mines"
+	minesFolder.Parent = world
+	local LIFETIME, ARM_TIME, PLACE_COOLDOWN = 90, 1.2, 3
+
+	local function buildMine(def, ground)
+		local m = Instance.new("Model")
+		m.Name = "Mine"
 		local function part(name, size, cf, color, shape, mat)
 			local p = Instance.new("Part")
 			p.Name = name
@@ -3753,85 +3734,165 @@ do
 			p.CFrame = cf
 			p.Color = color
 			p.Material = mat or Enum.Material.SmoothPlastic
-			p.CanCollide = false
-			p.Massless = true
+			p.Anchored = true
+			p.CanCollide, p.CanQuery, p.CanTouch = false, false, false
+			p.CastShadow = false
 			p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
 			if shape then p.Shape = shape end
-			p.Parent = tool
+			p.Parent = m
 			return p
 		end
-		-- the handle is the thin grip; the thick barrel, the knob and the tape are welded on
-		local handle = part("Handle", Vector3.new(0.45, 0.45, 4.6), CFrame.new(), def.color)
-		local along = CFrame.Angles(0, math.rad(90), 0) -- a cylinder lying along the bat
-		local pieces = {
-			part("Barrel", Vector3.new(2.6, 0.95, 0.95), CFrame.new(0, 0, 1.2) * along, def.color, Enum.PartType.Cylinder, def.glow and Enum.Material.Neon or nil),
-			part("Tip", Vector3.new(0.95, 0.95, 0.95), CFrame.new(0, 0, 2.5), def.color, Enum.PartType.Ball, def.glow and Enum.Material.Neon or nil),
-			part("Tape", Vector3.new(1.4, 0.55, 0.55), CFrame.new(0, 0, -1.6) * along, def.grip, Enum.PartType.Cylinder),
-			part("Knob", Vector3.new(0.7, 0.7, 0.7), CFrame.new(0, 0, -2.35), def.grip, Enum.PartType.Ball),
-		}
-		for _, p in ipairs(pieces) do
-			local w = Instance.new("WeldConstraint")
-			w.Part0, w.Part1 = handle, p
-			w.Parent = p
-		end
-		if def.glow then
-			local e = Instance.new("ParticleEmitter")
-			e.Color = ColorSequence.new(def.color)
-			e.LightEmission = 1
-			e.Size = NumberSequence.new(0.35, 0)
-			e.Lifetime = NumberRange.new(0.4, 0.8)
-			e.Rate = 10
-			e.Speed = NumberRange.new(0.5, 1.5)
-			e.Parent = pieces[1]
-		end
-		tool.Activated:Connect(function()
+		local UP = CFrame.Angles(0, 0, math.rad(90))
+		part("Ring", Vector3.new(0.3, 3.8, 3.8), CFrame.new(ground + Vector3.new(0, 0.15, 0)) * UP, def.color, Enum.PartType.Cylinder, def.glow and Enum.Material.Neon or nil)
+		local body = part("Body", Vector3.new(0.6, 3, 3), CFrame.new(ground + Vector3.new(0, 0.4, 0)) * UP, Color3.fromRGB(55, 58, 66), Enum.PartType.Cylinder, Enum.Material.Metal)
+		local light = part("Light", Vector3.new(0.8, 0.8, 0.8), CFrame.new(ground + Vector3.new(0, 0.8, 0)), Color3.fromRGB(255, 40, 40), Enum.PartType.Ball, Enum.Material.Neon)
+		-- the red light blinks (the clients animate it)
+		light:SetAttribute("Anim", "pulse")
+		light:SetAttribute("Speed", 7)
+		light:SetAttribute("Amp", 0.8)
+		CollectionService:AddTag(light, "Animated")
+		m.PrimaryPart = body
+		m.Parent = minesFolder
+		return m
+	end
+
+	local function boom(mine, victim)
+		local pos = mine.part.Position
+		mine.model:Destroy()
+		local ex = Instance.new("Explosion")
+		ex.Position = pos
+		ex.BlastPressure = 0
+		ex.BlastRadius = 6
+		ex.DestroyJointRadiusPercent = 0
+		ex.ExplosionType = Enum.ExplosionType.NoCraters
+		ex.Parent = workspace
+		FXEvent:FireAllClients("Bonk", pos, 4)
+		local vchar, vhrp = getChar(victim)
+		if not vchar or not vhrp or ragdolled[victim] or isImmune(victim) then return end
+		ragdolled[victim] = true
+		immuneUntil[victim] = os.clock() + RAGDOLL_TIME + 1
+		local away = Vector3.new(vhrp.Position.X - pos.X, 0, vhrp.Position.Z - pos.Z)
+		away = (away.Magnitude > 0.1) and away.Unit or Vector3.new(1, 0, 0)
+		local velocity = away * mine.def.power * 0.6 + Vector3.new(0, mine.def.power, 0)
+		releaseCarry(victim)
+		setRagdoll(vchar, true)
+		FlingEvent:FireClient(victim, velocity, RAGDOLL_TIME, mine.ownerName .. "'s " .. mine.def.name)
+		notify(victim, "BOOM! You stepped on " .. mine.ownerName .. "'s " .. mine.def.name .. "!", RED)
+		if mine.owner and mine.owner.Parent then notify(mine.owner, "BOOM! " .. victim.DisplayName .. " stepped on your mine!", GREEN) end
+		task.delay(RAGDOLL_TIME, function()
+			ragdolled[victim] = nil
+			if vchar.Parent then setRagdoll(vchar, false) end
+		end)
+	end
+
+	-- watch the armed mines: someone (not the owner) steps close enough -> BOOM
+	task.spawn(function()
+		while true do
+			task.wait(0.1)
 			local now = os.clock()
-			if (lastSwing[player] or 0) + def.cooldown > now then return end
-			lastSwing[player] = now
-			-- the default Animate script plays its slash animation when it sees this value
-			local anim = Instance.new("StringValue")
-			anim.Name = "toolanim"
-			anim.Value = "Slash"
-			anim.Parent = tool
-			playSound(handle, "rbxasset://sounds/swoosh.wav", 0.8, 1.3)
-			local _, hrp = getChar(player)
-			if not hrp or ragdolled[player] then return end
-			for _, other in ipairs(Players:GetPlayers()) do
-				if other ~= player and carrying[other] then
-					local _, ohrp = getChar(other)
-					if ohrp then
-						local off = ohrp.Position - hrp.Position
-						local flat = Vector3.new(off.X, 0, off.Z)
-						local inFront = flat.Magnitude < 3 or hrp.CFrame.LookVector:Dot(flat.Unit) > 0.2
-						if flat.Magnitude <= def.reach and math.abs(off.Y) < 8 and inFront then
-							batHit(player, other, def)
+			for i = #mines, 1, -1 do
+				local mine = mines[i]
+				if not mine.model.Parent or now > mine.dieAt then
+					if mine.model.Parent then mine.model:Destroy() end
+					table.remove(mines, i)
+				elseif now >= mine.armAt then
+					for _, p in ipairs(Players:GetPlayers()) do
+						if p ~= mine.owner then
+							local _, hrp = getChar(p)
+							if hrp then
+								local d = hrp.Position - mine.part.Position
+								if Vector3.new(d.X, 0, d.Z).Magnitude < mine.def.trigger and math.abs(d.Y) < 6 then
+									table.remove(mines, i)
+									local ok, err = pcall(boom, mine, p)
+									if not ok then warn("[Steal a Box] mine: " .. tostring(err)) end
+									break
+								end
+							end
 						end
 					end
 				end
 			end
+		end
+	end)
+
+	local function makeMineTool(player, def)
+		local tool = Instance.new("Tool")
+		tool.Name = "Mines"
+		tool.ToolTip = def.name .. " (click to place)"
+		tool.CanBeDropped = false
+		tool.RequiresHandle = true
+		tool:SetAttribute("MineName", def.name)
+		local handle = Instance.new("Part")
+		handle.Name = "Handle"
+		handle.Shape = Enum.PartType.Cylinder
+		handle.Size = Vector3.new(0.5, 2, 2)
+		handle.Color = Color3.fromRGB(55, 58, 66)
+		handle.Material = Enum.Material.Metal
+		handle.CanCollide = false
+		handle.Massless = true
+		handle.Parent = tool
+		local light = Instance.new("Part")
+		light.Name = "Light"
+		light.Shape = Enum.PartType.Ball
+		light.Size = Vector3.new(0.6, 0.6, 0.6)
+		light.Color = def.glow and def.color or Color3.fromRGB(255, 40, 40)
+		light.Material = Enum.Material.Neon
+		light.CanCollide = false
+		light.Massless = true
+		light.CFrame = handle.CFrame * CFrame.new(0.35, 0, 0)
+		light.Parent = tool
+		local w = Instance.new("WeldConstraint")
+		w.Part0, w.Part1 = handle, light
+		w.Parent = light
+		tool.Activated:Connect(function()
+			local now = os.clock()
+			if (lastPlace[player] or 0) + PLACE_COOLDOWN > now then return end
+			local _, hrp = getChar(player)
+			if not hrp or ragdolled[player] then return end
+			local count = 0
+			for _, m in ipairs(mines) do
+				if m.owner == player then count = count + 1 end
+			end
+			if count >= def.max then
+				notify(player, "You can only have " .. def.max .. " mines down at once!", YELLOW)
+				return
+			end
+			lastPlace[player] = now
+			local spot = hrp.Position + hrp.CFrame.LookVector * 3
+			local groundY = hrp.Position.Y - 3
+			pcall(function()
+				local params = RaycastParams.new()
+				params.FilterType = Enum.RaycastFilterType.Exclude
+				params.FilterDescendantsInstances = {player.Character, minesFolder}
+				local hit = workspace:Raycast(spot + Vector3.new(0, 2, 0), Vector3.new(0, -14, 0), params)
+				if hit then groundY = hit.Position.Y end
+			end)
+			local model = buildMine(def, Vector3.new(spot.X, groundY, spot.Z))
+			table.insert(mines, {model = model, part = model.PrimaryPart, owner = player, ownerName = player.DisplayName, def = def, armAt = now + ARM_TIME, dieAt = now + LIFETIME})
+			playSound(model.PrimaryPart, "rbxasset://sounds/electronicpingshort.wav", 0.6, 1.4)
 		end)
 		return tool
 	end
-	local function giveBat(player)
+
+	local function giveMines(player)
 		local prof = profiles[player]
-		local tier, def = Config.BatFor(prof and prof.IndexClaimed)
+		local tier, def = Config.MineFor(prof and prof.IndexClaimed)
 		local backpack = player:FindFirstChildOfClass("Backpack")
 		if not backpack then return end
-		local char = player.Character
-		for _, holder in ipairs({backpack, char}) do
+		for _, holder in ipairs({backpack, player.Character}) do
 			if holder then
 				for _, t in ipairs(holder:GetChildren()) do
-					if t:IsA("Tool") and t.Name == "Bat" then t:Destroy() end
+					if t:IsA("Tool") and t.Name == "Mines" then t:Destroy() end
 				end
 			end
 		end
-		makeBat(player, def).Parent = backpack
-		if batTier[player] and tier > batTier[player] then
-			notify(player, "NEW BAT! You got the " .. def.name .. "! (+power, +reach)", def.color)
+		makeMineTool(player, def).Parent = backpack
+		if mineTier[player] and tier > mineTier[player] then
+			notify(player, "NEW MINES! You got the " .. def.name .. "! (bigger boom, more mines)", def.color)
 			local _, hrp = getChar(player)
 			if hrp then FXEvent:FireAllClients("LevelUp", hrp.Position, 3) end
 		end
-		batTier[player] = tier
+		mineTier[player] = tier
 	end
 	local function hook(player)
 		player.CharacterAdded:Connect(function()
@@ -3840,23 +3901,27 @@ do
 				if profiles[player] then break end
 				task.wait(0.5)
 			end
-			if player.Parent then giveBat(player) end
+			if player.Parent then giveMines(player) end
 		end)
-		if player.Character then task.spawn(giveBat, player) end
+		if player.Character then task.spawn(giveMines, player) end
 	end
 	Players.PlayerAdded:Connect(hook)
 	for _, p in ipairs(Players:GetPlayers()) do hook(p) end
-	Players.PlayerRemoving:Connect(function(p) batTier[p] = nil lastSwing[p] = nil end)
-	-- claimed a harder Index reward? swap in the better bat
+	Players.PlayerRemoving:Connect(function(p)
+		mineTier[p] = nil
+		lastPlace[p] = nil
+		for _, m in ipairs(mines) do
+			if m.owner == p and m.model.Parent then m.model:Destroy() end
+		end
+	end)
+	-- claimed a harder Index reward (or no mines yet)? hand out the right ones
 	task.spawn(function()
 		while true do
 			task.wait(2)
 			for _, p in ipairs(Players:GetPlayers()) do
 				local prof = profiles[p]
-				-- (also hands out the first bat if the backpack wasn't there yet)
-				if prof and (batTier[p] == nil or Config.BatFor(prof.IndexClaimed) ~= batTier[p]) then giveBat(p) end
+				if prof and (mineTier[p] == nil or Config.MineFor(prof.IndexClaimed) ~= mineTier[p]) then giveMines(p) end
 			end
 		end
 	end)
 end
-
