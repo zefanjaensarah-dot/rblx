@@ -2583,10 +2583,15 @@ local function buildPlot(i, side, zc)
 		end
 	end
 	PP("GlowStrip", V(1, 0.2, 1), 0, -2, 50, glow, M.Neon, GHOST)
-	-- the green EXPAND PLOT pad: press E to buy the next podium slot (the server writes the price)
-	PP("ExpandPadRim", V(9, 0.3, 7), -38, 0.5, 44, RGB(150, 150, 165)).TopSurface = Enum.SurfaceType.Studs
-	local pad = PP("ExpandPad", V(7.6, 0.3, 5.6), -38, 0.62, 44, RGB(60, 235, 60), M.Neon, NOHIT)
-	prompt(pad, "ExpandPrompt", "Expand", "Plot", 0.3)
+	-- the green EXPAND PLOT pad at the front, just inside the fence: click it to buy the next
+	-- podium slot (the server writes the price)
+	PP("ExpandPadRim", V(9, 0.3, 7), -34, 0.5, 3.6, RGB(150, 150, 165)).TopSurface = Enum.SurfaceType.Studs
+	local pad = PP("ExpandPad", V(7.6, 0.3, 5.6), -34, 0.62, 3.6, RGB(60, 235, 60), M.Neon, NOHIT)
+	pad.CanQuery = true
+	local padClick = Instance.new("ClickDetector")
+	padClick.Name = "ExpandClick"
+	padClick.MaxActivationDistance = 40
+	padClick.Parent = pad
 	do
 		local bb = Instance.new("BillboardGui")
 		bb.Name = "ExpandGui"

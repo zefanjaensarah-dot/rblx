@@ -3652,9 +3652,10 @@ end
 do
 	for _, plot in ipairs(plotsFolder:GetChildren()) do
 		local pad = plot:FindFirstChild("ExpandPad", true)
-		local pp = pad and pad:FindFirstChild("ExpandPrompt")
+		local pp = pad and (pad:FindFirstChild("ExpandClick") or pad:FindFirstChild("ExpandPrompt"))
 		if pp then
-			pp.Triggered:Connect(function(who)
+			local signal = pp:IsA("ClickDetector") and pp.MouseClick or pp.Triggered
+			signal:Connect(function(who)
 				if playerPlot[who] ~= plot then
 					notify(who, "That's not your plot!", RED)
 					return
