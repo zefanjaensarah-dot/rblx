@@ -237,6 +237,18 @@ function Config.FormatNum(n)
 	end
 	return negative and ("-" .. out) or out
 end
+-- 25000000 -> "25,000,000" (prices on world signs, like the real game). Huge numbers use FormatNum.
+function Config.FormatCommas(n)
+	n = tonumber(n) or 0
+	if n ~= n then return "0" end
+	local negative = n < 0
+	n = math.floor(math.abs(n) + 0.5)
+	if n >= 1e15 then return (negative and "-" or "") .. Config.FormatNum(n) end
+	local s = string.format("%d", n)
+	local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	if out:sub(1, 1) == "," then out = out:sub(2) end
+	return (negative and "-" or "") .. out
+end
 -- 75 -> "1:15", 3725 -> "1:02:05"
 function Config.FormatTime(sec)
 	sec = math.max(0, math.ceil(tonumber(sec) or 0))
@@ -415,8 +427,8 @@ Config.UnboxPads = 6          -- boxes you can have unboxing on your plot at the
 Config.ShelfUnits = 5         -- shelves at the back of your plot
 Config.ShelfLayers = 3        -- layers per shelf
 Config.ShelfCols = 3          -- products per layer
-Config.MaxStands = Config.ShelfUnits * Config.ShelfLayers * Config.ShelfCols -- 45 products on display
-Config.BaseStands = Config.MaxStands
+Config.MaxStands = 20         -- booth slots per plot (set again with BaseStands further down)
+Config.BaseStands = 8
 Config.MaxItems = 60          -- inventory size
 
 -- CUSTOMERS: shoppers walk into your shop, take a product (stock never runs out) and pay on the spot.
@@ -952,11 +964,47 @@ function Config.StoreHalfWidth() return Config.Layout.halfWidth end
 function Config.RestockTime(areaIndex, rarity)
 	return 8 + (areaIndex or 1) + (rarity or 1) * 4
 end
--- shelf spots ("+1 Equip"): you start with 8 and buy more with cash
+-- booth slots ("+1 Equip" / the Expand Plot pad): you start with 8 and buy more with cash.
+-- Every plot has 20 wooden booths along its sand path: slots 1-10 on the left, 11-20 on the right.
 Config.BaseStands = 8
+Config.MaxStands = 20
 function Config.StandCost(unlocked) -- price of the NEXT slot when you have `unlocked` slots
-	unlocked = math.max(Config.BaseStands, tonumber(unlocked) or Config.BaseStands)
-	return math.floor(2500 * 1.45 ^ (unlocked - Config.BaseStands))
+	unlocked = math.clamp(tonumber(unlocked) or Config.BaseStands, Config.BaseStands, Config.MaxStands - 1)
+	-- 12 slots to buy: $2,500 for slot 9 ... $1.7M for slot 20 (rounded to 2 digits, like $4,500)
+	return niceUp(math.floor(2500 * 1.8 ^ (unlocked - Config.BaseStands) + 0.5))
+end
+
+-- WHERE BOXES CAN BE PLACED on a plot (plot-local: u = sideways -46..46, w = depth 0 (street) .. 92).
+-- The free grass on both sides, outside the booth fences. The sand path, the booths, the
+-- treadmill (+ its sign and phone) and the Expand pad are off limits.
+Config.PlaceZone = {
+	uMin = 20, uMax = 44,  -- |u|: both sides of the plot
+	wMin = 5, wMax = 88,
+	blocked = {
+		{id = "treadmill", u1 = 20, u2 = 42, w1 = 8, w2 = 41},   -- treadmill, its upgrade sign + phone (right front)
+		{id = "expand",    u1 = -41, u2 = -27, w1 = -1, w2 = 9}, -- the Expand Plot pad (left front)
+	},
+}
+-- Can a box of `size` studs go at (u, w)? Clicks just next to the free floor snap onto it.
+-- Returns u, w (where the box really goes) or nil, reason ("floor", "treadmill", "expand").
+function Config.PlotPlaceSpot(u, w, size)
+	local Z = Config.PlaceZone
+	u, w = tonumber(u), tonumber(w)
+	if not u or not w or u ~= u or w ~= w then return nil, "floor" end
+	local h = math.max(0, (tonumber(size) or 4) / 2)
+	local au, sign = math.abs(u), (u < 0) and -1 or 1
+	for _, b in ipairs(Z.blocked) do -- clicked right on the treadmill / Expand pad
+		if u >= b.u1 and u <= b.u2 and w >= b.w1 and w <= b.w2 then return nil, b.id end
+	end
+	if au < Z.uMin or au > Z.uMax or w < Z.wMin or w > Z.wMax then return nil, "floor" end
+	-- keep the whole box on the free floor (moves it at most half a box)
+	au = math.clamp(au, Z.uMin + h, math.max(Z.uMin + h, Z.uMax - h))
+	w = math.clamp(w, Z.wMin + h, math.max(Z.wMin + h, Z.wMax - h))
+	u = sign * au
+	for _, b in ipairs(Z.blocked) do
+		if u + h > b.u1 and u - h < b.u2 and w + h > b.w1 and w - h < b.w2 then return nil, b.id end
+	end
+	return u, w
 end
 -- shoppers at the same time per shop (fewer = less lag)
 Config.MaxCustomers = 4

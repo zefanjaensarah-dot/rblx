@@ -38,6 +38,9 @@ function WorldFX.init(ctx)
 	RunService.RenderStepped:Connect(function()
 		if #bounceList == 0 then return end
 		local t = os.clock()
+		for i = #bounceList, 1, -1 do -- (buttons of a sign that was taken down are dropped)
+			if not bounceList[i].b.Parent then table.remove(bounceList, i) end
+		end
 		for i, st in ipairs(bounceList) do
 			local since = t - st.press
 			local squish = (since < 0.4) and (1 - math.sin(since / 0.4 * math.pi) * 0.25) or 1
@@ -76,193 +79,286 @@ function WorldFX.init(ctx)
 		return b
 	end
 
-	-- THE UPGRADES BOARD on your plot: 4 cartoon cards (like the inspiration game), both sides
-	local CARDS = {
-		{key = "shoppers", title = "More Shoppers", icon = "shop", color = Color3.fromRGB(60, 150, 255), action = "UpgradeShoppers"},
-		{key = "payout", title = "Payouts", icon = "cash", color = Color3.fromRGB(80, 200, 60), action = "UpgradePayout"},
-		{key = "unbox", title = "Unbox Speed", icon = "bolt", color = Color3.fromRGB(255, 150, 40), action = "UpgradeUnbox"},
-		{key = "trails", title = "Trails", icon = "star", color = Color3.fromRGB(230, 90, 200), open = "Trails"},
-	}
-	local boardUI = nil
-	local function makeUpgradeBoard(board)
-		local cards, guis = {}, {}
-		for _, face in ipairs({Enum.NormalId.Front, Enum.NormalId.Back}) do
-			local sg = Instance.new("SurfaceGui")
-			sg.Name = "UpgradeBoardCards"
-			sg.Adornee = board
-			sg.Face = face
-			sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-			sg.PixelsPerStud = 50
-			sg.LightInfluence = 0
-			sg.ZOffset = 2
-			sg.ResetOnSpawn = false
-			sg.Parent = playerGui
-			table.insert(guis, sg)
-			-- the wood (covers the plain "UPGRADES" text everyone else sees)
-			local wood = Instance.new("Frame")
-			wood.Size = UDim2.fromScale(1, 1)
-			wood.BackgroundColor3 = Color3.fromRGB(176, 116, 66)
-			wood.BorderSizePixel = 0
-			wood.Parent = sg
-			UI.label(wood, "UPGRADES", {Position = UDim2.fromScale(0.05, 0.01), Size = UDim2.fromScale(0.9, 0.17), Max = 72, Stroke = 5, TextWrapped = false})
-			local row = Instance.new("Frame")
-			row.BackgroundTransparency = 1
-			row.Position = UDim2.fromScale(0.02, 0.2)
-			row.Size = UDim2.fromScale(0.96, 0.77)
-			row.Parent = wood
-			local layout = Instance.new("UIListLayout")
-			layout.FillDirection = Enum.FillDirection.Horizontal
-			layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-			layout.Padding = UDim.new(0.015, 0)
-			layout.SortOrder = Enum.SortOrder.LayoutOrder
-			layout.Parent = row
-			for i, def in ipairs(CARDS) do
-				local card = Instance.new("Frame")
-				card.LayoutOrder = i
-				card.Size = UDim2.fromScale(0.235, 1)
-				card.BackgroundColor3 = def.color
-				card.Parent = row
-				local cc = Instance.new("UICorner")
-				cc.CornerRadius = UDim.new(0, 22)
-				cc.Parent = card
-				local cs = Instance.new("UIStroke")
-				cs.Thickness = 5
-				cs.Color = INK
-				cs.Parent = card
-				local cg = Instance.new("UIGradient")
-				cg.Rotation = 90
-				cg.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(185, 185, 195))
-				cg.Parent = card
-				UI.icon(def.icon, card, UDim2.fromOffset(104, 104), UDim2.new(0.5, 0, 0, 6), nil, Vector2.new(0.5, 0))
-				UI.label(card, def.title, {Position = UDim2.fromScale(0.04, 0.35), Size = UDim2.fromScale(0.92, 0.14), Max = 34, Stroke = 3, TextWrapped = false})
-				local level = UI.label(card, "", {Position = UDim2.fromScale(0.04, 0.49), Size = UDim2.fromScale(0.92, 0.11), Max = 28, Stroke = 2.6, TextColor3 = Color3.fromRGB(255, 230, 90), TextWrapped = false})
-				local effect = UI.label(card, "", {Position = UDim2.fromScale(0.04, 0.6), Size = UDim2.fromScale(0.92, 0.11), Max = 26, Stroke = 2.6, TextWrapped = false})
-				local btn = chunkyButton(card, {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.fromScale(0.86, 0.21), Text = ""})
-				local st = bouncy(btn, function()
-					if def.open then
-						UI.open(def.open)
-						return
-					end
-					task.spawn(function()
-						local ok, res = pcall(ctx.invoke, def.action)
-						if ok and type(res) == "table" and res.msg and res.msg ~= "" and ctx.notify then
-							ctx.notify(res.msg, res.ok and Color3.fromRGB(120, 255, 140) or Color3.fromRGB(255, 90, 90))
-						end
-					end)
-				end)
-				cards[def.key] = cards[def.key] or {}
-				table.insert(cards[def.key], {level = level, effect = effect, btn = btn, st = st})
-			end
+	-- WORLD SIGNS on your plot, in the inspiration game's style: the wooden "Plot Upgrades" board at the
+	-- end of your path and the slanted "Speed per Step" sign by your treadmill. Each upgrade is one dark
+	-- rounded row: a big icon, a coloured title, a small white line, "now -> next", a green price pill
+	-- (bouncy: grows + wiggles on hover, squishes on click, grey when you can't pay, "MAXED" at the top)
+	-- and a yellow Robux pill that opens the matching Shop page. Only YOU see these on your own plot
+	-- (built in your PlayerGui); the plain copies the map put on the parts are switched off on your screen.
+	local Signs = {}
+	do
+		local PPS = 50 -- pixels per stud on the sign faces
+		local ROW_BG, ROW_LINE = Color3.fromRGB(45, 42, 40), Color3.fromRGB(26, 22, 20)
+		local GREEN_PILL, YELLOW_PILL = Color3.fromRGB(60, 200, 60), Color3.fromRGB(255, 196, 30)
+		local CYAN_T, ORANGE_T = Color3.fromRGB(80, 210, 255), Color3.fromRGB(255, 170, 40)
+		local GREEN_T, PINK_T = Color3.fromRGB(120, 235, 80), Color3.fromRGB(255, 120, 200)
+		local WOOD_LINE = Color3.fromRGB(122, 82, 48)
+		-- "$4,000" like the reference (FormatNum for the really big ones)
+		local function price(n)
+			if Config.FormatCommas and n < 1e9 then return "$" .. Config.FormatCommas(n) end
+			return "$" .. Config.FormatNum(n)
 		end
-		return {cards = cards, guis = guis}
-	end
-	local function updateBoard(data)
-		for key, list in pairs(boardUI.cards) do
-			local lvl, max, cost, effect = 1, 1, 0, ""
-			if key == "shoppers" then
-				lvl, max = data.Customers or 1, Config.CustomerMax
-				cost, effect = Config.CustomerCost(lvl), "x" .. string.format("%.1f", Config.CustomerRate(lvl)) .. " shoppers"
-			elseif key == "payout" then
-				lvl, max = data.PayoutLevel or 1, Config.PayoutMax
-				cost, effect = Config.PayoutCost(lvl), "x" .. string.format("%.2f", Config.PayoutMult(lvl)) .. " pay"
-			elseif key == "unbox" then
-				lvl, max = data.UnboxLevel or 1, Config.UnboxMax
-				cost, effect = Config.UnboxCost(lvl), "-" .. math.floor((1 - Config.UnboxMult(lvl)) * 100 + 0.5) .. "% time"
-			end
-			for _, c in ipairs(list) do
-				if key == "trails" then
-					UI.setText(c.level, "Cool trails")
-					UI.setText(c.effect, "behind you!")
-					c.btn.Text = "OPEN"
-					c.st.can = true
-				else
-					local maxed = lvl >= max
-					local can = (not maxed) and (data.Cash or 0) >= cost
-					UI.setText(c.level, "Lv " .. lvl .. "/" .. max)
-					UI.setText(c.effect, effect)
-					c.btn.Text = maxed and "MAXED" or ("$" .. Config.FormatNum(cost))
-					c.btn.BackgroundColor3 = can and GREEN_BTN or GREY_BTN
-					c.st.can = can
-				end
-			end
+		local function pct(l)
+			local p = math.floor((1 - Config.UnboxMult(l)) * 100 + 0.5)
+			return (p == 0) and "0%" or ("-" .. p .. "%")
 		end
-	end
-
-	local treadBtn = nil
-	local function makeTreadButton(sign)
-		local btns, guis = {}, {}
-		local state = {hover = false, press = -10, can = false}
-		for _, face in ipairs({Enum.NormalId.Front, Enum.NormalId.Back}) do
-			local sg = Instance.new("SurfaceGui")
-			sg.Name = "TreadUpgradeButton"
-			sg.Adornee = sign
-			sg.Face = face
-			sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-			sg.PixelsPerStud = 50
-			sg.LightInfluence = 0
-			sg.ZOffset = 2
-			sg.ResetOnSpawn = false
-			sg.Parent = playerGui
-			table.insert(guis, sg)
-			local b = Instance.new("TextButton")
-			b.AnchorPoint = Vector2.new(0.5, 0.5)
-			b.Position = UDim2.fromScale(0.5, 0.58)
-			b.Size = UDim2.fromScale(0.8, 0.27)
-			b.BackgroundColor3 = Color3.fromRGB(70, 210, 60)
-			b.AutoButtonColor = false
-			b.FontFace = UI.Font
-			b.TextScaled = true
-			b.TextColor3 = Color3.new(1, 1, 1)
-			b.TextStrokeTransparency = 0
-			b.TextStrokeColor3 = Color3.fromRGB(20, 40, 20)
-			b.Text = "UPGRADE"
-			b.Parent = sg
-			local c = Instance.new("UICorner")
-			c.CornerRadius = UDim.new(0.3, 0)
-			c.Parent = b
-			local st = Instance.new("UIStroke")
-			st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-			st.Thickness = 4
-			st.Color = Color3.fromRGB(20, 40, 20)
-			st.Parent = b
-			local g = Instance.new("UIGradient")
-			g.Rotation = 90
-			g.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 190, 190))
-			g.Parent = b
-			local pad = Instance.new("UIPadding")
-			pad.PaddingTop, pad.PaddingBottom = UDim.new(0.12, 0), UDim.new(0.12, 0)
-			pad.Parent = b
-			local sc = Instance.new("UIScale")
-			sc.Parent = b
-			b.MouseEnter:Connect(function() state.hover = true end)
-			b.MouseLeave:Connect(function() state.hover = false end)
-			b.Activated:Connect(function()
-				if os.clock() - state.press < 0.3 then return end
-				state.press = os.clock()
-				task.spawn(function() pcall(ctx.invoke, "UpgradeTreadmill") end)
-			end)
-			table.insert(btns, {b = b, sc = sc})
-		end
-		RunService.RenderStepped:Connect(function()
-			local t = os.clock()
-			local since = t - state.press
-			local squish = (since < 0.4) and (1 - math.sin(since / 0.4 * math.pi) * 0.25) or 1
-			local target = (state.hover and 1.12 or 1) * squish * (state.can and (1 + 0.04 * math.sin(t * 5)) or 1)
-			for _, e in ipairs(btns) do
-				e.sc.Scale = e.sc.Scale + (target - e.sc.Scale) * 0.35
-				e.b.Rotation = state.hover and math.sin(t * 10) * 3 or 0
-			end
-		end)
-		return {
-			set = function(text, can)
-				state.can = can
-				for _, e in ipairs(btns) do
-					e.b.Text = text
-					e.b.BackgroundColor3 = can and Color3.fromRGB(70, 210, 60) or Color3.fromRGB(130, 130, 142)
-				end
-			end,
-			adorn = function(part) for _, sg in ipairs(guis) do sg.Adornee = part end end,
+		-- the rows of the big board (same order + actions as before)
+		Signs.BOARD = {
+			{key = "shoppers", title = "More Shoppers", desc = "More shoppers visit.", icon = "shop", color = CYAN_T, action = "UpgradeShoppers", tab = "Cash",
+				level = function(d) return d.Customers or 1 end, max = function() return Config.CustomerMax end,
+				cost = function(l) return Config.CustomerCost(l) end, value = function(l) return "x" .. string.format("%.1f", Config.CustomerRate(l)) end},
+			{key = "payout", title = "Payouts", desc = "Shoppers pay more.", icon = "cash", color = GREEN_T, action = "UpgradePayout", tab = "Passes",
+				level = function(d) return d.PayoutLevel or 1 end, max = function() return Config.PayoutMax end,
+				cost = function(l) return Config.PayoutCost(l) end, value = function(l) return "x" .. string.format("%.2f", Config.PayoutMult(l)) end},
+			{key = "unbox", title = "Unbox Speed", desc = "Boxes open faster.", icon = "bolt", color = ORANGE_T, action = "UpgradeUnbox", tab = "Boosts",
+				level = function(d) return d.UnboxLevel or 1 end, max = function() return Config.UnboxMax end,
+				cost = function(l) return Config.UnboxCost(l) end, value = pct},
+			{key = "trails", title = "Trails", desc = "Cool trails behind you!", icon = "star", color = PINK_T, open = "Trails", tab = "Passes",
+				change = "Boosts your treadmill speed"},
 		}
+		-- the treadmill row: speed you earn per second of running (with your trail + Robux boost)
+		local function treadRate(l)
+			local d = ctx.data or {}
+			local t = d.Trail and Config.GetTrail and Config.GetTrail(d.Trail)
+			return Config.TreadRate(l) * ((t and t.mult) or 1) * (d.SpeedBoost or 1)
+		end
+		Signs.TREAD = {key = "tread", title = "Speed per Step", desc = "Earn more speed.", icon = "boot", color = CYAN_T, action = "UpgradeTreadmill", tab = "Speed",
+			level = function(d) return d.Treadmill or 1 end, max = function() return Config.Treadmill.max end,
+			cost = function(l) return Config.TreadmillCost(l) end, value = function(l) return Config.FormatNum(treadRate(l)) end}
+
+		-- the plain sign the map put on a part is turned off on this screen (our rows replace it)
+		local hiddenOn = {} -- [part] = {SurfaceGui, ...}
+		local function hideMapGuis(part, on)
+			if on then
+				local list = hiddenOn[part] or {}
+				hiddenOn[part] = list
+				for _, g in ipairs(part:GetChildren()) do
+					if g:IsA("SurfaceGui") and g.Enabled then
+						g.Enabled = false
+						table.insert(list, g)
+					end
+				end
+			elseif hiddenOn[part] then
+				for _, g in ipairs(hiddenOn[part]) do g.Enabled = true end
+				hiddenOn[part] = nil
+			end
+		end
+		local function faceGui(name, part, face)
+			local sg = Instance.new("SurfaceGui")
+			sg.Name = name
+			sg.Adornee = part
+			sg.Face = face
+			sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+			sg.PixelsPerStud = PPS
+			sg.LightInfluence = 0
+			sg.ZOffset = 2
+			sg.ResetOnSpawn = false
+			sg.Parent = playerGui
+			return sg
+		end
+		-- the face size of a part in sign pixels (Front/Back face = X by Y)
+		local function faceSize(part, fallback)
+			local ok, s = pcall(function() return part.Size end)
+			if not ok or typeof(s) ~= "Vector3" or s.X < 1 or s.Y < 1 then s = fallback end
+			return s.X * PPS, s.Y * PPS
+		end
+		-- a thin dark line just inside the sign's edge (the wooden panel's border; the part's own
+		-- studded wood shows through everything else)
+		local function panelEdge(sg, w, h)
+			local edge = Instance.new("Frame")
+			edge.Name = "Edge"
+			edge.BackgroundTransparency = 1
+			edge.AnchorPoint = Vector2.new(0.5, 0.5)
+			edge.Position = UDim2.fromScale(0.5, 0.5)
+			edge.Size = UDim2.new(1, -math.floor(h * 0.05), 1, -math.floor(h * 0.05))
+			edge.Parent = sg
+			local c = Instance.new("UICorner")
+			c.CornerRadius = UDim.new(0, math.floor(h * 0.03))
+			c.Parent = edge
+			local s = Instance.new("UIStroke")
+			s.Thickness = math.max(3, math.floor(h * 0.012))
+			s.Color = WOOD_LINE
+			s.Transparency = 0.15
+			s.Parent = edge
+		end
+		local function text(parent, str, color, x, y, w, h, maxSize, props)
+			local l = UI.label(parent, str, {Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(w, h), Max = math.floor(maxSize),
+				Stroke = math.max(2, math.floor(maxSize * 0.09)), TextColor3 = color, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false})
+			l.ZIndex = parent.ZIndex + 2
+			for k, v in pairs(props or {}) do l[k] = v end
+			return l
+		end
+		-- a yellow pill: Robux icon + "Shop" (opens the Shop on the page that helps with this upgrade)
+		local function robuxPill(parent, x, y, w, h, tab)
+			local b = chunkyButton(parent, {Name = "RobuxPill", AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(w, h),
+				BackgroundColor3 = YELLOW_PILL, Text = ""})
+			b.ZIndex = parent.ZIndex + 2
+			local inner = h * 0.72 -- (the button's padding takes 14% top + bottom)
+			local isz = math.floor(inner * 0.95)
+			local ic = UI.icon("robux", b, UDim2.fromOffset(isz, isz), UDim2.new(0, math.floor(w * 0.1), 0.5, 0), Color3.new(1, 1, 1), Vector2.new(0, 0.5))
+			ic.ZIndex = b.ZIndex + 1
+			local tx = math.floor(w * 0.1) + isz + math.floor(w * 0.04)
+			local l = UI.label(b, "Shop", {Position = UDim2.new(0, tx, 0, 0), Size = UDim2.new(1, -tx - math.floor(w * 0.08), 1, 0), Max = math.floor(inner * 0.92),
+				Stroke = math.max(2, math.floor(h * 0.05)), TextWrapped = false})
+			l.ZIndex = b.ZIndex + 1
+			bouncy(b, function() UI.open("Shop", tab) end)
+			return b
+		end
+		-- one dark rounded row. Wide rows (the board) keep everything on one line like the reference;
+		-- tall rows (the small treadmill sign) put the two pills along the bottom.
+		local function makeRow(sg, def, x, y, w, h)
+			local f = Instance.new("Frame")
+			f.Name = "Row_" .. def.key
+			f.Position = UDim2.fromOffset(x, y)
+			f.Size = UDim2.fromOffset(w, h)
+			f.BackgroundColor3 = ROW_BG
+			f.BackgroundTransparency = 0.05
+			f.BorderSizePixel = 0
+			f.ZIndex = 2
+			f.Parent = sg
+			local c = Instance.new("UICorner")
+			c.CornerRadius = UDim.new(0, math.floor(math.min(h, w * 0.25) * 0.22))
+			c.Parent = f
+			local s = Instance.new("UIStroke")
+			s.Thickness = math.max(2, math.floor(math.min(h, w * 0.25) * 0.035))
+			s.Color = ROW_LINE
+			s.Transparency = 0.2
+			s.Parent = f
+			local r = {def = def}
+			local function onBuy()
+				if def.open then
+					UI.open(def.open)
+					return
+				end
+				task.spawn(function()
+					local ok, res = pcall(ctx.invoke, def.action)
+					if ok and type(res) == "table" and res.msg and res.msg ~= "" and ctx.notify then
+						ctx.notify(res.msg, res.ok and Color3.fromRGB(120, 255, 140) or Color3.fromRGB(255, 90, 90))
+					end
+				end)
+			end
+			local gx, gy, gw, gh, rx, rw
+			if w / h >= 4 then
+				-- [icon] Title / small line / now -> next ......... [$price] [R Shop]
+				local isz = math.floor(h * 1.18)
+				local ic = UI.icon(def.icon, f, UDim2.fromOffset(isz, isz), UDim2.new(0, -math.floor(isz * 0.12), 0.5, 0), def.color, Vector2.new(0, 0.5))
+				ic.ZIndex = f.ZIndex + 3
+				local gap = math.floor(h * 0.14)
+				gh = math.floor(h * 0.64)
+				rw = math.floor(w * 0.16)
+				gw = math.floor(w * 0.22)
+				rx = w - gap - rw
+				gx = rx - gap - gw
+				gy = math.floor(h / 2)
+				local tx = math.floor(isz * 0.95)
+				local tw = gx - gap - tx
+				r.title = text(f, def.title, def.color, tx, math.floor(h * 0.04), tw, math.floor(h * 0.4), h * 0.36)
+				r.desc = text(f, def.desc, Color3.new(1, 1, 1), tx, math.floor(h * 0.43), tw, math.floor(h * 0.24), h * 0.21)
+				r.change = text(f, "", Color3.new(1, 1, 1), tx, math.floor(h * 0.66), tw, math.floor(h * 0.29), h * 0.25)
+			else
+				-- [icon] Title / small line / now -> next
+				-- [   $price   ] [ R Shop ]
+				local pad = math.floor(w * 0.035)
+				local isz = math.floor(math.min(h * 0.6, w * 0.3))
+				local ic = UI.icon(def.icon, f, UDim2.fromOffset(isz, isz), UDim2.fromOffset(pad - math.floor(isz * 0.06), math.floor(h * 0.03)), def.color)
+				ic.ZIndex = f.ZIndex + 3
+				local tx = pad + isz + math.floor(w * 0.02)
+				local tw = w - tx - pad
+				r.title = text(f, def.title, def.color, tx, math.floor(h * 0.05), tw, math.floor(h * 0.24), h * 0.21)
+				r.desc = text(f, def.desc, Color3.new(1, 1, 1), tx, math.floor(h * 0.29), tw, math.floor(h * 0.15), h * 0.13)
+				r.change = text(f, "", Color3.new(1, 1, 1), tx, math.floor(h * 0.44), tw, math.floor(h * 0.18), h * 0.155)
+				gh = math.floor(h * 0.29)
+				gy = math.floor(h * 0.8)
+				gx = pad
+				local gap = math.floor(w * 0.03)
+				gw = math.floor((w - pad * 2 - gap) * 0.6)
+				rx = gx + gw + gap
+				rw = w - pad - rx
+			end
+			r.btn = chunkyButton(f, {Name = "PricePill", AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.fromOffset(gx, gy), Size = UDim2.fromOffset(gw, gh),
+				BackgroundColor3 = GREEN_PILL, Text = ""})
+			r.btn.ZIndex = f.ZIndex + 2
+			r.st = bouncy(r.btn, onBuy)
+			r.robux = robuxPill(f, rx, gy, rw, gh, def.tab)
+			return r
+		end
+		-- fill one row from your data
+		local function fillRow(r, data)
+			local def = r.def
+			if def.open then
+				UI.setText(r.change, def.change or "")
+				r.btn.Text = "OPEN"
+				r.btn.BackgroundColor3 = GREEN_PILL
+				r.st.can = true
+				return
+			end
+			local lvl, max = def.level(data), def.max()
+			local maxed = lvl >= max
+			local cost = maxed and 0 or def.cost(lvl)
+			local can = (not maxed) and (data.Cash or 0) >= cost
+			UI.setText(r.change, maxed and (def.value(lvl) .. "  (max)") or (def.value(lvl) .. " -> " .. def.value(lvl + 1)))
+			r.btn.Text = maxed and "MAXED" or price(cost)
+			r.btn.BackgroundColor3 = can and GREEN_PILL or GREY_BTN
+			r.st.can = can
+		end
+
+		-- THE PLOT UPGRADES BOARD (both faces: you can read it from the path and from behind)
+		local board = nil -- {part, guis, rows}
+		function Signs.board(part, data)
+			if board and board.part ~= part then
+				hideMapGuis(board.part, false)
+				for _, sg in ipairs(board.guis) do sg:Destroy() end
+				board = nil
+			end
+			if not board then
+				board = {part = part, guis = {}, rows = {}}
+				local W, H = faceSize(part, Vector3.new(22, 11, 0.6))
+				for _, face in ipairs({Enum.NormalId.Front, Enum.NormalId.Back}) do
+					local sg = faceGui("UpgradeBoardCards", part, face)
+					table.insert(board.guis, sg)
+					panelEdge(sg, W, H)
+					local title = UI.label(sg, "Plot Upgrades", {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, math.floor(H * 0.03)),
+						Size = UDim2.fromOffset(math.floor(W * 0.8), math.floor(H * 0.13)), Max = math.floor(H * 0.115), Stroke = math.max(3, math.floor(H * 0.011)), TextWrapped = false})
+					title.Name = "Title"
+					title.ZIndex = 4
+					local top, bottom = H * 0.18, H * 0.97
+					local gap = H * 0.022
+					local n = #Signs.BOARD
+					local rh = math.floor((bottom - top - gap * (n - 1)) / n)
+					local rx = math.floor(W * 0.035)
+					for i, def in ipairs(Signs.BOARD) do
+						local r = makeRow(sg, def, rx, math.floor(top + (i - 1) * (rh + gap)), W - rx * 2, rh)
+						table.insert(board.rows, r)
+					end
+				end
+			end
+			hideMapGuis(part, true)
+			for _, r in ipairs(board.rows) do fillRow(r, data) end
+		end
+
+		-- THE TREADMILL SIGN: one "Speed per Step" row (both faces)
+		local tread = nil -- {part, guis, rows}
+		function Signs.tread(part, data)
+			if tread and tread.part ~= part then
+				hideMapGuis(tread.part, false)
+				for _, sg in ipairs(tread.guis) do sg:Destroy() end
+				tread = nil
+			end
+			if not tread then
+				tread = {part = part, guis = {}, rows = {}}
+				local W, H = faceSize(part, Vector3.new(9, 4.6, 0.5))
+				for _, face in ipairs({Enum.NormalId.Front, Enum.NormalId.Back}) do
+					local sg = faceGui("TreadUpgradeButton", part, face)
+					table.insert(tread.guis, sg)
+					panelEdge(sg, W, H)
+					local mx, my = math.floor(W * 0.04), math.floor(H * 0.1)
+					table.insert(tread.rows, makeRow(sg, Signs.TREAD, mx, my, W - mx * 2, H - my * 2))
+				end
+			end
+			-- (the map's own "Level" + "Rate" lines are hidden with the rest of its sign)
+			hideMapGuis(part, true)
+			for _, r in ipairs(tread.rows) do fillRow(r, data) end
+		end
 	end
 	local new, ICON, SFX = UI.new, UI.ICON, UI.SFX
 	local WHITE, BLACK, MONEY = UI.C.white, UI.C.black, UI.C.money
@@ -308,7 +404,7 @@ function WorldFX.init(ctx)
 	local ghost = new("Part", {Name = "PlaceGhost", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, CastShadow = false,
 		Material = Enum.Material.ForceField, Transparency = 0.35, Size = Vector3.new(4, 4, 4)})
 	local ghostRing = new("SelectionBox", {LineThickness = 0.08, Color3 = Color3.new(1, 1, 1), Adornee = ghost}, ghost)
-	local placeValid, placePos = false, nil
+	local placeValid, placePos, placeNear = false, nil, false
 	local myFloor = nil
 	local function findMyFloor()
 		local plotName = player:GetAttribute("PlotName")
@@ -333,25 +429,39 @@ function WorldFX.init(ctx)
 		local hrp = char and char:FindFirstChild("HumanoidRootPart")
 		return hrp and (hrp.Position - pos).Magnitude <= 85
 	end
+	-- the server's rules (Config.PlotPlaceSpot): boxes go on the free grass beside your booths, not on
+	-- the path, the treadmill or the Expand pad. Returns where the box would really land, or nil.
+	local function placeSpot(pos, sz)
+		local plot = myFloor and myFloor.Parent
+		local origin = plot and plot:FindFirstChild("PlotOrigin")
+		if not origin or not Config.PlotPlaceSpot then return pos end
+		local lp = origin.CFrame:PointToObjectSpace(pos)
+		local u, w = Config.PlotPlaceSpot(lp.X, -lp.Z, sz)
+		if not u then return nil end
+		return origin.CFrame:PointToWorldSpace(Vector3.new(u, lp.Y, -w))
+	end
 	RunService.RenderStepped:Connect(function()
 		if not player:GetAttribute("Carrying") then
 			ghost.Parent = nil
-			placeValid = false
+			placeValid, placeNear = false, false
 			return
 		end
 		local pos = aimAt(UserInputService:GetMouseLocation())
 		if not pos then
 			ghost.Parent = nil
-			placeValid = false
+			placeValid, placeNear = false, false
 			return
 		end
 		local sz = player:GetAttribute("CarrySize") or 4
 		ghost.Size = Vector3.new(sz, sz, sz)
-		ghost.CFrame = CFrame.new(pos + Vector3.new(0, sz / 2 + 0.05, 0)) * CFrame.Angles(0, os.clock() % (math.pi * 2), 0)
-		placeValid = nearEnough(pos)
+		local spot = placeSpot(pos, sz)
+		local at = spot or pos
+		ghost.CFrame = CFrame.new(at + Vector3.new(0, sz / 2 + 0.05, 0)) * CFrame.Angles(0, os.clock() % (math.pi * 2), 0)
+		placeNear = nearEnough(pos) == true
+		placeValid = placeNear and spot ~= nil
 		ghost.Color = placeValid and Color3.fromRGB(90, 255, 110) or Color3.fromRGB(255, 70, 70)
 		ghostRing.Color3 = ghost.Color
-		placePos = pos
+		placePos = at
 		ghost.Parent = workspace
 	end)
 	player:GetAttributeChangedSignal("PlotName"):Connect(function()
@@ -361,10 +471,11 @@ function WorldFX.init(ctx)
 	UserInputService.InputBegan:Connect(function(input, processed)
 		if processed or not player:GetAttribute("Carrying") then return end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			if placeValid and placePos then PlaceBoxEvent:FireServer(placePos) end
+			-- (a red spot still asks the server, so it can tell you why the box can't go there)
+			if placeNear and placePos then PlaceBoxEvent:FireServer(placePos) end
 		elseif input.UserInputType == Enum.UserInputType.Touch then
 			local pos = aimAt(Vector2.new(input.Position.X, input.Position.Y), true)
-			if pos and nearEnough(pos) then PlaceBoxEvent:FireServer(pos) end
+			if pos and nearEnough(pos) then PlaceBoxEvent:FireServer(placeSpot(pos, player:GetAttribute("CarrySize") or 4) or pos) end
 		end
 	end)
 
@@ -453,22 +564,12 @@ function WorldFX.init(ctx)
 			local cost = Config.TreadmillCost(level)
 			local prompt = console:FindFirstChildOfClass("ProximityPrompt")
 			if prompt then prompt.ActionText = maxed and "Maxed" or ("Upgrade $" .. formatNum(cost)) end
-			if not treadBtn then treadBtn = makeTreadButton(console) else treadBtn.adorn(console) end
-			local ubBoard = plot:FindFirstChild("UpgradeBoard", true)
-			if ubBoard then
-				if not boardUI then
-					boardUI = makeUpgradeBoard(ubBoard)
-				else
-					for _, sg in ipairs(boardUI.guis) do sg.Adornee = ubBoard end
-				end
-				updateBoard(data)
-			end
-			treadBtn.set(maxed and "MAXED" or ("UPGRADE  $" .. formatNum(cost)), (not maxed) and (data.Cash or 0) >= cost)
-			-- (the sign's own price line sits under the button)
-			for _, g in ipairs(console:GetChildren()) do
-				if g:IsA("SurfaceGui") and g:FindFirstChild("Level") then g.Level.Visible = false end
-			end
+			-- the "Speed per Step" row (it replaces the sign's own Level + Rate lines on your screen)
+			Signs.tread(console, data)
 		end
+		-- the Plot Upgrades board at the end of your path
+		local ubBoard = plot and plot:FindFirstChild("UpgradeBoard", true)
+		if ubBoard then Signs.board(ubBoard, data) end
 	end
 	ctx.onData(updateWorldPrices)
 	ctx.onCash(updateWorldPrices)

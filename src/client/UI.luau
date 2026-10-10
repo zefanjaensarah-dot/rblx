@@ -499,6 +499,11 @@ do
 		sh(ctx, {Position = P2(0.5, 0.5), Size = P2(0.76, 0.24), BackgroundColor3 = c, Round = 0.3})
 		sh(ctx, {Position = P2(0.5, 0.5), Size = P2(0.22, 0.22), BackgroundColor3 = c, Round = 0.2, Stroke = false})
 	end
+	D.robux = function(ctx, c) -- the Robux symbol: a rounded hexagon ring with a square in the middle
+		sh(ctx, {Position = P2(0.5, 0.5), Size = P2(0.82, 0.82), BackgroundColor3 = c, Round = 0.34, Shade = true})
+		sh(ctx, {Position = P2(0.5, 0.5), Size = P2(0.5, 0.5), BackgroundColor3 = c:Lerp(INK, 0.6), Round = 0.24, Stroke = false})
+		sh(ctx, {Position = P2(0.5, 0.5), Size = P2(0.26, 0.26), BackgroundColor3 = c, Round = 0.2, Stroke = false})
+	end
 	ICON.draw = D
 	-- the icon's outline gets thicker on bigger icons
 	function ICON.new(name, parent, size, pos, color, anchor)
@@ -526,7 +531,7 @@ UI.EMOJI_ICON = EMOJI_ICON
 local IMAGE_ICON = {
 	shop = "", book = "", gift = "", calendar = "", bag = "", box = "", home = "", boot = "", cash = "",
 	coin = "", star = "", crown = "", clover = "", clock = "", gear = "", trail = "", bolt = "", lock = "",
-	check = "", close = "", heart = "", skull = "", ticket = "", moon = "", sun = "", plus = "", arrow = "", down = "",
+	check = "", close = "", heart = "", skull = "", ticket = "", moon = "", sun = "", plus = "", arrow = "", down = "", robux = "",
 }
 UI.IMAGE_ICON = IMAGE_ICON
 -- SHEET ICONS: {sheet, row, column} on the uploaded icon sheets (Config.IconSheets)
@@ -538,7 +543,7 @@ local ICON_CELLS = {
 	bag = {1, 1, 4}, crown = {1, 1, 6}, gift = {1, 1, 7}, lock = {1, 1, 8},
 	book = {1, 2, 1}, calendar = {1, 2, 3}, box = {1, 2, 4}, boot = {1, 3, 10},
 	close = {1, 4, 3}, check = {1, 4, 4}, plus = {1, 4, 5},
-	cash = {2, 1, 1}, coin = {2, 1, 2}, ticket = {2, 1, 6}, star = {2, 1, 8}, gear = {2, 1, 9}, heart = {2, 1, 10},
+	cash = {2, 1, 1}, coin = {2, 1, 2}, robux = {2, 1, 4}, ticket = {2, 1, 6}, star = {2, 1, 8}, gear = {2, 1, 9}, heart = {2, 1, 10},
 	shop = {2, 2, 2}, rebirth = {2, 2, 5}, bolt = {2, 2, 10}, home = {2, 3, 3}, skull = {2, 3, 9}, clover = {2, 4, 6},
 }
 UI.ICON_CELLS = ICON_CELLS
@@ -750,6 +755,183 @@ function UI.section(parent, text, color, order)
 end
 
 ------------------------------------------------------------------
+-- TEXTURES: two pictures that give the UI the look of the inspiration game. They are in the
+-- repo's assets folder:
+--   assets/StudTile.png  (64 x 64 lego studs, transparent) -> studs on window headers + shop cards
+--   assets/Sunburst.png  (256 x 256 white light rays)      -> rays behind the big shop icons
+-- Upload each one on Roblox (Creator Hub > Development Items > Images, or Studio's Asset
+-- Manager > Import), copy its IMAGE id and paste it here, e.g. studs = "rbxassetid://1234567890"
+-- (a plain number works too). Left empty, the UI draws a simpler version of both with frames.
+------------------------------------------------------------------
+UI.TEXTURES = {
+	studs = "",    -- paste the StudTile.png id here
+	sunburst = "", -- paste the Sunburst.png id here
+}
+-- the picture for a texture key, or nil (also reads Config.UITextures and the ReplicatedStorage
+-- attribute "UITexture_<key>", so a server script can hand the ids out too)
+function UI.texture(key)
+	local function norm(v)
+		if type(v) == "number" then return (v > 0) and ("rbxassetid://" .. math.floor(v)) or nil end
+		if type(v) ~= "string" or v == "" then return nil end
+		if string.match(v, "^%d+$") then return "rbxassetid://" .. v end
+		return v
+	end
+	local v = norm(UI.TEXTURES[key])
+	if not v and type(Config.UITextures) == "table" then v = norm(Config.UITextures[key]) end
+	if not v then v = norm(ReplicatedStorage:GetAttribute("UITexture_" .. key)) end
+	return v
+end
+
+-- lego studs over a frame (window headers, shop cards). transparency: 0 = strong .. 1 = invisible.
+-- opt: Tile (px for 2 x 2 studs, default 64), Corner (px: the frame's corner radius), ZIndex,
+--      Area (Vector2: the frame's size in UI units, used by the frame fallback), Max (most fallback studs)
+function UI.studs(frame, transparency, opt)
+	opt = opt or {}
+	transparency = transparency or 0.55
+	local tile = opt.Tile or 64
+	local z = opt.ZIndex or frame.ZIndex
+	local image = UI.texture("studs")
+	if image then
+		local img = new("ImageLabel", {Name = "Studs", BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), Image = image,
+			ScaleType = Enum.ScaleType.Tile, TileSize = UDim2.fromOffset(tile, tile), ImageTransparency = transparency, ZIndex = z}, frame)
+		if opt.Corner then UI.corner(img, opt.Corner) end
+		return img
+	end
+	-- no picture: a grid of soft rounded squares (plain frames, no layouts)
+	local holder = new("Frame", {Name = "Studs", BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ClipsDescendants = true, ZIndex = z}, frame)
+	local area = opt.Area
+	if not area then
+		local s = frame.Size
+		area = Vector2.new((s.X.Offset > 0) and s.X.Offset or 300, (s.Y.Offset > 0) and s.Y.Offset or 200)
+	end
+	local step = tile / 2
+	local max = opt.Max or 72
+	local cols, rows = math.max(1, math.floor(area.X / step)), math.max(1, math.floor(area.Y / step))
+	while cols * rows > max do
+		step = step * 1.15
+		cols, rows = math.max(1, math.floor(area.X / step)), math.max(1, math.floor(area.Y / step))
+	end
+	local sz = math.floor(step * 0.64)
+	local ox, oy = (area.X - cols * step) / 2, (area.Y - rows * step) / 2
+	local bgT = 1 - (1 - transparency) * 0.42
+	for r = 0, rows - 1 do
+		for c = 0, cols - 1 do
+			local stud = new("Frame", {Name = "Stud", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(ox + (c + 0.5) * step, oy + (r + 0.5) * step),
+				Size = UDim2.fromOffset(sz, sz), BackgroundColor3 = C.white, BackgroundTransparency = bgT, BorderSizePixel = 0, ZIndex = z}, holder)
+			new("UICorner", {CornerRadius = UDim.new(0.3, 0)}, stud)
+		end
+	end
+	return holder
+end
+
+-- white light rays behind a big icon (shop cards). Returns the holder: rotate it to spin the rays.
+-- opt: Transparency (of the brightest part), Color, Rays (fallback ray count), ZIndex
+function UI.sunburst(parent, size, pos, opt)
+	opt = opt or {}
+	local z = opt.ZIndex or ((parent and parent:IsA("GuiObject")) and parent.ZIndex or 1)
+	local t = opt.Transparency or 0.3
+	local image = UI.texture("sunburst")
+	if image then
+		return new("ImageLabel", {Name = "Sunburst", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = pos or UDim2.fromScale(0.5, 0.5),
+			Size = size, Image = image, ImageTransparency = t, ImageColor3 = opt.Color or C.white, ScaleType = Enum.ScaleType.Fit, ZIndex = z}, parent)
+	end
+	-- no picture: a few soft bars through the middle (each bar = two rays, brightest in the centre)
+	local holder = new("Frame", {Name = "Sunburst", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = pos or UDim2.fromScale(0.5, 0.5),
+		Size = size, ZIndex = z}, parent)
+	local bars = math.max(2, math.ceil((opt.Rays or 10) / 2))
+	local mid = 1 - (1 - t) * 0.5
+	for k = 0, bars - 1 do
+		local bar = new("Frame", {Name = "Ray", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.15, 1),
+			Rotation = k * 180 / bars, BackgroundColor3 = opt.Color or C.white, BorderSizePixel = 0, ZIndex = z}, holder)
+		new("UIGradient", {Rotation = 90, Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, mid),
+			NumberSequenceKeypoint.new(1, 1)})}, bar)
+	end
+	return holder
+end
+
+-- a bright shop card: one vivid colour, a dark outline and faint lego studs (like the inspiration game).
+-- area = the card's size (Vector2), so the stud fallback knows how many studs to draw
+function UI.studCard(parent, color, props, area)
+	local f = new("Frame", {BackgroundColor3 = C.white, BorderSizePixel = 0}, parent)
+	for k, v in pairs(props or {}) do f[k] = v end
+	UI.corner(f, 14)
+	UI.stroke(f, 3.5, color:Lerp(C.black, 0.55))
+	new("UIGradient", {Rotation = 90, Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, color:Lerp(C.white, 0.12)),
+		ColorSequenceKeypoint.new(0.55, color),
+		ColorSequenceKeypoint.new(1, color:Lerp(C.black, 0.1)),
+	})}, f)
+	UI.studs(f, 0.62, {Tile = 84, Corner = 14, Area = area, Max = 42})
+	return f
+end
+
+-- the yellow-orange "Buy (robux) 399" pill. The same table as UI.button, plus:
+--   btn.setPrice(text)  shows "Buy", the Robux icon and the price
+--   btn.setText(text)   shows plain text instead ("OWNED", "SOON")
+function UI.buyButton(parent, opt)
+	opt = opt or {}
+	opt.Color = opt.Color or rgb(255, 190, 40)
+	opt.Radius = opt.Radius or 14
+	opt.Text = ""
+	local maxSize = opt.TextSize or 26
+	local b = UI.button(parent, opt)
+	local face = b.face
+	local z = face.ZIndex + 2
+	local row = new("Frame", {Name = "Price", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.new(1, -10, 1, -6), Visible = false, ZIndex = z}, face)
+	new("UIListLayout", {FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder}, row)
+	local function word(order, text)
+		local l = new("TextLabel", {Name = (order == 1) and "Word" or "Amount", BackgroundTransparency = 1, FontFace = UI.Font, TextColor3 = C.white, Text = text,
+			TextSize = maxSize, Size = UDim2.fromOffset(40, maxSize + 6), LayoutOrder = order, ZIndex = z}, row)
+		new("UIStroke", {Thickness = 2.6, Color = C.ink, LineJoinMode = Enum.LineJoinMode.Round}, l)
+		return l
+	end
+	local buyL = word(1, opt.Word or "Buy")
+	local icon = UI.icon("robux", row, UDim2.fromOffset(maxSize, maxSize), nil, C.white)
+	icon.LayoutOrder = 2
+	local numL = word(3, "")
+	local function textW(text, size)
+		local ok, bounds = pcall(TextService.GetTextSize, TextService, text, size, FIT_FONT, Vector2.new(100000, 100000))
+		return ok and bounds.X or (#text * size * 0.6)
+	end
+	local function layout()
+		local abs = face.AbsoluteSize
+		local s = (UI.root and face:IsDescendantOf(UI.root)) and UI.scale or 1
+		local optW = (opt.Size and opt.Size.X.Offset > 0) and opt.Size.X.Offset or 140
+		local optH = (opt.Size and opt.Size.Y.Offset > 0) and (opt.Size.Y.Offset - (opt.Depth or 4)) or 40
+		local w = (abs.X > 2) and (abs.X / s) or optW
+		local h = (abs.Y > 2) and (abs.Y / s) or optH
+		local size = math.max(10, math.min(maxSize, math.floor((h - 8) / 1.15)))
+		while size > 10 and textW(buyL.Text, size) + textW(numL.Text, size) + size * 1.15 + 14 > w - 18 do
+			size = size - 1
+		end
+		for _, l in ipairs({buyL, numL}) do
+			l.TextSize = size
+			l.Size = UDim2.fromOffset(math.ceil(textW(l.Text, size)) + 4, size + 6)
+		end
+		local isz = math.floor(size * 1.15)
+		icon.Size = UDim2.fromOffset(isz, isz)
+	end
+	face:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		if row.Visible then layout() end
+	end)
+	local plainSetText = b.setText
+	function b.setText(t)
+		row.Visible = false
+		plainSetText(t)
+	end
+	function b.setPrice(p)
+		numL.Text = Config.StripEmoji(tostring(p or ""))
+		plainSetText("")
+		row.Visible = true
+		layout()
+	end
+	b.priceRow, b.robuxIcon = row, icon
+	return b
+end
+
+------------------------------------------------------------------
 -- ROOT: one ScreenGui for the HUD + windows, scaled with ONE UIScale.
 -- The root frame is made 1/scale big, so after scaling it fills the screen exactly and
 -- everything inside can be laid out in "1280 x 720" coordinates.
@@ -851,28 +1033,24 @@ function UI.window(opt)
 	local size = opt.Size or Vector2.new(760, 470)
 	-- the window itself is dark "glass": you see the (blurred) world through it
 	local frame = new("Frame", {Name = opt.Name, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(size.X, size.Y),
-		BackgroundColor3 = rgb(22, 26, 34), BackgroundTransparency = 0.22, Visible = false, ZIndex = 60}, UI.root)
+		BackgroundColor3 = rgb(15, 17, 22), BackgroundTransparency = 0.2, Visible = false, ZIndex = 60}, UI.root)
 	UI.corner(frame, 14)
-	UI.stroke(frame, 3.5, rgb(12, 12, 18), 0.1)
+	UI.stroke(frame, 3.5, rgb(10, 10, 14), 0.05)
 	local scale = new("UIScale", {}, frame)
 	-- title bar: a bright strip covered in lego studs
 	local header = new("Frame", {Name = "Header", Position = UDim2.fromOffset(4, 4), Size = UDim2.new(1, -8, 0, 58), BackgroundColor3 = color, BorderSizePixel = 0, ClipsDescendants = true}, frame)
 	UI.corner(header, 10)
 	UI.stroke(header, 3, color:Lerp(C.black, 0.45))
-	UI.shade(header, color:Lerp(C.white, 0.22), color:Lerp(C.black, 0.06))
-	for k = 0, math.floor(size.X / 30) do
-		local stud = new("Frame", {Position = UDim2.fromOffset(4 + k * 30, (k % 2 == 0) and 7 or 31), Size = UDim2.fromOffset(20, 20),
-			BackgroundColor3 = color:Lerp(C.white, 0.45), BackgroundTransparency = 0.55, BorderSizePixel = 0, ZIndex = 1}, header)
-		UI.corner(stud, true)
-	end
+	UI.shade(header, color:Lerp(C.white, 0.18), color:Lerp(C.black, 0.06))
+	UI.studs(header, 0.5, {Tile = 64, Corner = 10, Area = Vector2.new(size.X - 8, 58), ZIndex = 1, Max = 40})
 	local sheen = new("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.white, BackgroundTransparency = 1, BorderSizePixel = 0}, header)
 	local sheenGrad = new("UIGradient", {Rotation = 20, Offset = Vector2.new(-1, 0)}, sheen)
 	local titleX = 18
 	if opt.Icon then
-		-- a big icon that pokes out over the top-left corner
-		local ic = UI.icon(opt.Icon, frame, UDim2.fromOffset(74, 74), UDim2.fromOffset(-14, -14), color:Lerp(C.white, 0.15))
+		-- a big icon that pokes out over the top-left corner (the Shop's basket, like the inspiration)
+		local ic = UI.icon(opt.Icon, frame, UDim2.fromOffset(80, 80), UDim2.fromOffset(-16, -14), color:Lerp(C.white, 0.15))
 		ic.ZIndex = 8
-		titleX = 68
+		titleX = 72
 	end
 	local title = UI.label(header, opt.Title or opt.Name, {Position = UDim2.fromOffset(titleX, 6), Size = UDim2.new(1, -titleX - 70, 0, 46),
 		TextXAlignment = Enum.TextXAlignment.Left, Max = 40, Stroke = 3.5, TextWrapped = false})

@@ -177,6 +177,15 @@ S.CollectionService:AddTag(tag, "ShelfTag")
 hrp.CFrame = plot:FindFirstChild("Stand1").CFrame
 H.step(20, 0.05)
 task.wait(0.5)
+-- the world signs on your own plot (both faces each): the Plot Upgrades board at the end of the
+-- path + the "Speed per Step" row on the treadmill sign (their buttons get pressed below)
+for _, name in ipairs({"UpgradeBoardCards", "TreadUpgradeButton"}) do
+	local faces = 0
+	for _, g in ipairs(pg:GetChildren()) do
+		if g.Name == name then faces += 1 end
+	end
+	if faces ~= 2 then table.insert(H.errors, "world sign " .. name .. ": expected 2 faces, got " .. faces) end
+end
 -- shop purchase granted
 fireClient("ShopEvent", "Granted", {title = "2x Cash", msg = "Thanks"})
 -- fling
