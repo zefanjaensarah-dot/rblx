@@ -17,11 +17,12 @@ function Tutorial.init(ctx)
 
 	local STEPS = {
 		{title = "Steal a box", icon = "box", color = C.orange, tip = "Run into the warehouse and hold E on a box to steal it!"},
-		{title = "Bring it home", icon = "home", color = C.green, tip = "Carry it to YOUR plot and click the grass beside your booths to place it."},
+		{title = "Bring it home", icon = "home", color = C.green, tip = "Carry it to YOUR plot and click the floor to place it."},
 		{title = "Open your box", icon = "gift", color = C.pink, tip = "Your box is unboxing... When it says OPEN!, press E on it."},
 		{title = "Get faster", icon = "boot", color = C.cyan, tip = "Step onto your treadmill - it runs for you and makes you faster!"},
-		{title = "Earn cash", icon = "coin", color = C.gold, tip = "Shoppers buy from your booths. Save up for an upgrade!"},
-		{title = "Upgrade it!", icon = "star", color = C.purple, tip = "You have enough! Click the green price on the Speed per Step sign next to your treadmill."},
+		{title = "Earn cash", icon = "coin", color = C.gold, tip = "Shoppers buy from your shelves. Save up for an upgrade!"},
+		{title = "Upgrade it!", icon = "star", color = C.purple, tip = "You have enough! Click the green UPGRADE button on the sign next to your treadmill."},
+		{title = "Upgrade your shop", icon = "shop", color = C.blue, tip = "Use the big UPGRADES board on your plot: more shoppers, bigger payouts, faster unboxing!"},
 	}
 
 	------------------------------------------------------------------
@@ -274,33 +275,21 @@ function Tutorial.init(ctx)
 		end
 		return best
 	end
-	-- step 2 points at the free grass beside your booths (where boxes may be placed - the server's
-	-- Config.PlaceZone), not the middle of the plot (that's the sand path): an invisible marker there
-	local placeMarker = new("Part", {Name = "TutorialPlaceSpot", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false,
-		Transparency = 1, Size = Vector3.new(1, 1, 1)}, pointerFolder)
-	local function placeSpotOn(plot)
-		local origin = plot and plot:FindFirstChild("PlotOrigin")
-		if not origin then return plot and plot:FindFirstChild("PlotFloor") end
-		local Z = Config.PlaceZone
-		local u = Z and -(Z.uMin + Z.uMax) / 2 or -32 -- the left side (the treadmill is on the right)
-		local w = Z and (Z.wMin + Z.wMax) / 2 or 46
-		placeMarker.CFrame = origin.CFrame * CFrame.new(u, 1, -w)
-		return placeMarker
-	end
 	-- where each step points
 	local function targetFor(step, hrp, plot, root)
 		if step == 1 then
 			if hrp and hrp.Position.Z > Config.Layout.frontZ + 2 then return root and root:FindFirstChild("TutorialDoorPoint", true) end
 			return hrp and nearestStarterBox(hrp, root)
 		elseif step == 2 then
-			return placeSpotOn(plot)
+			return plot and plot:FindFirstChild("PlotFloor")
 		elseif step == 3 then
 			local f = plot and plot:FindFirstChild("Unboxing")
 			return f and f:GetChildren()[1]
 		elseif step == 4 then
 			return plot and plot:FindFirstChild("TreadBelt", true)
 		elseif step == 5 then
-			-- (the old shop sign is gone: the Plot Upgrades board at the end of your path)
+			return plot and plot:FindFirstChild("ShopSign")
+		elseif step == 7 then
 			return plot and plot:FindFirstChild("UpgradeBoard", true)
 		end
 		return plot and plot:FindFirstChild("TreadConsole", true)
@@ -373,8 +362,12 @@ function Tutorial.init(ctx)
 					local unboxing = next(data.Unboxing or {}) ~= nil
 					local cost = Config.TreadmillCost(1)
 					if (data.Treadmill or 1) >= 2 then
-						finish(false)
-						continue
+						-- last step: buy something on the UPGRADES board
+						if (data.Customers or 1) >= 2 or (data.PayoutLevel or 1) >= 2 or (data.UnboxLevel or 1) >= 2 then
+							finish(false)
+							continue
+						end
+						step = 7
 					elseif #data.Items == 0 and not unboxing then
 						step = carrying and 2 or 1
 					elseif #data.Items == 0 then

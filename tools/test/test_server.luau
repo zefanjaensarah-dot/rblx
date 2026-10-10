@@ -95,47 +95,6 @@ check(plotName ~= nil, "player got a plot: " .. tostring(plotName))
 local plot = root.Plots:FindFirstChild(plotName)
 local origin = plot:FindFirstChild("PlotOrigin").CFrame
 local function plotPos(u, w) return (origin * CF(u, 0.5, -w)).Position end
-local function plotLocal(pos) local lp = origin:PointToObjectSpace(pos) return lp.X, -lp.Z end
-local Cfg = H.requireModule(game:GetService("ReplicatedStorage"):FindFirstChild("StealABoxConfig"))
-check(Cfg.MaxStands == 20 and Cfg.BaseStands == 8, "a plot has 20 booth slots, 8 to start")
-check(player:GetAttribute("Stands") == Cfg.BaseStands, "starts with 8 slots: " .. tostring(player:GetAttribute("Stands")))
--- booths: slots 1-10 in a line on the left of the sand path, 11-20 on the right, each with its glow strip
-do
-	local okBooths, why = true, ""
-	for s = 1, Cfg.MaxStands do
-		local stand, top = plot:FindFirstChild("Stand" .. s), plot:FindFirstChild("StandTop" .. s)
-		if not stand or not top or stand:GetAttribute("Slot") ~= s then
-			okBooths, why = false, "Stand" .. s .. " / StandTop" .. s .. " missing"
-			break
-		end
-		local u, w = plotLocal(stand.Position)
-		local wantU = (s <= 10) and -12 or 12
-		local wantW = 12 + 8 * ((s - 1) % 10)
-		if math.abs(u - wantU) > 1.5 or math.abs(w - wantW) > 1.5 then
-			okBooths, why = false, ("Stand%d at u=%.1f w=%.1f"):format(s, u, w)
-			break
-		end
-	end
-	check(okBooths, "20 booths along the path (left 1-10, right 11-20) " .. why)
-	check(plot:FindFirstChild("Stand" .. (Cfg.MaxStands + 1)) == nil, "no slot past the last booth")
-	-- every locked slot shows "Slot N" + its price above the booth (like the reference)
-	local tags = {}
-	for s = Cfg.BaseStands + 1, Cfg.MaxStands do
-		local stand = plot:FindFirstChild("Stand" .. s)
-		if stand and stand:FindFirstChild("ItemTag") then table.insert(tags, s) end
-	end
-	check(#tags == Cfg.MaxStands - Cfg.BaseStands and tags[1] == Cfg.BaseStands + 1 and tags[#tags] == Cfg.MaxStands,
-		"price tags over every locked slot: " .. table.concat(tags, ","))
-	local tag9 = plot:FindFirstChild("Stand9") and plot.Stand9:FindFirstChild("ItemTag")
-	local price9 = tag9 and tag9:FindFirstChild("Pill") and tag9.Pill:FindFirstChild("Income")
-	check(tag9 and tag9.Name and tag9:FindFirstChild("Name").Text == "Slot 9" and price9 and price9.Text == "$" .. Cfg.FormatCommas(Cfg.StandCost(8)),
-		"Slot 9 label + price: " .. tostring(price9 and price9.Text))
-	-- where boxes may go: the grass on both sides, never the path, booths, treadmill or Expand pad
-	check(Cfg.PlotPlaceSpot(-30, 30, 4) ~= nil and Cfg.PlotPlaceSpot(30, 60, 4) ~= nil, "free grass on both sides is placeable")
-	check(Cfg.PlotPlaceSpot(0, 30, 4) == nil and Cfg.PlotPlaceSpot(-12, 20, 4) == nil and Cfg.PlotPlaceSpot(12, 60, 4) == nil, "path + booths are not placeable")
-	check(Cfg.PlotPlaceSpot(34, 25, 4) == nil and Cfg.PlotPlaceSpot(-34, 4, 4) == nil, "treadmill + Expand pad are not placeable")
-	check(select(2, Cfg.PlotPlaceSpot(34, 25, 4)) == "treadmill" and Cfg.StandCost(19) > Cfg.StandCost(8), "zone reasons + slot prices")
-end
 local r = invoke(player, "GetData")
 check(r.ok and r.data and r.data.Cash == 0, "GetData returns a fresh profile")
 local prof = r.data
@@ -153,8 +112,8 @@ check(player:GetAttribute("Carrying") ~= nil, "carrying a box: " .. tostring(pla
 check(player:GetAttribute("Chased") == true, "the guardian woke up")
 for _ = 1, 30 do H.step(1, 0.05) end
 -- teleporting home with it is caught by the anti-teleport check
-hrp.CFrame = CF(plotPos(-30, 30) + V3(0, 3, 0))
-H.signalFor(remotes:FindFirstChild("PlaceBox"), "OnServerEvent"):Fire(player, plotPos(-30, 30))
+hrp.CFrame = CF(plotPos(0, 30) + V3(0, 3, 0))
+H.signalFor(remotes:FindFirstChild("PlaceBox"), "OnServerEvent"):Fire(player, plotPos(0, 30))
 check(player:GetAttribute("Carrying") == nil, "teleporting with a box drops it")
 -- second try: walk home at a believable speed
 boxes = root:FindFirstChild("ActiveBoxes"):GetChildren()
@@ -169,23 +128,11 @@ check(player:GetAttribute("Carrying") ~= nil, "picked up another box")
 H.maxWait = 1
 task.wait(5.5)
 H.maxWait = 0.05
-hrp.CFrame = CF(plotPos(-30, 30) + V3(0, 3, 0))
-local placeEvent = H.signalFor(remotes:FindFirstChild("PlaceBox"), "OnServerEvent")
--- the sand path, a booth and the treadmill are off limits: the box stays in your hands
-placeEvent:Fire(player, plotPos(0, 30))
-check(player:GetAttribute("Carrying") ~= nil, "can't place a box on the sand path")
-placeEvent:Fire(player, plotPos(-12, 20))
-check(player:GetAttribute("Carrying") ~= nil, "can't place a box on a booth")
-placeEvent:Fire(player, plotPos(34, 25))
-check(player:GetAttribute("Carrying") ~= nil, "can't place a box on the treadmill")
-placeEvent:Fire(player, plotPos(-30, 30))
-check(player:GetAttribute("Carrying") == nil, "placed the box on the grass beside the booths")
+hrp.CFrame = CF(plotPos(0, 30) + V3(0, 3, 0))
+H.signalFor(remotes:FindFirstChild("PlaceBox"), "OnServerEvent"):Fire(player, plotPos(0, 30))
+check(player:GetAttribute("Carrying") == nil, "placed the box on the plot")
 prof = invoke(player, "GetData").data
 check(next(prof.Unboxing) ~= nil, "box is unboxing")
-do
-	local _, e = next(prof.Unboxing)
-	check(e and e.u <= -20 and e.u >= -44 and e.w >= 5 and e.w <= 88, "the box sits on the free grass: u=" .. tostring(e and e.u) .. " w=" .. tostring(e and e.w))
-end
 check((prof.Stolen or 0) == 1, "stolen counter = 1")
 
 -- Studio test purchase: Instant Unbox -> open it
@@ -203,20 +150,7 @@ check(prof.Items[1] and Config == nil, "item: " .. tostring(prof.Items[1] and pr
 -- shoppers pay
 local income = player:GetAttribute("Income") or 0
 check(income > 0, "income attribute: " .. income)
-local walkedIn, offPath, offAt = false, false, ""
-for _ = 1, 400 do
-	H.step(1, 0.1)
-	-- shoppers walk up the sand path, step up to the booth, and walk back out (never over the booths)
-	for _, m in ipairs((root:FindFirstChild("Customers") and root.Customers:GetChildren()) or {}) do
-		local mh = m:FindFirstChild("HumanoidRootPart")
-		if mh and math.abs(mh.Position.Y - origin.Position.Y) < 20 then
-			local u, w = plotLocal(mh.Position)
-			if w > 6 and w < 90 and math.abs(u) < 8 then walkedIn = true end
-			if w > 1 and w < 90 and math.abs(u) > 7.6 then offPath, offAt = true, ("u=%.1f w=%.1f"):format(u, w) end
-		end
-	end
-end
-check(walkedIn and not offPath, "shoppers walk along the sand path " .. offAt)
+for _ = 1, 400 do H.step(1, 0.1) end
 task.wait(0.3)
 prof = invoke(player, "GetData").data
 check((player:GetAttribute("Cash") or 0) > 0, "shoppers paid: $" .. tostring(player:GetAttribute("Cash")))
@@ -293,17 +227,6 @@ check(decision == Enum.ProductPurchaseDecision.NotProcessedYet, "player not in s
 decision = S.MarketplaceService.ProcessReceipt({PlayerId = 1, ProductId = 2222, PurchaseId = "receipt-4"})
 check(decision == Enum.ProductPurchaseDecision.PurchaseGranted, "lucky box receipt granted")
 
--- boxes given by codes / daily rewards / the Lucky Box land on the free grass too
-do
-	local p0 = invoke(player, "GetData").data
-	local n, bad = 0, nil
-	for _, e in pairs(p0.Unboxing) do
-		n = n + 1
-		if not Cfg.PlotPlaceSpot(e.u, e.w, 0) then bad = ("u=%.1f w=%.1f"):format(e.u, e.w) end
-	end
-	check(n >= 1 and bad == nil, n .. " unboxing boxes, all on the free grass " .. tostring(bad or ""))
-end
-
 -- items
 task.wait(0.15)
 check(invoke(player, "EquipAll").ok, "Equip Best")
@@ -359,21 +282,7 @@ local standsBefore = player:GetAttribute("Stands")
 prof = invoke(player, "GetData").data
 prof.Cash = prof.Cash + Config.StandCost(standsBefore)
 r = invoke(player, "BuyStand")
-check(r.ok and player:GetAttribute("Stands") == standsBefore + 1, "bought a slot: " .. tostring(r.msg))
-do
-	local have = player:GetAttribute("Stands")
-	local bought = plot:FindFirstChild("Stand" .. have)
-	local boughtTag = bought and bought:FindFirstChild("ItemTag")
-	local nextTag = plot:FindFirstChild("Stand" .. (have + 1))
-	local farTag = plot:FindFirstChild("Stand" .. (have + 4))
-	check(nextTag and nextTag:FindFirstChild("ItemTag") and farTag and farTag:FindFirstChild("ItemTag") and not (boughtTag and boughtTag:FindFirstChild("Pill")),
-		"the bought slot loses its price tag, the locked ones keep theirs")
-	-- you can never have more than 20 slots
-	prof.ExtraStands = Config.MaxStands - Config.BaseStands
-	task.wait(0.15)
-	r = invoke(player, "BuyStand")
-	check(not r.ok and player:GetAttribute("Stands") == have, "no slot past 20: " .. tostring(r.msg))
-end
+check(r.ok and player:GetAttribute("Stands") == standsBefore + 1, "bought a shelf spot: " .. tostring(r.msg))
 task.wait(0.15)
 check(invoke(player, "OpenAll").opened ~= nil, "open all answers")
 task.wait(0.15)
@@ -406,16 +315,6 @@ task.wait(0.15)
 check(invoke(player, "SetSetting", "Effects", false).ok and invoke(player, "GetData").data.Settings.Effects == false, "settings are stored")
 task.wait(0.15)
 check(invoke(player, "Warehouse").ok and invoke(player, "Home").ok ~= nil, "teleports")
-do
-	-- leaderboards (no DataStores in the test: only players in this server)
-	local board = root:FindFirstChild("Lobby") and root.Lobby:FindFirstChild("BoardTopMoney")
-	local lgui = board and board:FindFirstChild("LeaderboardGui")
-	local row1 = lgui and lgui:FindFirstChild("List") and lgui.List:FindFirstChild("Row1")
-	check(row1 and row1.Visible and row1:FindFirstChild("PlayerName").Text == "Tester" and row1:FindFirstChild("Rank").Text == "#1"
-		and row1:FindFirstChild("Value").Text:sub(1, 1) == "$" and row1:FindFirstChild("Avatar") ~= nil, "Cash Leaderboard row #1 shows the player")
-	local row2 = row1 and lgui.List:FindFirstChild("Row2")
-	check(row2 and not row2.Visible, "empty leaderboard rows are hidden")
-end
 task.wait(0.15)
 task.wait(0.15)
 

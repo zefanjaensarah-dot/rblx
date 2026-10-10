@@ -189,7 +189,7 @@ local function sync(player)
 	SyncEvent:FireClient(player, prof)
 end
 
--- booth slots you can use: 8 to start, buy more with "+1 Equip" or the Expand Plot pad
+-- shelf spots you can use: 8 to start, buy more with "+1 Equip"
 local function unlockedStands(prof)
 	return math.min(Config.MaxStands, Config.BaseStands + (prof and prof.ExtraStands or 0))
 end
@@ -697,14 +697,8 @@ local function setOwnerVisuals(plot, player)
 		local vip = player ~= nil and hasPass(player, "VIP")
 		for _, g in ipairs(sign:GetChildren()) do
 			if g:IsA("SurfaceGui") and g:FindFirstChild("Label") then
-				-- "Zeefie's Plot", like the real game
-				g.Label.Text = player and ((vip and "VIP " or "") .. player.DisplayName .. "'s Plot") or "Empty Plot"
+				g.Label.Text = player and ((vip and "VIP " or "") .. player.DisplayName .. "'s Base") or "Empty Base"
 				g.Label.TextColor3 = vip and Color3.fromRGB(255, 215, 60) or Color3.new(1, 1, 1)
-				-- the white avatar circle next to the name (if the sign has one)
-				local av = g:FindFirstChild("Avatar", true)
-				if av and av:IsA("ImageLabel") then
-					av.Image = (player and player.UserId > 0) and ("rbxthumb://type=AvatarHeadShot&id=" .. player.UserId .. "&w=150&h=150") or ""
-				end
 			end
 		end
 	end
@@ -923,10 +917,7 @@ end
 -- where a product's 3D model stands on a shelf slot (facing the shoppers)
 local function shelfModelCF(stand, item)
 	local sc = Config.ShelfItemScale(item)
-	-- booths 1-10 stand left of the sand path (face +u), 11-20 right of it (face -u)
-	local slot = tonumber(stand:GetAttribute("Slot")) or 1
-	local turn = (slot <= Config.MaxStands / 2) and -math.pi / 2 or math.pi / 2
-	return stand.CFrame * CFrame.new(0, 0.15 + 1.05 * sc, 0) * CFrame.Angles(0, turn, 0), sc
+	return stand.CFrame * CFrame.new(0, 0.15 + 1.05 * sc, 0) * CFrame.Angles(0, math.pi, 0), sc
 end
 local function shelfFolder(plot)
 	local f = plot:FindFirstChild("ShelfModels")
@@ -945,48 +936,8 @@ local function refreshExpandPad(player)
 	local price = pad and pad:FindFirstChild("ExpandGui") and pad.ExpandGui:FindFirstChild("Price")
 	if price and prof then
 		local have = unlockedStands(prof)
-		price.Text = (have >= Config.MaxStands) and "MAXED" or ("$" .. Config.FormatCommas(Config.StandCost(have)))
+		price.Text = (have >= Config.MaxStands) and "MAXED" or ("$" .. Config.FormatNum(Config.StandCost(have)))
 	end
-end
-
--- a locked booth slot: "Slot 9" in big white letters with a green "$2,500" pill under it, floating
--- above the booth (like the real game). Sized in studs, so it shrinks with distance.
--- (the reference also shows a yellow Robux pill: slots can't be bought with Robux here, so it's left out)
-local function slotPriceTag(stand, s, price)
-	local bb = billboard(stand, "ItemTag", UDim2.fromScale(7, 3.4), Vector3.new(0, 4.6, 0))
-	bb.MaxDistance = 90
-	bb.AlwaysOnTop = false
-	bb.LightInfluence = 0
-	local title = label(bb, "Name", "Slot " .. s, Color3.new(1, 1, 1), UDim2.fromScale(1, 0.52), UDim2.fromScale(0, 0), 3)
-	local ts = title:FindFirstChildOfClass("UIStroke")
-	if ts then
-		ts.Color = Color3.fromRGB(22, 22, 28)
-		ts.LineJoinMode = Enum.LineJoinMode.Round
-	end
-	local pill = Instance.new("Frame")
-	pill.Name = "Pill"
-	pill.AnchorPoint = Vector2.new(0.5, 0)
-	pill.Position = UDim2.fromScale(0.5, 0.56)
-	pill.Size = UDim2.fromScale(0.84, 0.4)
-	pill.BackgroundColor3 = Color3.new(1, 1, 1)
-	pill.BorderSizePixel = 0
-	pill.Parent = bb
-	local pc = Instance.new("UICorner")
-	pc.CornerRadius = UDim.new(0.32, 0)
-	pc.Parent = pill
-	local grad = Instance.new("UIGradient") -- light green on top, deeper green below
-	grad.Color = ColorSequence.new(Color3.fromRGB(140, 255, 125), Color3.fromRGB(40, 222, 92))
-	grad.Rotation = 90
-	grad.Parent = pill
-	local rim = Instance.new("UIStroke")
-	rim.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	rim.Color = Color3.fromRGB(18, 140, 52)
-	rim.Thickness = 3
-	rim.Parent = pill
-	local priceL = label(pill, "Income", "$" .. Config.FormatCommas(price), Color3.new(1, 1, 1), UDim2.fromScale(0.88, 0.76), UDim2.fromScale(0.06, 0.12), 2)
-	local ps = priceL:FindFirstChildOfClass("UIStroke")
-	if ps then ps.LineJoinMode = Enum.LineJoinMode.Round end
-	return bb
 end
 
 local function refreshStands(player)
@@ -1008,14 +959,20 @@ local function refreshStands(player)
 			end
 			if top then CollectionService:RemoveTag(top, "RainbowBox") end
 			local idx = onStand[s]
-			-- (the booth itself keeps its wood colour: locked booths look the same, like the real game)
 			if s > unlocked then
-				if top then top.Color = Color3.fromRGB(60, 60, 70) end -- locked slot (grey strip): buy it at the Expand pad
-				slotPriceTag(stand, s, Config.StandCost(s - 1)) -- (every locked slot down the line, like the reference)
+				stand.Color = Color3.fromRGB(90, 90, 100)
+				if top then top.Color = Color3.fromRGB(60, 60, 70) end -- locked spot (grey): buy it with "+1 Equip"
+				if s == unlocked + 1 then -- the next slot you can buy shows its price
+					local bb = billboard(stand, "ItemTag", UDim2.fromScale(6, 2.4), Vector3.new(0, 2.8, 0))
+					bb.MaxDistance = 70
+					label(bb, "Name", "Slot " .. s, Color3.new(1, 1, 1), UDim2.fromScale(1, 0.5), UDim2.fromScale(0, 0), 2)
+					label(bb, "Income", "$" .. Config.FormatNum(Config.StandCost(unlocked)), Color3.fromRGB(124, 255, 106), UDim2.fromScale(1, 0.5), UDim2.fromScale(0, 0.5), 2.5)
+				end
 			elseif idx then
 				local item = prof.Items[idx]
 				local def = Config.Items[item.id]
 				local mut = Config.GetMutation(item.mutation)
+				stand.Color = Color3.fromRGB(245, 245, 250)
 				if top then
 					top.Color = mut.color or Config.ItemTiers[def.tier].color
 					if item.mutation == "Rainbow" then CollectionService:AddTag(top, "RainbowBox") end
@@ -1031,7 +988,7 @@ local function refreshStands(player)
 					for _, p in ipairs(model:GetChildren()) do CollectionService:AddTag(p, "RainbowBox") end
 				end
 				-- name + $/s tag. It starts hidden: each client only shows the tag of the ONE product
-				-- you're standing closest to (20 tags along the path would pile up into unreadable text)
+				-- you're standing closest to (45 tags on a shelf would pile up into unreadable text)
 				local bb = billboard(stand, "ItemTag", UDim2.fromScale(4.4, 1.2), Vector3.new(0, 0.9 + 2.1 * sc, 1))
 				bb.MaxDistance = 30
 				bb.Enabled = false
@@ -1068,9 +1025,10 @@ local function refreshStands(player)
 					end
 				end)
 			else
+				stand.Color = Color3.fromRGB(245, 245, 250)
 				local plotCol = plot:FindFirstChild("GlowStrip")
 				if top then top.Color = plotCol and plotCol.Color or Color3.fromRGB(200, 200, 200) end
-				-- empty slot: just the glowing strip, no label (20 labels would be too busy)
+				-- empty spot: just the glowing strip, no label (45 spots would be too busy)
 			end
 		end
 	end
@@ -1180,13 +1138,9 @@ openBox = function(player, slot)
 	end)
 end
 
--- where on a plot boxes may be placed (plot-local): the free grass on both sides of the plot,
--- outside the booth fences (Config.PlaceZone / Config.PlotPlaceSpot - the client uses the same rules)
-local PLACE_MSG = {
-	floor = "Place the box on the grass beside your booths (not on the path)!",
-	treadmill = "That spot is for your treadmill - place the box somewhere else!",
-	expand = "That spot is for the Expand pad - place the box somewhere else!",
-}
+-- where on a plot boxes may be placed (plot-local): open floor in front of the shop shelf
+local PLACE_U = Config.Court.plotWidth / 2 - 4
+local PLACE_W_MIN, PLACE_W_MAX = 5, 40 -- (the Expand pad sits at w 44, the podium rows start at w 46)
 
 local function placeBoxAt(player, worldPos)
 	local prof, c, plot = profiles[player], carrying[player], playerPlot[player]
@@ -1213,14 +1167,17 @@ local function placeBoxAt(player, worldPos)
 			notify(player, msg, RED)
 		end
 	end
-	local newSize = boxSizeFor(c)
-	if math.abs(u) > Config.Court.plotWidth / 2 + 2 or w < -2 or w > Config.Court.plotDepth + 2 then
+	if math.abs(u) > PLACE_U or w < PLACE_W_MIN or w > PLACE_W_MAX then
 		return nope("Click on the open floor of YOUR plot to place the box!")
 	end
-	local pu, pw = Config.PlotPlaceSpot(u, w, newSize)
-	if not pu then return nope(PLACE_MSG[pw] or PLACE_MSG.floor) end
-	u, w = pu, pw
+	if u > 26 and w < 42 then
+		return nope("That spot is for your treadmill - place the box somewhere else!")
+	end
+	if u < -26 and w < 15 then
+		return nope("That spot is for your customer kiosk - place the box somewhere else!")
+	end
 	local count = 0
+	local newSize = boxSizeFor(c)
 	for _, e in pairs(prof.Unboxing) do
 		count = count + 1
 		local d = math.sqrt(((e.u or 0) - u) ^ 2 + ((e.w or 0) - w) ^ 2)
@@ -1270,8 +1227,8 @@ local function placeBoxAt(player, worldPos)
 	releaseCarry(player)
 	refreshPads(player)
 	sync(player)
+	FXEvent:FireAllClients("Stash", worldPos, 4)
 	local placed = unboxFolder(plot):FindFirstChild("UnboxBox" .. key)
-	FXEvent:FireAllClients("Stash", placed and placed.Position or worldPos, 4)
 	if placed then playSound(placed, "rbxasset://sounds/electronicpingshort.wav", 0.8, 0.8) end
 	local mins = math.floor(duration / 60)
 	notify(player, label2 .. " is unboxing! Ready in " .. (mins > 0 and (mins .. "m ") or "") .. (duration % 60) .. "s", GREEN)
@@ -1288,26 +1245,20 @@ local giftClaimed = {} -- [player] = {[index] = true}
 -- find an open spot on the plot floor for a box of this size (nil if the plot is full)
 local function freePlotSpot(prof, size)
 	local spots = {}
-	local Z = Config.PlaceZone
-	local h = size / 2
-	-- a grid over the free grass on both sides (Config.PlaceZone), minus the treadmill + Expand pad
-	for w = Z.wMin + h + 0.5, Z.wMax - h, 6 do
-		for au = Z.uMin + h + 0.5, Z.uMax - h, 6 do
-			for _, sign in ipairs({-1, 1}) do
-				local u, w2 = Config.PlotPlaceSpot(sign * au, w, size)
-				local blocked = u == nil
-				if not blocked then
-					for _, e in pairs(prof.Unboxing) do
-						local d = math.sqrt(((e.u or 0) - u) ^ 2 + ((e.w or 0) - w2) ^ 2)
-						if d < (boxSizeFor(e) + size) / 2 + 2 then blocked = true break end
-					end
+	for w = PLACE_W_MIN + 4, PLACE_W_MAX - 4, 6 do
+		for u = -PLACE_U + 4, PLACE_U - 4, 6 do
+			local blocked = (u > 26 and w < 42) or (u < -26 and w < 15)
+			if not blocked then
+				for _, e in pairs(prof.Unboxing) do
+					local d = math.sqrt(((e.u or 0) - u) ^ 2 + ((e.w or 0) - w) ^ 2)
+					if d < (boxSizeFor(e) + size) / 2 + 2 then blocked = true break end
 				end
-				if not blocked then table.insert(spots, {u, w2}) end
 			end
+			if not blocked then table.insert(spots, {u, w}) end
 		end
 	end
 	if #spots == 0 then return nil end
-	-- prefer spots near the front of the plot, close to the path, so you see your gift
+	-- prefer spots near the front middle of the plot so you see your gift
 	table.sort(spots, function(a, b) return math.abs(a[1]) + a[2] * 0.6 < math.abs(b[1]) + b[2] * 0.6 end)
 	local pickN = math.min(#spots, 6)
 	local sp = spots[math.random(1, pickN)]
@@ -1651,7 +1602,6 @@ local SOLID = {
 	-- floors you walk on
 	CourtBase = true, WarehouseBase = true, Tile = true, Street = true, Floor = true, Ground = true,
 	Cliff = true, CliffLow = true, LobbySpawn = true, PlotFloor = true, TreadBase = true, TreadBelt = true, BoothFloor = true,
-	Road = true, Sidewalk = true, Path = true, SandPath = true, PathTile = true, GrassTile = true, -- (or give a part the attribute Solid = true)
 	-- the borders of the map + the roof over the lanes
 	Wall = true, Barrier = true, BackWall = true, CourtWall = true, WallCap = true, BackWallCap = true, Ceiling = true,
 }
@@ -2085,29 +2035,24 @@ local function spawnCustomer(player, plot, standIndex, item)
 	local function toWorld(u, w) local p = (frame * CFrame.new(u, 0, -w)).Position return Vector3.new(p.X, 0, p.Z) end
 	local function toLocal(pos) local p = frame:PointToObjectSpace(pos) return p.X, -p.Z end
 	local su, sw = toLocal(stand.Position)
-	-- the booths stand in a line on each side of the sand path, facing it (slots 1-10 left, 11-20 right)
-	local bside = (su < 0) and -1 or 1
-	local laneIn, laneOut = bside * 2.8, bside * 0.9 -- walk on the half of the path next to their booth
-	local front = su * 0.55 -- the edge of the path, right in front of the booth's seat
-	local side = (math.random() < 0.5) and -1 or 1 -- which way along the street they come from / leave to
+	local aisle = su + 4.75 -- walk between the podium columns
+	local side = (math.random() < 0.5) and -1 or 1
 	local W = {}
 	local function go(u, w, wait, action) table.insert(W, {pos = toWorld(u, w), wait = wait or 0, action = action}) end
-	-- in through the gate, up the path to their booth, take the product (pays instantly), back out
-	go(side * 3, -6)
-	go(laneIn, 3)
-	go(laneIn, sw)
-	go(front, sw, 1.2, "take")
-	go(laneOut, sw)
-	go(laneOut, 3)
-	go(side * 3, -6)
+	-- walk in through the gate, straight to the shelf, grab it (pays instantly), leave
+	go(side * 5, -6)
+	go(side * 3, 4)
+	go(aisle, 45)
+	go(aisle, sw - 4.5)
+	go(su, sw - 3.6, 1.2, "take")
+	go(aisle, sw - 4.5)
+	go(aisle, 45)
+	go(side * 3, 4)
+	go(side * 5, -6)
 	go(side * 50, -10, 0, "leave")
-	-- feet on the plot floor inside the plot, on the street outside it
-	local floorPart = plot:FindFirstChild("PlotFloor")
-	local insideY = (floorPart and floorPart:IsA("BasePart")) and (floorPart.Position.Y + floorPart.Size.Y / 2) or (frame.Position.Y + 0.4)
-	local outsideY = frame.Position.Y + 0.3
 	local function ground(pos)
 		local _, w = toLocal(pos)
-		return (w > 0 and w < Config.Court.plotDepth) and insideY or outsideY
+		return (w > 0 and w < Config.Court.plotDepth) and 0.4 or 0.3
 	end
 
 	local model, parts, think, held = makeCustomerModel(player)
@@ -2169,7 +2114,7 @@ local function customerAction(c, action)
 				end
 			end
 			if stand then
-				FXEvent:FireAllClients("Sale", stand.Position + Vector3.new(0, 2.5, 0), 1)
+				FXEvent:FireAllClients("Sale", stand.Position + Vector3.new(0, 2, -2), 1)
 				playSound(stand, "rbxasset://sounds/electronicpingshort.wav", 0.35, 1.8)
 			end
 		end
@@ -2664,7 +2609,7 @@ ActionFunc.OnServerInvoke = function(player, action, arg, expectedId)
 		if not item then return {ok = false, msg = "Item not found."} end
 		if item.stand then return {ok = false, msg = "Already on display."} end
 		local st = freeStand(prof)
-		if not st then return {ok = false, msg = "All " .. unlockedStands(prof) .. " slots are full! Take one back first."} end
+		if not st then return {ok = false, msg = "All " .. unlockedStands(prof) .. " shelf spots are full! Take one back first."} end
 		item.stand = st
 		refreshStands(player)
 		sync(player)
@@ -2739,15 +2684,15 @@ ActionFunc.OnServerInvoke = function(player, action, arg, expectedId)
 
 	elseif action == "BuyStand" then
 		local have = unlockedStands(prof)
-		if have >= Config.MaxStands then return {ok = false, msg = "All " .. Config.MaxStands .. " slots are unlocked!"} end
+		if have >= Config.MaxStands then return {ok = false, msg = "Your shelves are full!"} end
 		local cost = Config.StandCost(have)
-		if prof.Cash < cost then return {ok = false, msg = "You need $" .. Config.FormatNum(cost) .. " for another slot!"} end
+		if prof.Cash < cost then return {ok = false, msg = "You need $" .. Config.FormatNum(cost) .. " for another shelf spot!"} end
 		prof.Cash = prof.Cash - cost
 		prof.ExtraStands = (prof.ExtraStands or 0) + 1
 		refreshStands(player)
 		refreshIncome(player)
 		sync(player)
-		return {ok = true, msg = "+1 slot! (" .. unlockedStands(prof) .. " now)", stands = unlockedStands(prof)}
+		return {ok = true, msg = "+1 shelf spot! (" .. unlockedStands(prof) .. " now)", stands = unlockedStands(prof)}
 
 	elseif action == "OpenBox" then
 		local e = prof.Unboxing[tostring(arg)]
@@ -3200,8 +3145,7 @@ task.spawn(function()
 				notifyAll("Good morning! The warehouse is open again - go steal!", Color3.fromRGB(255, 230, 120))
 				pcall(function()
 					Lighting.ClockTime = 6
-					-- back to the map's clear, bright day (the same values StealABoxMap sets)
-					TweenService:Create(Lighting, TweenInfo.new(6), {ClockTime = 14, Brightness = 2.4, OutdoorAmbient = Color3.fromRGB(140, 140, 150)}):Play()
+					TweenService:Create(Lighting, TweenInfo.new(6), {ClockTime = 14, Brightness = 3, OutdoorAmbient = Color3.fromRGB(175, 175, 185)}):Play()
 				end)
 			end
 		end
@@ -3391,20 +3335,9 @@ local function readSave(prof, data)
 	prof.FreeGiftAt = tonumber(data.FreeGiftAt) or 0
 	prof.ExtraStands = math.max(0, math.floor(tonumber(data.ExtraStands) or 0))
 	if legacyStands then prof.ExtraStands = legacyStands end
-	-- a plot has 20 booth slots now (it used to have 45 podiums): slots bought past the last
-	-- booth are paid back at the price they cost back then
-	local maxExtra = Config.MaxStands - Config.BaseStands
-	local refund = 0
-	if not legacyStands then
-		for n = Config.BaseStands + maxExtra, Config.BaseStands + prof.ExtraStands - 1 do
-			if n > Config.BaseStands + 60 then break end -- (nobody bought that many)
-			refund = refund + math.floor(2500 * 1.45 ^ (n - Config.BaseStands))
-		end
-	end
-	prof.ExtraStands = math.min(prof.ExtraStands, maxExtra)
 	if type(data.Quests) == "table" then prof.Quests = data.Quests end
 	prof.TutorialDone = (data.TutorialDone == true) or ((tonumber(data.Treadmill) or 1) >= 2)
-	prof.Cash = math.max(0, tonumber(data.Cash) or 0) + refund
+	prof.Cash = math.max(0, tonumber(data.Cash) or 0)
 	prof.Stolen = tonumber(data.Stolen) or 0
 	prof.Treadmill = math.clamp(tonumber(data.Treadmill) or 1, 1, Config.Treadmill.max)
 	prof.Customers = math.clamp(tonumber(data.Customers) or 1, 1, Config.CustomerMax)
@@ -3422,8 +3355,7 @@ local function readSave(prof, data)
 	local usedStands = {}
 	for _, it in ipairs(prof.Items) do
 		if it.stand ~= nil then
-			-- (slots past the last booth - plots had 45 podiums before - go back to the backpack too)
-			if type(it.stand) ~= "number" or it.stand % 1 ~= 0 or usedStands[it.stand] or it.stand < 1 or it.stand > Config.MaxStands then
+			if type(it.stand) ~= "number" or usedStands[it.stand] or it.stand < 1 or it.stand > Config.MaxStands then
 				it.stand = nil
 			else
 				usedStands[it.stand] = true
@@ -3519,30 +3451,20 @@ local function onPlayerAdded(player)
 			lastOnline = readSave(prof, data)
 		end
 	end
-	-- boxes that were unboxing when you left: keep them on the free grass of your plot. Old saves
-	-- (fixed pads, or the old plot layout) can have them on the path / booths: those get a new spot.
-	local fixed, moved = {}, {}
+	-- older saves had fixed pads: give those boxes a spot on the floor
+	local fixed, n = {}, 0
 	for k, e in pairs(prof.Unboxing) do
 		if type(e) == "table" and e.id and Config.Boxes[e.id] then
+			n = n + 1
 			e.readyAt = tonumber(e.readyAt) or 0
 			e.duration = tonumber(e.duration) or 1
-			e.size = Config.GetSize(e.size).id
-			e.mutation = Config.GetMutation(e.mutation).id
-			local u, w = Config.PlotPlaceSpot(tonumber(e.u), tonumber(e.w), boxSizeFor(e))
-			if u then
-				e.u, e.w = u, w
-				for _, other in pairs(fixed) do
-					if math.sqrt((other.u - u) ^ 2 + (other.w - w) ^ 2) < (boxSizeFor(other) + boxSizeFor(e)) / 2 + 2 then u = nil break end
-				end
+			if e.u == nil then
+				e.u = -30 + ((n - 1) % 6) * 12
+				e.w = 30 + math.floor((n - 1) / 6) * 12
+				e.rot = 0
 			end
-			if u then fixed[tostring(k)] = e else table.insert(moved, {tostring(k), e}) end
+			fixed[tostring(k)] = e
 		end
-	end
-	for _, km in ipairs(moved) do
-		local e = km[2]
-		local u, w = freePlotSpot({Unboxing = fixed}, boxSizeFor(e))
-		e.u, e.w, e.rot = u or -30, w or 50, tonumber(e.rot) or 0
-		fixed[km[1]] = e
 	end
 	prof.Unboxing = fixed
 	if not player.Parent then return end
@@ -3669,84 +3591,41 @@ do
 		names[userId] = ok and n or ("Player " .. userId)
 		return names[userId]
 	end
-	-- each board gets 10 rows like the real game: a dark rounded row with "#1" (gold / white / orange
-	-- for the top 3), a round avatar headshot, the name, and the value on the right. The title
-	-- ("Cash Leaderboard") is on its own plate built by the map, so the list starts at the top.
-	local ROW_BG = Color3.fromRGB(40, 36, 30)
-	local RANK_COLORS = {Color3.fromRGB(255, 214, 10), Color3.fromRGB(235, 235, 240), Color3.fromRGB(255, 150, 30)}
-	local function rowText(parent, name, pos, size, align, color)
-		local t = Instance.new("TextLabel")
-		t.Name = name
-		t.BackgroundTransparency = 1
-		t.Position = pos
-		t.Size = size
-		t.FontFace = Config.Font
-		t.TextScaled = true
-		t.TextColor3 = color or Color3.new(1, 1, 1)
-		t.TextXAlignment = align
-		t.Text = ""
-		local st = Instance.new("UIStroke")
-		st.Thickness = 1.2
-		st.Color = Color3.fromRGB(10, 10, 12)
-		st.Parent = t
-		t.Parent = parent
-		return t
-	end
+	-- each board gets 10 rows of text
 	for _, b in ipairs(boards) do
 		if b.part then
 			local gui = Instance.new("SurfaceGui")
-			gui.Name = "LeaderboardGui"
 			gui.Face = Enum.NormalId.Front
 			gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-			gui.PixelsPerStud = 24
+			gui.PixelsPerStud = 20
 			gui.LightInfluence = 0
 			gui.Parent = b.part
 			local list = Instance.new("Frame")
-			list.Name = "List"
 			list.BackgroundTransparency = 1
-			list.Position = UDim2.fromScale(0.045, 0.025)
-			list.Size = UDim2.fromScale(0.91, 0.95)
+			list.Size = UDim2.new(0.86, 0, 0.78, 0)
+			list.Position = UDim2.fromScale(0.07, 0.17)
 			list.Parent = gui
 			local layout = Instance.new("UIListLayout")
-			layout.Padding = UDim.new(0.012, 0)
-			layout.SortOrder = Enum.SortOrder.LayoutOrder
-			layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+			layout.Padding = UDim.new(0.01, 0)
 			layout.Parent = list
 			b.rows = {}
 			for i = 1, 10 do
-				local row = Instance.new("Frame")
-				row.Name = "Row" .. i
-				row.Size = UDim2.fromScale(1, 0.0885)
-				row.BackgroundColor3 = ROW_BG
-				row.BackgroundTransparency = 0.03
-				row.BorderSizePixel = 0
-				row.LayoutOrder = i
-				row.Visible = false
+				local row = Instance.new("TextLabel")
+				row.Size = UDim2.new(1, 0, 0.09, 0)
+				row.BackgroundColor3 = ({Color3.fromRGB(255, 190, 40), Color3.fromRGB(185, 195, 215), Color3.fromRGB(205, 125, 60)})[i] or Color3.fromRGB(50, 56, 80)
+				row.BackgroundTransparency = 0.15
 				local rc = Instance.new("UICorner")
-				rc.CornerRadius = UDim.new(0.38, 0)
+				rc.CornerRadius = UDim.new(0.25, 0)
 				rc.Parent = row
-				local rs = Instance.new("UIStroke") -- the thin black outline around every row
-				rs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-				rs.Color = Color3.fromRGB(6, 8, 10)
-				rs.Thickness = 2
-				rs.Parent = row
-				local rank = rowText(row, "Rank", UDim2.fromScale(0.035, 0.16), UDim2.fromScale(0.13, 0.68), Enum.TextXAlignment.Left, RANK_COLORS[i])
-				rank.Text = "#" .. i
-				local avatar = Instance.new("ImageLabel")
-				avatar.Name = "Avatar"
-				avatar.BackgroundTransparency = 1
-				avatar.AnchorPoint = Vector2.new(0, 0.5)
-				avatar.Position = UDim2.fromScale(0.17, 0.5)
-				avatar.Size = UDim2.fromScale(0.84, 0.84)
-				avatar.SizeConstraint = Enum.SizeConstraint.RelativeYY -- a square as tall as the row
-				avatar.ScaleType = Enum.ScaleType.Fit
-				avatar.Image = ""
-				avatar.Parent = row
-				local ac = Instance.new("UICorner")
-				ac.CornerRadius = UDim.new(0.5, 0)
-				ac.Parent = avatar
-				rowText(row, "PlayerName", UDim2.fromScale(0.29, 0.2), UDim2.fromScale(0.41, 0.6), Enum.TextXAlignment.Left)
-				rowText(row, "Value", UDim2.fromScale(0.68, 0.16), UDim2.fromScale(0.285, 0.68), Enum.TextXAlignment.Right)
+				row.FontFace = Config.Font
+				row.TextScaled = true
+				row.TextColor3 = Color3.new(1, 1, 1)
+				row.TextXAlignment = Enum.TextXAlignment.Left
+				row.Text = ""
+				row.LayoutOrder = i
+				local stroke = Instance.new("UIStroke")
+				stroke.Thickness = 2
+				stroke.Parent = row
 				row.Parent = list
 				b.rows[i] = row
 			end
@@ -3763,7 +3642,7 @@ do
 				for _, p in ipairs(Players:GetPlayers()) do
 					local prof = profiles[p]
 					if prof then
-						best[p.UserId] = {name = p.Name, value = tonumber(prof[b.key]) or 0, userId = p.UserId}
+						best[p.UserId] = {name = p.Name, value = tonumber(prof[b.key]) or 0}
 						if b.store and not dontSave[p] then
 							pcall(function() b.store:SetAsync(tostring(p.UserId), encode(tonumber(prof[b.key]) or 0)) end)
 						end
@@ -3774,8 +3653,7 @@ do
 						local page = b.store:GetSortedAsync(false, 10):GetCurrentPage()
 						for _, e in ipairs(page) do
 							local id = tonumber(e.key)
-							-- (the key of every entry is the player's UserId)
-							if id and not best[id] then best[id] = {name = nameOf(id), value = decode(tonumber(e.value) or 0), userId = id} end
+							if id and not best[id] then best[id] = {name = nameOf(id), value = decode(e.value)} end
 						end
 					end)
 				end
@@ -3784,14 +3662,8 @@ do
 				table.sort(list, function(x, y) return x.value > y.value end)
 				for i, row in ipairs(b.rows) do
 					local e = list[i]
-					row.Visible = e ~= nil
-					if e then
-						row.PlayerName.Text = tostring(e.name)
-						row.Value.Text = b.prefix .. Config.FormatNum(e.value)
-						local id = tonumber(e.userId) or 0
-						local img = (id > 0) and ("rbxthumb://type=AvatarHeadShot&id=" .. id .. "&w=48&h=48") or ""
-						if row.Avatar.Image ~= img then row.Avatar.Image = img end
-					end
+					row.Text = e and ("  #" .. i .. "  " .. e.name .. "   " .. b.prefix .. Config.FormatNum(e.value)) or ""
+					row.BackgroundTransparency = e and 0.15 or 1
 				end
 			end
 		end
@@ -3806,7 +3678,7 @@ do
 end
 
 ------------------------------------------------------------------
--- EXPAND PLOT pads: click your green pad to buy the next booth slot
+-- EXPAND PLOT pads: stand on your green pad and press E to buy the next podium slot
 ------------------------------------------------------------------
 do
 	for _, plot in ipairs(plotsFolder:GetChildren()) do
@@ -3861,23 +3733,6 @@ do
 			end
 			ReplicatedStorage:SetAttribute("IconSheet" .. i, image)
 		end)
-	end
-	-- the same for the UI textures (studs, sunburst): clients read UITexture_<key>
-	for key, id in pairs(Config.UITextures or {}) do
-		if tonumber(id) and tonumber(id) > 0 then
-			task.spawn(function()
-				local image = "rbxassetid://" .. math.floor(tonumber(id))
-				if okIS and InsertService then
-					local ok, model = pcall(function() return InsertService:LoadAsset(tonumber(id)) end)
-					if ok and model then
-						local d = model:FindFirstChildWhichIsA("Decal", true)
-						if d and d.Texture ~= "" then image = d.Texture end
-						model:Destroy()
-					end
-				end
-				ReplicatedStorage:SetAttribute("UITexture_" .. key, image)
-			end)
-		end
 	end
 end
 

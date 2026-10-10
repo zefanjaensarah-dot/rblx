@@ -177,32 +177,6 @@ S.CollectionService:AddTag(tag, "ShelfTag")
 hrp.CFrame = plot:FindFirstChild("Stand1").CFrame
 H.step(20, 0.05)
 task.wait(0.5)
--- the world signs on your own plot (both faces each): the Plot Upgrades board at the end of the
--- path + the "Speed per Step" row on the treadmill sign (their buttons get pressed below)
-for _, name in ipairs({"UpgradeBoardCards", "TreadUpgradeButton"}) do
-	local faces = 0
-	for _, g in ipairs(pg:GetChildren()) do
-		if g.Name == name then faces += 1 end
-	end
-	if faces ~= 2 then table.insert(H.errors, "world sign " .. name .. ": expected 2 faces, got " .. faces) end
-end
--- the treadmill sign has two wide rows (like the reference), and every yellow pill shows a Robux price
-for _, g in ipairs(pg:GetChildren()) do
-	if g.Name == "TreadUpgradeButton" or g.Name == "UpgradeBoardCards" then
-		local rows = 0
-		for _, row in ipairs(g:GetChildren()) do
-			if string.sub(row.Name, 1, 4) == "Row_" then
-				rows += 1
-				local pill = row:FindFirstChild("RobuxPill")
-				local l = pill and pill:FindFirstChildOfClass("TextLabel")
-				if not l or not (tonumber((string.gsub(l.Text, "%a", ""))) or l.Text == "MAX") then
-					table.insert(H.errors, g.Name .. " " .. row.Name .. ": Robux pill shows '" .. tostring(l and l.Text) .. "'")
-				end
-			end
-		end
-		if g.Name == "TreadUpgradeButton" and rows ~= 2 then table.insert(H.errors, "treadmill sign: expected 2 rows, got " .. rows) end
-	end
-end
 -- shop purchase granted
 fireClient("ShopEvent", "Granted", {title = "2x Cash", msg = "Thanks"})
 -- fling

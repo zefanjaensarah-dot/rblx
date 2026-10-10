@@ -199,7 +199,7 @@ function Hud.init(ctx)
 		if not r.ok and r.msg then ctx.notify(r.msg, C.red) end
 	end)
 
-	-- the bouncing Speed offer: "2x SPEED" + a green pill with the Robux icon and the price
+	-- the bouncing Speed offer: "2x SPEED - R$ 3"
 	-- (a fixed slot with the card centred in it: the card bounces around its centre and
 	-- always stays inside the slot, so it never pokes off the screen edge)
 	local offer = box(right, {Size = UDim2.fromOffset(206, 108), LayoutOrder = 2})
@@ -213,9 +213,7 @@ function Hud.init(ctx)
 	UI.corner(offerPrice, true)
 	UI.stroke(offerPrice, 2.5)
 	UI.vivid(offerPrice, UI.rgb(60, 205, 80))
-	local offerRobux = UI.ICON.new("robux", offerPrice, UDim2.fromOffset(26, 26), UDim2.new(0, 6, 0.5, 0), C.white, Vector2.new(0, 0.5)) -- (white glyph: the sheet icon is green)
-	offerRobux.ZIndex = offerBtn.face.ZIndex + 3
-	local offerPriceL = UI.label(offerPrice, "3", {Size = UDim2.new(1, -42, 1, -4), Position = UDim2.fromOffset(34, 2), Max = 24, Stroke = 2.4, TextWrapped = false,
+	local offerPriceL = UI.label(offerPrice, "R$ 3", {Size = UDim2.new(1, -10, 1, -4), Position = UDim2.fromOffset(5, 2), Max = 24, Stroke = 2.4, TextWrapped = false,
 		ZIndex = offerBtn.face.ZIndex + 3})
 	local offerSheen = new("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.white, BorderSizePixel = 0, ZIndex = offerBtn.face.ZIndex + 4}, offerBtn.face)
 	UI.corner(offerSheen, 18)
@@ -233,7 +231,7 @@ function Hud.init(ctx)
 		offer.Visible = i ~= nil
 		if b then
 			UI.setText(offerTitle, fmt(b.mult) .. "x SPEED")
-			UI.setText(offerPriceL, fmt(ctx.price("Speed" .. i, b.robux)))
+			UI.setText(offerPriceL, "R$ " .. fmt(ctx.price("Speed" .. i, b.robux)))
 		end
 	end
 	hud.drawOffer = drawOffer
