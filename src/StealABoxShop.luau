@@ -41,15 +41,15 @@ Shop.Passes = {
 --   kind "luckybox":   a guaranteed Rainbow box (1 in 5 is Galaxy!) from your best warehouse area
 --   kind "serverluck": 2x mutation luck for EVERYONE in the server (see Config.ServerLuck)
 Shop.Products = {
-	{key = "CashS",  id = 0, robux = 25,  kind = "cash", name = "Pile of Cash",     minutes = 10,  base = 2500,   icon = "cash"},
-	{key = "CashM",  id = 0, robux = 75,  kind = "cash", name = "Bag of Cash",      minutes = 45,  base = 15000,  icon = "bag"},
-	{key = "CashL",  id = 0, robux = 199, kind = "cash", name = "Vault of Cash",    minutes = 180, base = 120000, icon = "coin"},
-	{key = "CashXL", id = 0, robux = 499, kind = "cash", name = "Mountain of Cash", minutes = 720, base = 900000, icon = "star"},
-	{key = "SkipUnbox",  id = 0, robux = 39,  kind = "skip",       name = "Instant Unbox", icon = "clock",
+	{key = "CashS",  id = 2026130420, robux = 25,  kind = "cash", name = "Pile of Cash",     minutes = 10,  base = 2500,   icon = "cash"},
+	{key = "CashM",  id = 2027072413, robux = 75,  kind = "cash", name = "Bag of Cash",      minutes = 45,  base = 15000,  icon = "bag"},
+	{key = "CashL",  id = 2025860415, robux = 199, kind = "cash", name = "Vault of Cash",    minutes = 180, base = 120000, icon = "coin"},
+	{key = "CashXL", id = 2025584439, robux = 499, kind = "cash", name = "Mountain of Cash", minutes = 720, base = 900000, icon = "star"},
+	{key = "SkipUnbox",  id = 2026892405, robux = 39,  kind = "skip",       name = "Instant Unbox", icon = "clock",
 		desc = "Every box on your plot is ready to open NOW."},
-	{key = "LuckyBox",   id = 0, robux = 99,  kind = "luckybox",   name = "Lucky Box",     icon = "gift",
+	{key = "LuckyBox",   id = 2026760392, robux = 99,  kind = "luckybox",   name = "Lucky Box",     icon = "gift",
 		desc = "A guaranteed RAINBOW box (1 in 5 is GALAXY!) from your best area."},
-	{key = "ServerLuck", id = 0, robux = 149, kind = "serverluck", name = "Server Luck",   icon = "clover",
+	{key = "ServerLuck", id = 2025986457, robux = 149, kind = "serverluck", name = "Server Luck",   icon = "clover",
 		desc = "2x mutation luck for EVERYONE in the server for 15 minutes. Stacks!"},
 }
 
