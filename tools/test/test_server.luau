@@ -18,6 +18,8 @@ local realGame = roblox.deserializePlace(fs.readFile(process.args[1]))
 local shopModule = realGame:GetService("ReplicatedStorage"):FindFirstChild("StealABoxShop")
 local src = shopModule.Source
 src = src:gsub('{key = "CashS",  id = 0,', '{key = "CashS",  id = 1111,', 1)
+src = src:gsub('(key = "%w+",%s+id = )%d+', '%10') -- (passes/products back to id 0: Studio test grants)
+src = src:gsub('{key = "CashS",  id = 0,', '{key = "CashS",  id = 1111,', 1)
 src = src:gsub('{key = "LuckyBox",   id = 0,', '{key = "LuckyBox",   id = 2222,', 1)
 shopModule.Source = src
 

@@ -23,15 +23,15 @@ local Shop = {}
 
 -- GAME PASSES: bought once, kept forever
 Shop.Passes = {
-	{key = "VIP",        id = 0, robux = 249, name = "VIP",           icon = "crown",  color = Color3.fromRGB(255, 200, 40),
+	{key = "VIP",        id = 2022698386, robux = 249, name = "VIP",           icon = "crown",  color = Color3.fromRGB(255, 200, 40),
 		desc = "+50% cash forever, the exclusive VIP Trail and a gold VIP sign on your base."},
-	{key = "DoubleCash", id = 0, robux = 199, name = "2x Cash",       icon = "cash",   color = Color3.fromRGB(90, 220, 70),
+	{key = "DoubleCash", id = 2021768374, robux = 199, name = "2x Cash",       icon = "cash",   color = Color3.fromRGB(90, 220, 70),
 		desc = "Every shopper pays you DOUBLE. Forever!"},
-	{key = "FastUnbox",  id = 0, robux = 149, name = "Fast Unboxing", icon = "clock",  color = Color3.fromRGB(70, 170, 255),
+	{key = "FastUnbox",  id = 2023232367, robux = 149, name = "Fast Unboxing", icon = "clock",  color = Color3.fromRGB(70, 170, 255),
 		desc = "Your boxes open 2x faster."},
-	{key = "Lucky",      id = 0, robux = 179, name = "Lucky Hands",   icon = "clover", color = Color3.fromRGB(80, 220, 120),
+	{key = "Lucky",      id = 2022398364, robux = 179, name = "Lucky Hands",   icon = "clover", color = Color3.fromRGB(80, 220, 120),
 		desc = "Plain boxes you bring home get a free extra roll for a mutation."},
-	{key = "BigBase",    id = 0, robux = 99,  name = "Bigger Base",   icon = "box",    color = Color3.fromRGB(255, 150, 60),
+	{key = "BigBase",    id = 2021672384, robux = 99,  name = "Bigger Base",   icon = "box",    color = Color3.fromRGB(255, 150, 60),
 		desc = "Unbox 4 more boxes at the same time (10 instead of 6)."},
 }
 
