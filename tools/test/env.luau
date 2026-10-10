@@ -208,7 +208,7 @@ local DEFAULTS = {
 	AbsoluteSize = roblox.Vector2.new(1280, 720), AbsolutePosition = roblox.Vector2.new(10, 10), ViewportSize = roblox.Vector2.new(1280, 720),
 	AbsoluteRotation = 0, TextBounds = roblox.Vector2.new(50, 18), Health = 100, MaxHealth = 100, AbsoluteCanvasSize = roblox.Vector2.new(100, 100),
 	CanvasPosition = roblox.Vector2.new(0, 0), AssemblyLinearVelocity = roblox.Vector3.new(), AssemblyAngularVelocity = roblox.Vector3.new(),
-	LocalTransparencyModifier = 0, Text = "",
+	LocalTransparencyModifier = 0, Text = "", TimeLength = 0, IsPlaying = false, IsLoaded = false,
 }
 -- properties we keep on the proxy instead (Lune can't set/read them)
 local SHADOW = {OnServerInvoke = true, OnClientInvoke = true, CurrentCamera = true, Character = true, UserId = true, DisplayName = true, LocalPlayer = true, LocalTransparencyModifier = true,
