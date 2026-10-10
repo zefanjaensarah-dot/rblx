@@ -303,7 +303,7 @@ end
 Config.SpeedBoostTiers = 10
 Config.SpeedBoosts = {}
 for n = 1, Config.SpeedBoostTiers do
-	Config.SpeedBoosts[n] = {mult = 2 ^ n, robux = 3 * 2 ^ (n - 1)}
+	Config.SpeedBoosts[n] = {mult = 2 ^ n, robux = ({3, 6, 12, 24, 48, 96, 192, 384, 668, 1336})[n] or 3 * 2 ^ (n - 1)}
 end
 Config.RobuxIcon = utf8.char(0xE002) -- the Robux symbol in Roblox fonts
 

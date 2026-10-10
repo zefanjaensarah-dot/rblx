@@ -201,13 +201,11 @@ income2 = player:GetAttribute("Income") or 0
 check(income2 >= income * 2.9, "VIP + 2x cash multiply income: " .. income .. " -> " .. income2)
 
 -- products (Studio test grants)
-for _, key in ipairs({"CashM", "LuckyBox", "ServerLuck", "Speed1", "Speed2"}) do
+for _, key in ipairs({"CashM", "LuckyBox", "ServerLuck"}) do -- (speed boosts have real ids now: Studio shows the real purchase)
 	task.wait(0.15)
 	r = invoke(player, "BuyProduct", key)
 	check(r.ok, "product " .. key .. ": " .. tostring(r.msg))
 end
-task.wait(0.15)
-check(not invoke(player, "BuyProduct", "Speed1").ok, "can't buy a speed tier twice")
 task.wait(0.15)
 check(not invoke(player, "BuyProduct", "Speed5").ok, "speed tiers in order")
 check((game:GetService("ReplicatedStorage"):GetAttribute("ServerLuckUntil") or 0) > 0, "server luck is on")
