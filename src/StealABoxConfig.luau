@@ -518,7 +518,10 @@ Config.R15Anims = { -- Roblox's own R15 animations (the default Animate script's
 	wave = "rbxassetid://507770239",
 	dance = "rbxassetid://507771019",
 }
-Config.BaconHairId = 63690008 -- "Pal Hair", the classic bacon hair (made by Roblox)
+Config.BaconHairId = 63690008
+-- BACKGROUND MUSIC ("Morning Mood"): paste the audio id from Studio's Toolbox (Audio) here. 0 = no music.
+Config.MusicId = 0
+Config.MusicVolume = 0.3 -- "Pal Hair", the classic bacon hair (made by Roblox)
 
 function Config.MakeR6(opt)
 	local s = opt.scale or 1

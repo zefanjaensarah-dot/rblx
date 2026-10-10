@@ -133,6 +133,7 @@ local function outline(part, thickness)
 end
 
 local function playSound(parent, id, volume, speed)
+	if string.find(id, "electronicping", 1, true) then return end -- (no more beeps)
 	local s = Instance.new("Sound")
 	s.SoundId = id
 	s.Volume = volume or 0.6
@@ -1377,6 +1378,16 @@ end
 -- instant unbox, lucky box, server luck). Every ID lives in ReplicatedStorage > StealABoxShop.
 -- While an ID is 0 the item is free in Studio (for testing) and "not on sale" in real servers.
 ------------------------------------------------------------------
+-- speed boosts may have been made as game passes instead of developer products: find out once per id
+local speedPassCache = {}
+function speedIsPass(id)
+	if speedPassCache[id] == nil then
+		local okProduct = pcall(function() return MarketplaceService:GetProductInfo(id, Enum.InfoType.Product) end)
+		local okPass = (not okProduct) and pcall(function() return MarketplaceService:GetProductInfo(id, Enum.InfoType.GamePass) end)
+		speedPassCache[id] = (not okProduct) and okPass or false
+	end
+	return speedPassCache[id]
+end
 local productByKey = {}  -- [key] = product
 local productById = {}   -- [developer product id] = product
 for _, p in ipairs(Shop.Products) do productByKey[p.key] = p end
@@ -1462,6 +1473,41 @@ local function grantSpeedBoost(player, tier)
 	return true
 end
 
+-- speed boosts made as game passes: buying one grants it; owning one gives it back every time you join
+MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, purchased)
+	if not purchased or not player.Parent then return end
+	for n, id in ipairs(Shop.SpeedBoostIds) do
+		if id ~= 0 and id == passId then grantSpeedBoost(player, n) end
+	end
+end)
+task.spawn(function()
+	local done = {}
+	while true do
+		task.wait(3)
+		for _, p in ipairs(Players:GetPlayers()) do
+			local prof = profiles[p]
+			if prof and not done[p] then
+				done[p] = true
+				task.spawn(function()
+					for n, id in ipairs(Shop.SpeedBoostIds) do
+						local b = Config.SpeedBoosts[n]
+						if id ~= 0 and b and (prof.SpeedBoost or 1) < b.mult and speedIsPass(id) then
+							local ok, owns = pcall(function() return MarketplaceService:UserOwnsGamePassAsync(p.UserId, id) end)
+							if ok and owns then
+								prof.SpeedBoost = math.max(prof.SpeedBoost or 1, b.mult)
+								p:SetAttribute("SpeedBoost", prof.SpeedBoost)
+								if refreshTreadmill then refreshTreadmill(p) end
+								sync(p)
+							end
+						end
+					end
+				end)
+			end
+		end
+		for p in pairs(done) do if not p.Parent then done[p] = nil end end
+	end
+end)
+
 -- boxes bought with Robux wait here if your plot is full, and arrive as soon as there's room
 local function deliverPendingBoxes(player)
 	local prof = profiles[player]
@@ -1538,6 +1584,11 @@ local function buyProduct(player, key)
 			return {ok = ok, msg = ok and "(Studio test: free. Paste the product ID into StealABoxShop to sell it.)" or "Couldn't give that."}
 		end
 		return {ok = false, msg = "This isn't on sale yet - check back soon!"}
+	end
+	if product.kind == "speed" and speedIsPass(product.id) then
+		-- (this speed boost was made as a game pass, not a developer product)
+		local okP = pcall(function() MarketplaceService:PromptGamePassPurchase(player, product.id) end)
+		return {ok = okP, msg = okP and "" or "Couldn't open the purchase window. Try again!"}
 	end
 	local ok = pcall(function() MarketplaceService:PromptProductPurchase(player, product.id) end)
 	return {ok = ok, msg = ok and "" or "Couldn't open the purchase window. Try again!"}
@@ -2560,7 +2611,7 @@ local function redeemCode(player, code)
 end
 
 -- settings the client may store in your save
-local SETTINGS = {Sfx = true, Effects = true, ShelfTags = true}
+local SETTINGS = {Sfx = true, Music = true, Effects = true, ShelfTags = true}
 
 ------------------------------------------------------------------
 local lastAction = {}

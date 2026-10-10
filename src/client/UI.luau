@@ -184,11 +184,8 @@ do
 	local function snd(id, vol, pitch)
 		return new("Sound", {SoundId = id, Volume = vol, PlaybackSpeed = pitch}, SoundService)
 	end
-	SFX.click = snd("rbxasset://sounds/electronicpingshort.wav", 0.22, 2.4)
 	SFX.open = snd("rbxasset://sounds/swoosh.wav", 0.25, 1.5)
 	SFX.close = snd("rbxasset://sounds/swoosh.wav", 0.18, 1.9)
-	SFX.ding = snd("rbxasset://sounds/electronicpingshort.wav", 0.5, 1)
-	SFX.error = snd("rbxasset://sounds/electronicpingshort.wav", 0.3, 0.55)
 	-- play a short copy (so fast repeats overlap instead of cutting off)
 	function SFX.play(name, pitch, vol)
 		if not SFX.enabled then return end

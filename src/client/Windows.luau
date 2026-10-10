@@ -520,7 +520,8 @@ local function buildSettings(ctx)
 	local win = UI.window({Name = "Settings", Title = "Settings", Icon = "gear", Color = C.grey, Size = Vector2.new(600, 476)})
 	local page = win.page
 	local rows = {
-		{key = "Sfx", title = "Sound effects", desc = "Clicks, dings and pops"},
+		{key = "Music", title = "Music", desc = "Background music"},
+		{key = "Sfx", title = "Sound effects", desc = "Whooshes and pops"},
 		{key = "Effects", title = "Screen effects", desc = "Camera shake, cinematic unboxing camera, confetti"},
 		{key = "ShelfTags", title = "Product labels", desc = "Name + $/s over the product you stand closest to"},
 		{key = "SlowMode", title = "Slow mode", desc = "Walk at normal speed (handy on your treadmill)", session = true},

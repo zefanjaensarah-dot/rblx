@@ -62,9 +62,30 @@ local function fire(list)
 	end
 end
 
+-- BACKGROUND MUSIC (Config.MusicId), switched off with Settings > Music
+local music = nil
+do
+	local id = tonumber(Config.MusicId) or 0
+	if id > 0 then
+		music = Instance.new("Sound")
+		music.Name = "StealABoxMusic"
+		music.SoundId = "rbxassetid://" .. id
+		music.Looped = true
+		music.Volume = Config.MusicVolume or 0.3
+		music.Parent = game:GetService("SoundService")
+		music:Play()
+	end
+end
+local function applyMusic()
+	if not music then return end
+	local on = ctx.settings.Music ~= false
+	if on and not music.IsPlaying then music:Play() elseif not on and music.IsPlaying then music:Pause() end
+end
+
 function ctx.setSetting(key, value)
 	ctx.settings[key] = value
 	UI.SFX.enabled = ctx.settings.Sfx ~= false
+	applyMusic()
 	ctx.invoke("SetSetting", key, value)
 end
 
@@ -111,6 +132,7 @@ local function onData(newData)
 			if type(v) == "boolean" then ctx.settings[k] = v end
 		end
 		UI.SFX.enabled = ctx.settings.Sfx ~= false
+		applyMusic()
 		for k, sw in pairs(ctx.settingSwitches or {}) do
 			if ctx.settings[k] ~= nil then sw.set(ctx.settings[k], true) end
 		end
