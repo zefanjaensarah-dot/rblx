@@ -519,9 +519,12 @@ Config.R15Anims = { -- Roblox's own R15 animations (the default Animate script's
 	dance = "rbxassetid://507771019",
 }
 Config.BaconHairId = 63690008
--- BACKGROUND MUSIC ("Morning Mood"): paste the audio id from Studio's Toolbox (Audio) here. 0 = no music.
+-- BACKGROUND MUSIC: "Morning Mood" by Edvard Grieg. The game tries MusicId first, then every id in
+-- MusicIds, and plays the first one that loads (private / deleted audio is skipped). To use your own
+-- copy: Studio > Toolbox > Audio > search "Morning Mood" > right-click > Copy Asset ID > paste below.
 Config.MusicId = 0
-Config.MusicVolume = 0.3 -- "Pal Hair", the classic bacon hair (made by Roblox)
+Config.MusicIds = {}
+Config.MusicVolume = 0.3
 
 function Config.MakeR6(opt)
 	local s = opt.scale or 1

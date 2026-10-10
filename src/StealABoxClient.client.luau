@@ -62,20 +62,44 @@ local function fire(list)
 	end
 end
 
--- BACKGROUND MUSIC (Config.MusicId), switched off with Settings > Music
+-- BACKGROUND MUSIC ("Morning Mood"), switched off with Settings > Music. Tries Config.MusicId, then
+-- every id in Config.MusicIds, and keeps the first one that really loads (private audio fails to load).
 local music = nil
-do
-	local id = tonumber(Config.MusicId) or 0
-	if id > 0 then
-		music = Instance.new("Sound")
-		music.Name = "StealABoxMusic"
-		music.SoundId = "rbxassetid://" .. id
-		music.Looped = true
-		music.Volume = Config.MusicVolume or 0.3
-		music.Parent = game:GetService("SoundService")
-		music:Play()
+task.spawn(function()
+	local ids = {}
+	if (tonumber(Config.MusicId) or 0) > 0 then table.insert(ids, tonumber(Config.MusicId)) end
+	for _, id in ipairs(Config.MusicIds or {}) do
+		if (tonumber(id) or 0) > 0 then table.insert(ids, tonumber(id)) end
 	end
-end
+	local ContentProvider = game:GetService("ContentProvider")
+	for _, id in ipairs(ids) do
+		local s = Instance.new("Sound")
+		s.Name = "StealABoxMusic"
+		s.SoundId = "rbxassetid://" .. id
+		s.Looped = true
+		s.Volume = Config.MusicVolume or 0.3
+		s.Parent = game:GetService("SoundService")
+		local ok = false
+		pcall(function()
+			ContentProvider:PreloadAsync({s}, function(_, status)
+				if status == Enum.AssetFetchStatus.Success then ok = true end
+			end)
+		end)
+		-- (a sound that loaded has a length; give it a moment)
+		local t0 = os.clock()
+		while not (ok and s.TimeLength > 0) and os.clock() - t0 < 4 do
+			if s.TimeLength > 0 then ok = true end
+			task.wait(0.2)
+		end
+		if ok and s.TimeLength > 0 then
+			music = s
+			if ctx.settings.Music ~= false then s:Play() end
+			return
+		end
+		s:Destroy()
+	end
+	if #ids > 0 then warn("[Steal a Box] none of the music ids could be loaded - paste a working one into Config.MusicId") end
+end)
 local function applyMusic()
 	if not music then return end
 	local on = ctx.settings.Music ~= false
