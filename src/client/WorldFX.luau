@@ -1407,6 +1407,18 @@ function WorldFX.init(ctx)
 		end
 	end
 	jumpBtn.Activated:Connect(leaveTreadmill)
+	-- on phones the normal jump button is gone while you run (the controls are off), so a big
+	-- round JUMP OFF button sits where the jump button usually is
+	local touchJumpGui = UI.new("ScreenGui", {Name = "TreadmillJump", ResetOnSpawn = false, DisplayOrder = 50, IgnoreGuiInset = true, Enabled = false}, playerGui)
+	local touchJump = UI.new("TextButton", {Name = "JumpOff", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -24, 1, -24), Size = UDim2.fromOffset(120, 120),
+		BackgroundColor3 = UI.C.orange, Text = "JUMP\nOFF", TextScaled = true, FontFace = UI.Font, TextColor3 = WHITE, AutoButtonColor = true}, touchJumpGui)
+	UI.corner(touchJump, true)
+	UI.stroke(touchJump, 5)
+	UI.new("UIPadding", {PaddingTop = UDim.new(0.2, 0), PaddingBottom = UDim.new(0.2, 0), PaddingLeft = UDim.new(0.15, 0), PaddingRight = UDim.new(0.15, 0)}, touchJump)
+	touchJump.Activated:Connect(leaveTreadmill)
+	jumpHolder:GetPropertyChangedSignal("Visible"):Connect(function()
+		touchJumpGui.Enabled = jumpHolder.Visible and UserInputService.TouchEnabled
+	end)
 	UserInputService.JumpRequest:Connect(function() if treadOn then leaveTreadmill() end end)
 	UserInputService.InputBegan:Connect(function(input)
 		if treadOn and (input.KeyCode == Enum.KeyCode.Space or input.KeyCode == Enum.KeyCode.ButtonA) then leaveTreadmill() end

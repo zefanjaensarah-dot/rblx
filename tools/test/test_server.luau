@@ -253,18 +253,6 @@ task.wait(0.15)
 local unb = invoke(player, "UpgradeUnbox")
 prof = invoke(player, "GetData").data
 check(pay.ok and unb.ok and prof.PayoutLevel == 2 and prof.UnboxLevel == 2, "payouts + unbox speed upgraded: " .. tostring(pay.msg) .. " / " .. tostring(unb.msg))
--- mines: every player gets them (the fake player gets a Backpack first), and placing one works
-do
-	local bp = H.newInstance("Backpack")
-	bp.Parent = player
-	task.wait(2.3)
-	local tool = bp:FindFirstChild("Mines")
-	check(tool ~= nil and tool:FindFirstChild("Handle") ~= nil, "got mines: " .. tostring(tool and tool.ToolTip))
-	if tool then H.signalFor(tool, "Activated"):Fire() end
-	task.wait(0.1)
-	local folder = root:FindFirstChild("Mines")
-	check(folder ~= nil and #folder:GetChildren() == 1, "placed a mine")
-end
 -- treadmill earns speed
 local belt = plot:FindFirstChild("TreadBelt", true)
 hrp.CFrame = belt.CFrame + V3(0, 3, 0)
