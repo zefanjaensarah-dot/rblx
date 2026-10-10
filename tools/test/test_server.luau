@@ -118,13 +118,14 @@ do
 	end
 	check(okBooths, "20 booths along the path (left 1-10, right 11-20) " .. why)
 	check(plot:FindFirstChild("Stand" .. (Cfg.MaxStands + 1)) == nil, "no slot past the last booth")
-	-- the next 3 locked slots show "Slot N" + their price above the booth
+	-- every locked slot shows "Slot N" + its price above the booth (like the reference)
 	local tags = {}
 	for s = Cfg.BaseStands + 1, Cfg.MaxStands do
 		local stand = plot:FindFirstChild("Stand" .. s)
 		if stand and stand:FindFirstChild("ItemTag") then table.insert(tags, s) end
 	end
-	check(#tags == 3 and tags[1] == 9 and tags[3] == 11, "price tags over the next 3 locked slots: " .. table.concat(tags, ","))
+	check(#tags == Cfg.MaxStands - Cfg.BaseStands and tags[1] == Cfg.BaseStands + 1 and tags[#tags] == Cfg.MaxStands,
+		"price tags over every locked slot: " .. table.concat(tags, ","))
 	local tag9 = plot:FindFirstChild("Stand9") and plot.Stand9:FindFirstChild("ItemTag")
 	local price9 = tag9 and tag9:FindFirstChild("Pill") and tag9.Pill:FindFirstChild("Income")
 	check(tag9 and tag9.Name and tag9:FindFirstChild("Name").Text == "Slot 9" and price9 and price9.Text == "$" .. Cfg.FormatCommas(Cfg.StandCost(8)),
@@ -361,9 +362,12 @@ r = invoke(player, "BuyStand")
 check(r.ok and player:GetAttribute("Stands") == standsBefore + 1, "bought a slot: " .. tostring(r.msg))
 do
 	local have = player:GetAttribute("Stands")
+	local bought = plot:FindFirstChild("Stand" .. have)
+	local boughtTag = bought and bought:FindFirstChild("ItemTag")
 	local nextTag = plot:FindFirstChild("Stand" .. (have + 1))
 	local farTag = plot:FindFirstChild("Stand" .. (have + 4))
-	check(nextTag and nextTag:FindFirstChild("ItemTag") and farTag and not farTag:FindFirstChild("ItemTag"), "slot price tags move along after buying a slot")
+	check(nextTag and nextTag:FindFirstChild("ItemTag") and farTag and farTag:FindFirstChild("ItemTag") and not (boughtTag and boughtTag:FindFirstChild("Pill")),
+		"the bought slot loses its price tag, the locked ones keep theirs")
 	-- you can never have more than 20 slots
 	prof.ExtraStands = Config.MaxStands - Config.BaseStands
 	task.wait(0.15)

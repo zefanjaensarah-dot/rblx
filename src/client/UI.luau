@@ -776,9 +776,10 @@ function UI.texture(key)
 		if string.match(v, "^%d+$") then return "rbxassetid://" .. v end
 		return v
 	end
-	local v = norm(UI.TEXTURES[key])
+	-- (the server's attribute first: it turns a Decal id from Config.UITextures into its picture)
+	local v = norm(ReplicatedStorage:GetAttribute("UITexture_" .. key))
+	if not v then v = norm(UI.TEXTURES[key]) end
 	if not v and type(Config.UITextures) == "table" then v = norm(Config.UITextures[key]) end
-	if not v then v = norm(ReplicatedStorage:GetAttribute("UITexture_" .. key)) end
 	return v
 end
 
@@ -825,7 +826,7 @@ function UI.studs(frame, transparency, opt)
 end
 
 -- white light rays behind a big icon (shop cards). Returns the holder: rotate it to spin the rays.
--- opt: Transparency (of the brightest part), Color, Rays (fallback ray count), ZIndex
+-- opt: Transparency (of the brightest part), Color, Rays (fallback ray count, default 12), ZIndex
 function UI.sunburst(parent, size, pos, opt)
 	opt = opt or {}
 	local z = opt.ZIndex or ((parent and parent:IsA("GuiObject")) and parent.ZIndex or 1)
@@ -835,16 +836,19 @@ function UI.sunburst(parent, size, pos, opt)
 		return new("ImageLabel", {Name = "Sunburst", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = pos or UDim2.fromScale(0.5, 0.5),
 			Size = size, Image = image, ImageTransparency = t, ImageColor3 = opt.Color or C.white, ScaleType = Enum.ScaleType.Fit, ZIndex = z}, parent)
 	end
-	-- no picture: a few soft bars through the middle (each bar = two rays, brightest in the centre)
+	-- no picture: soft bars through the middle (each bar = two broad rays). Every bar crosses the
+	-- centre, so each one is dimmer there and brightest a bit further out (no hot spot in the middle).
+	-- (the real rays need assets/Sunburst.png uploaded: see UI.TEXTURES)
 	local holder = new("Frame", {Name = "Sunburst", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = pos or UDim2.fromScale(0.5, 0.5),
 		Size = size, ZIndex = z}, parent)
-	local bars = math.max(2, math.ceil((opt.Rays or 10) / 2))
-	local mid = 1 - (1 - t) * 0.5
+	local bars = math.max(2, math.ceil((opt.Rays or 12) / 2))
+	local mid = 1 - (1 - t) * 0.55
+	local core = 1 - (1 - t) * 0.2
 	for k = 0, bars - 1 do
-		local bar = new("Frame", {Name = "Ray", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.15, 1),
+		local bar = new("Frame", {Name = "Ray", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.2, 1),
 			Rotation = k * 180 / bars, BackgroundColor3 = opt.Color or C.white, BorderSizePixel = 0, ZIndex = z}, holder)
-		new("UIGradient", {Rotation = 90, Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, mid),
-			NumberSequenceKeypoint.new(1, 1)})}, bar)
+		new("UIGradient", {Rotation = 90, Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, mid),
+			NumberSequenceKeypoint.new(0.5, core), NumberSequenceKeypoint.new(0.7, mid), NumberSequenceKeypoint.new(1, 1)})}, bar)
 	end
 	return holder
 end
@@ -861,7 +865,7 @@ function UI.studCard(parent, color, props, area)
 		ColorSequenceKeypoint.new(0.55, color),
 		ColorSequenceKeypoint.new(1, color:Lerp(C.black, 0.1)),
 	})}, f)
-	UI.studs(f, 0.62, {Tile = 84, Corner = 14, Area = area, Max = 42})
+	UI.studs(f, 0.62, {Tile = 32, Corner = 14, Area = area, Max = 150})
 	return f
 end
 
@@ -876,6 +880,13 @@ function UI.buyButton(parent, opt)
 	local maxSize = opt.TextSize or 26
 	local b = UI.button(parent, opt)
 	local face = b.face
+	-- bright all the way down (the plain button darkens its bottom a lot) with a dark orange-brown outline
+	local grad = face:FindFirstChildOfClass("UIGradient")
+	if grad then grad.Color = ColorSequence.new(C.white, rgb(240, 228, 210)) end
+	for _, part in ipairs({face, b.shadow}) do
+		local st = part:FindFirstChildOfClass("UIStroke")
+		if st then st.Color = rgb(120, 72, 10) end
+	end
 	local z = face.ZIndex + 2
 	local row = new("Frame", {Name = "Price", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.new(1, -10, 1, -6), Visible = false, ZIndex = z}, face)
@@ -888,7 +899,7 @@ function UI.buyButton(parent, opt)
 		return l
 	end
 	local buyL = word(1, opt.Word or "Buy")
-	local icon = UI.icon("robux", row, UDim2.fromOffset(maxSize, maxSize), nil, C.white)
+	local icon = UI.ICON.new("robux", row, UDim2.fromOffset(maxSize, maxSize), nil, C.white) -- (the white glyph, not the green sheet icon)
 	icon.LayoutOrder = 2
 	local numL = word(3, "")
 	local function textW(text, size)
@@ -1023,7 +1034,7 @@ end
 
 -- every window gets its own bright header colour (like the inspiration game)
 local WIN_COLORS = {
-	Shop = rgb(255, 196, 30), Index = rgb(40, 170, 255), Items = rgb(80, 205, 60), Unboxing = rgb(255, 140, 40),
+	Shop = rgb(255, 205, 20), Index = rgb(40, 170, 255), Items = rgb(80, 205, 60), Unboxing = rgb(255, 140, 40),
 	Quests = rgb(160, 100, 255), Codes = rgb(255, 100, 170), Settings = rgb(110, 135, 175), Daily = rgb(70, 125, 255),
 	Gifts = rgb(255, 80, 160), Phone = rgb(60, 70, 95), Trails = rgb(255, 110, 200),
 }
@@ -1033,16 +1044,17 @@ function UI.window(opt)
 	local size = opt.Size or Vector2.new(760, 470)
 	-- the window itself is dark "glass": you see the (blurred) world through it
 	local frame = new("Frame", {Name = opt.Name, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(size.X, size.Y),
-		BackgroundColor3 = rgb(15, 17, 22), BackgroundTransparency = 0.2, Visible = false, ZIndex = 60}, UI.root)
+		BackgroundColor3 = rgb(10, 10, 12), BackgroundTransparency = 0.48, Visible = false, ZIndex = 60}, UI.root)
 	UI.corner(frame, 14)
 	UI.stroke(frame, 3.5, rgb(10, 10, 14), 0.05)
 	local scale = new("UIScale", {}, frame)
 	-- title bar: a bright strip covered in lego studs
-	local header = new("Frame", {Name = "Header", Position = UDim2.fromOffset(4, 4), Size = UDim2.new(1, -8, 0, 58), BackgroundColor3 = color, BorderSizePixel = 0, ClipsDescendants = true}, frame)
+	-- (white base: the gradient below gives the final colours, so the colour isn't applied twice)
+	local header = new("Frame", {Name = "Header", Position = UDim2.fromOffset(4, 4), Size = UDim2.new(1, -8, 0, 58), BackgroundColor3 = C.white, BorderSizePixel = 0, ClipsDescendants = true}, frame)
 	UI.corner(header, 10)
 	UI.stroke(header, 3, color:Lerp(C.black, 0.45))
 	UI.shade(header, color:Lerp(C.white, 0.18), color:Lerp(C.black, 0.06))
-	UI.studs(header, 0.5, {Tile = 64, Corner = 10, Area = Vector2.new(size.X - 8, 58), ZIndex = 1, Max = 40})
+	UI.studs(header, 0.5, {Tile = 40, Corner = 10, Area = Vector2.new(size.X - 8, 58), ZIndex = 1, Max = 100})
 	local sheen = new("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.white, BackgroundTransparency = 1, BorderSizePixel = 0}, header)
 	local sheenGrad = new("UIGradient", {Rotation = 20, Offset = Vector2.new(-1, 0)}, sheen)
 	local titleX = 18
@@ -1107,13 +1119,22 @@ function UI.window(opt)
 	local win = {name = opt.Name, frame = frame, body = body, header = header, title = title, scale = scale, sheen = sheenGrad,
 		color = color, pages = {}, tabs = {}, tab = nil, size = size, docked = docked, headerBtn = headerBtn, footerBtn = footerBtn}
 	if opt.Tabs then
-		local tabRow = new("Frame", {Name = "Tabs", Position = UDim2.fromOffset(10, 8), Size = UDim2.new(1, -20, 0, 44), BackgroundTransparency = 1}, body)
+		-- the tabs are small dark see-through pills (the open one in the window's colour), so they
+		-- don't compete with the bright cards under them
+		local TAB_OFF = rgb(20, 20, 20)
+		local tabRow = new("Frame", {Name = "Tabs", Position = UDim2.fromOffset(10, 6), Size = UDim2.new(1, -20, 0, 36), BackgroundTransparency = 1}, body)
 		UI.list(tabRow, 8, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
-		local pageHolder = new("Frame", {Name = "Pages", Position = UDim2.fromOffset(0, 58), Size = UDim2.new(1, 0, 1, -58), BackgroundTransparency = 1, ClipsDescendants = true}, body)
-		local tabW = math.min(170, math.floor((size.X - 40 - (#opt.Tabs - 1) * 8) / #opt.Tabs))
+		local pageHolder = new("Frame", {Name = "Pages", Position = UDim2.fromOffset(0, 48), Size = UDim2.new(1, 0, 1, -48), BackgroundTransparency = 1, ClipsDescendants = true}, body)
+		local tabW = math.min(150, math.floor((size.X - 40 - (#opt.Tabs - 1) * 8) / #opt.Tabs))
 		for i, t in ipairs(opt.Tabs) do
-			local b = UI.button(tabRow, {Text = t.Label, Color = C.cardLight, Size = UDim2.fromOffset(tabW, 42), LayoutOrder = i, Icon = t.Icon, IconSize = 26, TextSize = 20, Depth = 3})
-			b.setColor(rgb(110, 110, 122))
+			local b = UI.button(tabRow, {Text = t.Label, Color = TAB_OFF, Size = UDim2.fromOffset(tabW, 34), LayoutOrder = i, Icon = t.Icon, IconSize = 22, TextSize = 18,
+				Depth = 2, Radius = 16})
+			b.shadow.BackgroundTransparency = 1
+			local shStroke = b.shadow:FindFirstChildOfClass("UIStroke")
+			if shStroke then shStroke.Transparency = 1 end
+			local shine = b.face:FindFirstChild("Shine")
+			if shine then shine:Destroy() end
+			b.face.BackgroundTransparency = 0.5
 			local page = makePage(pageHolder)
 			page.Visible = false
 			win.pages[t.Key] = page
@@ -1124,7 +1145,8 @@ function UI.window(opt)
 			win.tab = key
 			for k, page in pairs(win.pages) do
 				page.Visible = (k == key)
-				win.tabs[k].setColor((k == key) and color or rgb(110, 110, 122))
+				win.tabs[k].setColor((k == key) and color or TAB_OFF)
+				win.tabs[k].face.BackgroundTransparency = (k == key) and 0 or 0.5
 			end
 			if win.onTab then win.onTab(key) end
 		end

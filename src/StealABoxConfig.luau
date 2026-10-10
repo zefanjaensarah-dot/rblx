@@ -1095,6 +1095,10 @@ Config.OldBoxToNew, Config.OldItemToNew = {}, {}
 -- Empty = the game uses emoji icons. (The first uploads, 113628952516465 / 71822476584863, were
 -- screenshots with a light background, so every icon would sit on a white square.)
 Config.IconSheets = {121181129357514, 119828445968430}
+-- UI TEXTURES: assets/StudTile.png (studs on window headers and shop cards) and assets/Sunburst.png
+-- (rays behind the shop icons), uploaded to Roblox. Paste their ids here (Decal ids from the website
+-- work too: the server finds the picture inside). 0 = the UI draws a simpler version itself.
+Config.UITextures = {studs = 0, sunburst = 0}
 
 -- MINES: everyone carries mines. Put one on the ground: anyone else who steps on it is blown
 -- away (and drops the box they're carrying). Harder Index rewards give better mines.

@@ -22,6 +22,7 @@ Steal boxes from a guarded warehouse, unbox them at your base, sell the items in
 1. **Server size: 6 players.** There are 6 plots, so set the place's **Max Players** to 6 in its settings on the Creator Dashboard.
 2. **Saving in Studio:** Game Settings > Security > **Enable Studio Access to API Services**.
 3. **Set up the Robux shop** (below).
+4. **Upload the two UI textures** (optional, but the shop looks much closer to the reference with them). `assets/StudTile.png` gives the lego studs on window headers and shop cards, and `assets/Sunburst.png` gives the light rays behind the big shop icons. Upload both as Images (Creator Hub > Development Items > Images, or Studio's Asset Manager > Import), then paste their image IDs into `UI.TEXTURES` at the top of the TEXTURES section in **StarterPlayerScripts > StealABoxClient > UI**. Until then the UI draws simpler stand-ins: small rounded squares for the studs and soft bars for the rays.
 
 ## Set up the Robux shop
 

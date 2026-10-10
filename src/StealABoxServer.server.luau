@@ -949,8 +949,9 @@ local function refreshExpandPad(player)
 	end
 end
 
--- a locked booth slot you can buy next: "Slot 9" in big white letters with a green "$2,500" pill
--- under it, floating above the booth (like the real game). Sized in studs, so it shrinks with distance.
+-- a locked booth slot: "Slot 9" in big white letters with a green "$2,500" pill under it, floating
+-- above the booth (like the real game). Sized in studs, so it shrinks with distance.
+-- (the reference also shows a yellow Robux pill: slots can't be bought with Robux here, so it's left out)
 local function slotPriceTag(stand, s, price)
 	local bb = billboard(stand, "ItemTag", UDim2.fromScale(7, 3.4), Vector3.new(0, 4.6, 0))
 	bb.MaxDistance = 90
@@ -1010,7 +1011,7 @@ local function refreshStands(player)
 			-- (the booth itself keeps its wood colour: locked booths look the same, like the real game)
 			if s > unlocked then
 				if top then top.Color = Color3.fromRGB(60, 60, 70) end -- locked slot (grey strip): buy it at the Expand pad
-				if s <= unlocked + 3 then slotPriceTag(stand, s, Config.StandCost(s - 1)) end
+				slotPriceTag(stand, s, Config.StandCost(s - 1)) -- (every locked slot down the line, like the reference)
 			elseif idx then
 				local item = prof.Items[idx]
 				local def = Config.Items[item.id]
@@ -3860,6 +3861,23 @@ do
 			end
 			ReplicatedStorage:SetAttribute("IconSheet" .. i, image)
 		end)
+	end
+	-- the same for the UI textures (studs, sunburst): clients read UITexture_<key>
+	for key, id in pairs(Config.UITextures or {}) do
+		if tonumber(id) and tonumber(id) > 0 then
+			task.spawn(function()
+				local image = "rbxassetid://" .. math.floor(tonumber(id))
+				if okIS and InsertService then
+					local ok, model = pcall(function() return InsertService:LoadAsset(tonumber(id)) end)
+					if ok and model then
+						local d = model:FindFirstChildWhichIsA("Decal", true)
+						if d and d.Texture ~= "" then image = d.Texture end
+						model:Destroy()
+					end
+				end
+				ReplicatedStorage:SetAttribute("UITexture_" .. key, image)
+			end)
+		end
 	end
 end
 

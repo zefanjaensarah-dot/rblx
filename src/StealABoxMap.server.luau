@@ -286,7 +286,7 @@ do
 	end
 	for _, sx in ipairs({-1, 1}) do
 		P(root, "EdgeLine", V(0.6, 0.04, RL), C(sx * 11.4, 0.32, RZ), LOOK.white, nil, NOHIT)
-		solid(P(root, "Curb", V(3, 0.8, RL), C(sx * (SW - 1.5), 0.4, RZ), LOOK.curb))
+		solid(P(root, "Curb", V(2.4, 0.8, RL), C(sx * (SW - 1.8), 0.4, RZ), LOOK.curb))
 	end
 	-- TALL border walls: 8x8 orange-brown checker blocks, studded, with a grass lip on top and flat
 	-- green ground beyond them at the top (an invisible wall keeps everyone in)
@@ -341,7 +341,7 @@ end
 
 ------------------------------------------------------------------
 -- LEADERBOARDS: two wooden frames at the back of the lobby (behind the spawn), facing up the street:
--- two studded posts + a top beam, a dark title plate and the dark list board (the server draws the rows).
+-- two studded posts + a top beam, a dark title plate and an invisible list board (the server draws the rows on it).
 ------------------------------------------------------------------
 do
 	local lobby = folder(root, "Lobby")
@@ -353,7 +353,7 @@ do
 		end
 		P(lobby, "BoardBeam", V(27.2, 2, 2.2), B(0, 33.6, 0), LOOK.woodDark)
 		-- the list (the server fills its Front face with the rows)
-		P(lobby, name, V(22, 23, 0.6), B(0, 13.5, 0), RGB(74, 54, 40), M.Plastic) -- (dark wood: the dark rows stand out on it)
+		P(lobby, name, V(22, 23, 0.6), B(0, 13.5, 0), RGB(74, 54, 40), M.Plastic, {Transparency = 1, CanCollide = false}) -- (invisible: the rows hang in the open frame)
 		-- the title plate above it: a dark rounded plate with the white title
 		local plate = P(lobby, "BoardTitle", V(20, 4, 0.4), B(0, 28.4, 0.1), LOOK.plateDark, nil, GHOST)
 		local sg = surfaceGui(plate, Enum.NormalId.Front, 30, 300)
@@ -1190,7 +1190,7 @@ THEMES[1] = function(r) -- DUSTY STORAGE: old, broken, cobwebs, flickering bulb
 	for i = 1, 3 do pillar(r, "RustyBarrel", 3.4, 2.4, -30, F, 25 + i * 3, RGB(120, 70, 40), M.CorrodedMetal) end
 	D(r, "TippedBarrel", V(3.4, 2.4, 2.4), 28, F + 1.2, 46, RGB(110, 65, 40), M.CorrodedMetal, {Shape = Enum.PartType.Cylinder})
 	for _, x in ipairs({-(HW - 1.5), HW - 1.5}) do
-		for _, d in ipairs({2, 48}) do
+		for _, d in ipairs({6, 48}) do
 			D(r, "Cobweb", V(0.1, 7, 7), x, WH - 4, d, RGB(240, 240, 240), M.SmoothPlastic, {Transparency = 0.5, CanCollide = false, CanQuery = false}, CFrame.Angles(math.rad(45), 0, 0))
 		end
 	end
@@ -2484,10 +2484,11 @@ for areaIndex, area in ipairs(Config.Areas) do
 	-- glowing gate posts + the floating zone name
 	for _, side in ipairs({-1, 1}) do
 		local gx = side * (HW - 1.5)
-		pillar(r, "GatePost", 12, 3, gx, F, 0, acc:Lerp(RGB(255, 255, 255), 0.25), M.SmoothPlastic)
-		disc(r, "GateGlow", 0.5, 3.4, gx, F + 0.3, 0, acc, M.Neon, FX)
-		disc(r, "GateBand", 0.6, 3.3, gx, F + 8, 0, RGB(255, 255, 255), M.SmoothPlastic, FX)
-		ball(r, "GateTop", 3.8, gx, F + 13.2, 0, acc, M.Neon, FX)
+		local gd = (r.index == 1) and 2 or 0 -- (area 1's gate stands behind the warehouse front wall)
+		pillar(r, "GatePost", 12, 3, gx, F, gd, acc:Lerp(RGB(255, 255, 255), 0.25), M.SmoothPlastic)
+		disc(r, "GateGlow", 0.5, 3.4, gx, F + 0.3, gd, acc, M.Neon, FX)
+		disc(r, "GateBand", 0.6, 3.3, gx, F + 8, gd, RGB(255, 255, 255), M.SmoothPlastic, FX)
+		ball(r, "GateTop", 3.8, gx, F + 13.2, gd, acc, M.Neon, FX)
 	end
 	-- (no floating area title in the sky any more: it piled up with the other areas' titles;
 	--  the area banner on your screen shows where you are)
@@ -2567,19 +2568,26 @@ local function buildPlot(i, side, zc)
 		return P(m, name, size, cf, color, mat, props)
 	end
 	local WOOD, WOOD_DARK, WOOD_LIGHT = LOOK.wood, LOOK.woodDark, LOOK.woodLight
-	-- a wooden upgrade sign in the reference style: a dark rounded row with an icon, a coloured title,
-	-- a small white line ("Rate") and a green price pill ("Level"), the same on both faces.
-	-- The server writes Level + Rate; the owner's client hides Level and puts its bouncy button there.
-	local function upgradeSign(name, guiName, size, cf, title, icon, level, rate)
+	-- a wooden upgrade sign in the reference style: two dark rounded rows, the same on both faces.
+	-- Row 1: an icon, a coloured title, a small white line ("Rate") and a green price pill ("Level");
+	-- row 2 (`second` = {icon, title, color, desc}): a second upgrade's icon, title and description.
+	-- The server writes Level + Rate; the owner's client hides these and builds its bouncy rows there.
+	local function upgradeSign(name, guiName, size, cf, title, icon, level, rate, second)
 		local board = P(m, name, size, cf, WOOD)
 		for _, face in ipairs({Enum.NormalId.Front, Enum.NormalId.Back}) do
 			local sg = surfaceGui(board, face, 40, 150)
 			sg.Name = (face == Enum.NormalId.Front) and guiName or (guiName .. "Back")
-			UIX.row(sg, "Row", UDim2.fromScale(0.04, 0.12), UDim2.fromScale(0.92, 0.76))
-			UIX.icon(sg, icon, UDim2.fromScale(0.13, 0.5), 0.56)
-			UIX.text(sg, "Title", title, RGB(80, 210, 255), UDim2.fromScale(0.23, 0.2), UDim2.fromScale(0.45, 0.3))
-			UIX.text(sg, "Rate", rate, WHITE, UDim2.fromScale(0.23, 0.53), UDim2.fromScale(0.45, 0.22))
-			UIX.pill(sg, "Level", level, RGB(60, 200, 60), UDim2.fromScale(0.7, 0.3), UDim2.fromScale(0.23, 0.4))
+			UIX.row(sg, "Row", UDim2.fromScale(0.04, 0.08), UDim2.fromScale(0.92, 0.4))
+			UIX.icon(sg, icon, UDim2.fromScale(0.1, 0.28), 0.36)
+			UIX.text(sg, "Title", title, RGB(80, 210, 255), UDim2.fromScale(0.18, 0.11), UDim2.fromScale(0.5, 0.18))
+			UIX.text(sg, "Rate", rate, WHITE, UDim2.fromScale(0.18, 0.3), UDim2.fromScale(0.5, 0.13), nil, 1.5)
+			UIX.pill(sg, "Level", level, RGB(60, 200, 60), UDim2.fromScale(0.7, 0.13), UDim2.fromScale(0.23, 0.3))
+			if second then
+				UIX.row(sg, "Row2", UDim2.fromScale(0.04, 0.52), UDim2.fromScale(0.92, 0.4))
+				UIX.icon(sg, second[1], UDim2.fromScale(0.1, 0.72), 0.36)
+				UIX.text(sg, "Title2", second[2], second[3], UDim2.fromScale(0.18, 0.55), UDim2.fromScale(0.5, 0.18))
+				UIX.text(sg, "Desc2", second[4], WHITE, UDim2.fromScale(0.18, 0.74), UDim2.fromScale(0.5, 0.13), nil, 1.5)
+			end
 		end
 		return board
 	end
@@ -2589,12 +2597,14 @@ local function buildPlot(i, side, zc)
 	-- the lime grass floor you click to place boxes on: big 8x8 checker squares in two tones
 	local floor = PP("PlotFloor", V(CW, 0.4, CD), 0, 0.2, CD / 2, LOOK.grassA)
 	floor:SetAttribute("Placeable", true)
-	for a = 0, math.ceil(CW / 8) - 1 do
-		local u0, u1 = -HU + a * 8, math.min(-HU + a * 8 + 8, HU)
-		for b = 0, math.ceil(CD / 8) - 1 do
-			local w0, w1 = b * 8, math.min(b * 8 + 8, CD)
-			if (a + b) % 2 == 1 and not (u0 >= -6 and u1 <= 6) then -- (none under the path)
-				PP("FloorTile", V(u1 - u0, 0.04, w1 - w0), (u0 + u1) / 2, 0.42, (w0 + w1) / 2, LOOK.grassB, nil, NOHIT)
+	for _, sg in ipairs({-1, 1}) do -- (squares start at the path edges: 5 full squares on each side)
+		for a = 0, math.ceil((HU - 6) / 8) - 1 do
+			local ua, ub = 6 + a * 8, math.min(6 + a * 8 + 8, HU)
+			for b = 0, math.ceil(CD / 8) - 1 do
+				local w0, w1 = b * 8, math.min(b * 8 + 8, CD)
+				if (a + b) % 2 == 1 then
+					PP("FloorTile", V(ub - ua, 0.04, w1 - w0), sg * (ua + ub) / 2, 0.42, (w0 + w1) / 2, LOOK.grassB, nil, NOHIT)
+				end
 			end
 		end
 	end
@@ -2632,7 +2642,7 @@ local function buildPlot(i, side, zc)
 	for _, sg in ipairs({-1, 1}) do
 		fence(sg * 17.5, 6, sg * 17.5, 90)
 		fence(sg * 9, 6, sg * 17.5, 6)
-		fence(sg * 9, 90, sg * 17.5, 90)
+		fence(sg * 13.2, 90, sg * 17.5, 90)
 	end
 
 	PP("SpawnPoint", V(2, 0.2, 2), 0, 0.6, 5, RGB(0, 0, 0), nil, GHOST) -- (on the sand path, just inside the gate)
@@ -2650,9 +2660,9 @@ local function buildPlot(i, side, zc)
 			solid(PP("BoothSeat", V(5.4, 1.3, 4.4), ul, 1.05, w, WOOD_DARK))
 			local stand = solid(PP("Stand" .. s, V(5.6, 0.4, 4.6), ul, 1.9, w, WOOD_LIGHT))
 			stand:SetAttribute("Slot", s)
-			solid(PP("BoothBack", V(1.2, 3.8, 6.8), ul + sg * 3.4, 2.3, w, WOOD)) -- (away from the path)
+			solid(PP("BoothBack", V(1.2, 3.8, 5.8), ul + sg * 3.4, 2.3, w, WOOD)) -- (away from the path)
 			for _, e in ipairs({-1, 1}) do
-				solid(PP("BoothArm", V(5.6, 2.6, 1.1), ul, 1.7, w + e * 2.8, WOOD))
+				solid(PP("BoothArm", V(5.6, 2.6, 0.6), ul, 1.7, w + e * 2.6, WOOD))
 			end
 			PP("StandTop" .. s, V(0.2, 0.35, 4), ul - sg * 2.75, 1.25, w, glow, M.Neon, NOHIT)
 		end
@@ -2775,8 +2785,9 @@ local function buildPlot(i, side, zc)
 		end
 		upgradeSign("TreadConsole", "TreadTag", V(9, 4.6, 0.5), base * CFrame.new(0, 3.4, 0) * CFrame.Angles(math.rad(-25), 0, 0),
 			"Speed per Step", "boot", "$" .. Config.FormatNum(Config.TreadmillCost(1)),
-			"Lv 1/" .. Config.Treadmill.max .. "  +" .. Config.FormatNum(Config.TreadRate(1)) .. "/s")
-		-- (each player's client puts a bouncy UPGRADE button on their own sign)
+			"Lv 1/" .. Config.Treadmill.max .. "  +" .. Config.FormatNum(Config.TreadRate(1)) .. "/s",
+			{"bolt", "Unbox Speed", RGB(255, 170, 40), "Boxes open faster."})
+		-- (each player's client puts its bouncy rows on its own sign)
 	end
 
 	-- the name sign beside the gate (the server writes "<name>'s Plot" into both faces), with a round
@@ -2790,7 +2801,7 @@ local function buildPlot(i, side, zc)
 		for _, face in ipairs({Enum.NormalId.Front, Enum.NormalId.Back}) do
 			local sg = surfaceGui(board, face, 40, 200)
 			sg.Name = (face == Enum.NormalId.Front) and "NameGui" or "NameGuiBack"
-			UIX.row(sg, "Row", UDim2.fromScale(0.03, 0.1), UDim2.fromScale(0.94, 0.8))
+			-- (no dark plate: the avatar circle and the outlined name sit right on the wood)
 			local av = Instance.new("ImageLabel")
 			av.Name = "Avatar"
 			av.AnchorPoint = Vector2.new(0, 0.5)

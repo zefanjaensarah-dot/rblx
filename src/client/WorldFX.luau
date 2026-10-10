@@ -102,18 +102,38 @@ function WorldFX.init(ctx)
 			local p = math.floor((1 - Config.UnboxMult(l)) * 100 + 0.5)
 			return (p == 0) and "0%" or ("-" .. p .. "%")
 		end
+		-- the Robux price on a row's yellow pill: the Shop item that pill opens (Roblox's real price once loaded)
+		local function passRobux(key)
+			local p = ctx.Shop and ctx.Shop.GetPass(key)
+			return p and ctx.price("Pass_" .. key, p.robux) or nil
+		end
+		local function productRobux(key)
+			local p = ctx.Shop and ctx.Shop.GetProduct(key)
+			return p and ctx.price(key, p.robux) or nil
+		end
+		local function speedRobux(d) -- the next Speed Boost tier (nil once you own them all)
+			local have = player:GetAttribute("SpeedBoost") or (d and d.SpeedBoost) or 1
+			for i, b in ipairs(Config.SpeedBoosts or {}) do
+				if have < b.mult then return ctx.price("Speed" .. i, b.robux) end
+			end
+			return nil
+		end
 		-- the rows of the big board (same order + actions as before)
 		Signs.BOARD = {
 			{key = "shoppers", title = "More Shoppers", desc = "More shoppers visit.", icon = "shop", color = CYAN_T, action = "UpgradeShoppers", tab = "Cash",
+				robux = function() return productRobux("CashS") end,
 				level = function(d) return d.Customers or 1 end, max = function() return Config.CustomerMax end,
 				cost = function(l) return Config.CustomerCost(l) end, value = function(l) return "x" .. string.format("%.1f", Config.CustomerRate(l)) end},
 			{key = "payout", title = "Payouts", desc = "Shoppers pay more.", icon = "cash", color = GREEN_T, action = "UpgradePayout", tab = "Passes",
+				robux = function() return passRobux("DoubleCash") end,
 				level = function(d) return d.PayoutLevel or 1 end, max = function() return Config.PayoutMax end,
 				cost = function(l) return Config.PayoutCost(l) end, value = function(l) return "x" .. string.format("%.2f", Config.PayoutMult(l)) end},
 			{key = "unbox", title = "Unbox Speed", desc = "Boxes open faster.", icon = "bolt", color = ORANGE_T, action = "UpgradeUnbox", tab = "Boosts",
+				robux = function() return productRobux("SkipUnbox") end,
 				level = function(d) return d.UnboxLevel or 1 end, max = function() return Config.UnboxMax end,
 				cost = function(l) return Config.UnboxCost(l) end, value = pct},
 			{key = "trails", title = "Trails", desc = "Cool trails behind you!", icon = "star", color = PINK_T, open = "Trails", tab = "Passes",
+				robux = function() return passRobux("VIP") end,
 				change = "Boosts your treadmill speed"},
 		}
 		-- the treadmill row: speed you earn per second of running (with your trail + Robux boost)
@@ -123,6 +143,7 @@ function WorldFX.init(ctx)
 			return Config.TreadRate(l) * ((t and t.mult) or 1) * (d.SpeedBoost or 1)
 		end
 		Signs.TREAD = {key = "tread", title = "Speed per Step", desc = "Earn more speed.", icon = "boot", color = CYAN_T, action = "UpgradeTreadmill", tab = "Speed",
+			robux = speedRobux,
 			level = function(d) return d.Treadmill or 1 end, max = function() return Config.Treadmill.max end,
 			cost = function(l) return Config.TreadmillCost(l) end, value = function(l) return Config.FormatNum(treadRate(l)) end}
 
@@ -188,21 +209,22 @@ function WorldFX.init(ctx)
 			for k, v in pairs(props or {}) do l[k] = v end
 			return l
 		end
-		-- a yellow pill: Robux icon + "Shop" (opens the Shop on the page that helps with this upgrade)
+		-- a yellow pill: the white Robux glyph + a Robux price (opens the Shop on the page that sells it)
 		local function robuxPill(parent, x, y, w, h, tab)
 			local b = chunkyButton(parent, {Name = "RobuxPill", AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(w, h),
 				BackgroundColor3 = YELLOW_PILL, Text = ""})
 			b.ZIndex = parent.ZIndex + 2
 			local inner = h * 0.72 -- (the button's padding takes 14% top + bottom)
-			local isz = math.floor(inner * 0.95)
-			local ic = UI.icon("robux", b, UDim2.fromOffset(isz, isz), UDim2.new(0, math.floor(w * 0.1), 0.5, 0), Color3.new(1, 1, 1), Vector2.new(0, 0.5))
+			local isz = math.floor(math.min(inner * 0.95, w * 0.36)) -- (narrow pills: a smaller glyph leaves room for the price)
+			-- (the vector glyph: the sheet's Robux icon is green)
+			local ic = UI.ICON.new("robux", b, UDim2.fromOffset(isz, isz), UDim2.new(0, math.floor(w * 0.08), 0.5, 0), Color3.new(1, 1, 1), Vector2.new(0, 0.5))
 			ic.ZIndex = b.ZIndex + 1
-			local tx = math.floor(w * 0.1) + isz + math.floor(w * 0.04)
-			local l = UI.label(b, "Shop", {Position = UDim2.new(0, tx, 0, 0), Size = UDim2.new(1, -tx - math.floor(w * 0.08), 1, 0), Max = math.floor(inner * 0.92),
+			local tx = math.floor(w * 0.08) + isz + math.floor(w * 0.03)
+			local l = UI.label(b, "", {Position = UDim2.new(0, tx, 0, 0), Size = UDim2.new(1, -tx - math.floor(w * 0.06), 1, 0), Max = math.floor(inner * 0.92),
 				Stroke = math.max(2, math.floor(h * 0.05)), TextWrapped = false})
-			l.ZIndex = b.ZIndex + 1
+			l.ZIndex = b.ZIndex + 4
 			bouncy(b, function() UI.open("Shop", tab) end)
-			return b
+			return b, l
 		end
 		-- one dark rounded row. Wide rows (the board) keep everything on one line like the reference;
 		-- tall rows (the small treadmill sign) put the two pills along the bottom.
@@ -279,12 +301,14 @@ function WorldFX.init(ctx)
 				BackgroundColor3 = GREEN_PILL, Text = ""})
 			r.btn.ZIndex = f.ZIndex + 2
 			r.st = bouncy(r.btn, onBuy)
-			r.robux = robuxPill(f, rx, gy, rw, gh, def.tab)
+			r.robux, r.robuxL = robuxPill(f, rx, gy, rw, gh, def.tab)
 			return r
 		end
 		-- fill one row from your data
 		local function fillRow(r, data)
 			local def = r.def
+			local rb = def.robux and def.robux(data)
+			UI.setText(r.robuxL, rb and Config.FormatNum(rb) or "MAX")
 			if def.open then
 				UI.setText(r.change, def.change or "")
 				r.btn.Text = "OPEN"
@@ -336,7 +360,7 @@ function WorldFX.init(ctx)
 			for _, r in ipairs(board.rows) do fillRow(r, data) end
 		end
 
-		-- THE TREADMILL SIGN: one "Speed per Step" row (both faces)
+		-- THE TREADMILL SIGN: two wide rows like the reference, "Speed per Step" + "Unbox Speed" (both faces)
 		local tread = nil -- {part, guis, rows}
 		function Signs.tread(part, data)
 			if tread and tread.part ~= part then
@@ -352,7 +376,10 @@ function WorldFX.init(ctx)
 					table.insert(tread.guis, sg)
 					panelEdge(sg, W, H)
 					local mx, my = math.floor(W * 0.04), math.floor(H * 0.1)
-					table.insert(tread.rows, makeRow(sg, Signs.TREAD, mx, my, W - mx * 2, H - my * 2))
+					local gap = math.floor(H * 0.04)
+					local rh = math.floor((H - my * 2 - gap) / 2)
+					table.insert(tread.rows, makeRow(sg, Signs.TREAD, mx, my, W - mx * 2, rh))
+					table.insert(tread.rows, makeRow(sg, Signs.BOARD[3], mx, my + rh + gap, W - mx * 2, rh))
 				end
 			end
 			-- (the map's own "Level" + "Rate" lines are hidden with the rest of its sign)

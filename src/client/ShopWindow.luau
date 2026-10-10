@@ -14,7 +14,7 @@ function ShopWindow.init(ctx)
 	local C, new, fmt = UI.C, UI.new, Config.FormatNum
 	local IS_STUDIO = RunService:IsStudio()
 	-- a yellow studded header with the red basket poking out of its corner (like the inspiration)
-	local win = UI.window({Name = "Shop", Title = "Shop", Icon = "shop", Color = UI.rgb(255, 200, 30), Size = Vector2.new(900, 520),
+	local win = UI.window({Name = "Shop", Title = "Shop", Icon = "shop", Color = UI.rgb(255, 205, 20), Size = Vector2.new(900, 520),
 		Tabs = {{Key = "Passes", Label = "Passes", Icon = "crown"}, {Key = "Cash", Label = "Cash", Icon = "cash"},
 			{Key = "Boosts", Label = "Boosts", Icon = "clover"}, {Key = "Speed", Label = "Speed", Icon = "bolt"},
 			{Key = "Quests", Label = "Quests", Icon = "check"}, {Key = "Codes", Label = "Codes", Icon = "ticket"}, {Key = "Settings", Label = "Settings", Icon = "gear"}}})

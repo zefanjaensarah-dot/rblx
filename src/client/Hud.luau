@@ -213,7 +213,7 @@ function Hud.init(ctx)
 	UI.corner(offerPrice, true)
 	UI.stroke(offerPrice, 2.5)
 	UI.vivid(offerPrice, UI.rgb(60, 205, 80))
-	local offerRobux = UI.icon("robux", offerPrice, UDim2.fromOffset(26, 26), UDim2.new(0, 6, 0.5, 0), C.white, Vector2.new(0, 0.5))
+	local offerRobux = UI.ICON.new("robux", offerPrice, UDim2.fromOffset(26, 26), UDim2.new(0, 6, 0.5, 0), C.white, Vector2.new(0, 0.5)) -- (white glyph: the sheet icon is green)
 	offerRobux.ZIndex = offerBtn.face.ZIndex + 3
 	local offerPriceL = UI.label(offerPrice, "3", {Size = UDim2.new(1, -42, 1, -4), Position = UDim2.fromOffset(34, 2), Max = 24, Stroke = 2.4, TextWrapped = false,
 		ZIndex = offerBtn.face.ZIndex + 3})
