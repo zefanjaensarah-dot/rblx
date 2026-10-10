@@ -214,6 +214,27 @@ local DEFAULTS = {
 local SHADOW = {OnServerInvoke = true, OnClientInvoke = true, CurrentCamera = true, Character = true, UserId = true, DisplayName = true, LocalPlayer = true, LocalTransparencyModifier = true,
 	AssemblyLinearVelocity = true, AssemblyAngularVelocity = true, CameraType = false}
 
+local DB = roblox.getReflectionDatabase()
+local nsCache = {}
+function H.notScriptable(className, prop)
+	local key = className .. "." .. tostring(prop)
+	if nsCache[key] ~= nil then return nsCache[key] or nil end
+	local cls, res = DB:GetClass(className), false
+	while cls do
+		local pr = cls.Properties[prop]
+		if pr then
+			for _, t in ipairs(pr.Tags or {}) do
+				if t == "NotScriptable" or t == "ReadOnly" then res = t end
+			end
+			local w = pr.Scriptability
+			if w == "None" or w == "Read" then res = "scriptability " .. tostring(w) end
+			break
+		end
+		cls = cls.Superclass and DB:GetClass(cls.Superclass)
+	end
+	nsCache[key] = res
+	return res or nil
+end
 local ProxyMT = {}
 ProxyMT.__index = function(p, k)
 	local real = realOf[p]
@@ -246,6 +267,9 @@ ProxyMT.__newindex = function(p, k, v)
 	elseif k == "Position" and real:IsA("BasePart") then
 		real.CFrame = real.CFrame - real.CFrame.Position + v
 	else
+		-- real Roblox refuses properties scripts may not set (Lune doesn't): catch them here
+		local why = H.notScriptable(real.ClassName, k)
+		if why then error("set " .. real.ClassName .. "." .. tostring(k) .. ": " .. why .. " (real Roblox errors here)", 2) end
 		local ok, err = pcall(function() real[k] = unwrap(v) end)
 		if not ok then error("set " .. real.ClassName .. "." .. tostring(k) .. " = " .. tostring(v) .. ": " .. tostring(err), 2) end
 	end
