@@ -523,7 +523,11 @@ Config.BaconHairId = 63690008
 -- MusicIds, and plays the first one that loads (private / deleted audio is skipped). To use your own
 -- copy: Studio > Toolbox > Audio > search "Morning Mood" > right-click > Copy Asset ID > paste below.
 Config.MusicId = 0
-Config.MusicIds = {}
+Config.MusicIds = {
+	1846088038, -- "Morning Mood (f. Peer Gynt Suite No.1)" - Roblox's licensed APM library (also used by Grow a Garden)
+	1844291580, -- "Peer Gynt #1 - Morning Mood" (backup)
+	1843564290, -- "Peer Gynt Suite No.1 1st Mov. Morning" (backup)
+}
 Config.MusicVolume = 0.3
 
 function Config.MakeR6(opt)
