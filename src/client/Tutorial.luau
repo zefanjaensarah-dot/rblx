@@ -17,10 +17,10 @@ function Tutorial.init(ctx)
 
 	local STEPS = {
 		{title = "Steal a box", icon = "box", color = C.orange, tip = "Run into the warehouse and hold E on a box to steal it!"},
-		{title = "Bring it home", icon = "home", color = C.green, tip = "Carry it to YOUR plot and click the floor to place it."},
+		{title = "Bring it home", icon = "home", color = C.green, tip = "Carry it onto YOUR plot - it unboxes right away!"},
 		{title = "Open your box", icon = "gift", color = C.pink, tip = "Your box is unboxing... When it says OPEN!, press E on it."},
 		{title = "Get faster", icon = "boot", color = C.cyan, tip = "Step onto your treadmill - it runs for you and makes you faster!"},
-		{title = "Earn cash", icon = "coin", color = C.gold, tip = "Shoppers buy from your shelves. Save up for an upgrade!"},
+		{title = "Earn cash", icon = "coin", color = C.gold, tip = "Put items on your podiums: shoppers walk in, BUY them and pay you cash!"},
 		{title = "Upgrade it!", icon = "star", color = C.purple, tip = "You have enough! Click the green UPGRADE button on the sign next to your treadmill."},
 		{title = "Upgrade your shop", icon = "shop", color = C.blue, tip = "Use the big UPGRADES board on your plot: more shoppers, bigger payouts, faster unboxing!"},
 	}

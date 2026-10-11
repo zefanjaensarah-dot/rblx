@@ -188,8 +188,9 @@ function WorldFX.init(ctx)
 		end
 	end
 
-	local treadBtn = nil
-	local function makeTreadButton(sign)
+	local treadBtn, expandBtn = nil, nil
+	-- a bouncy button on both faces of a world sign (action = the Action remote it calls)
+	local function makeTreadButton(sign, action, posY, sizeY)
 		local btns, guis = {}, {}
 		local state = {hover = false, press = -10, can = false}
 		for _, face in ipairs({Enum.NormalId.Front, Enum.NormalId.Back}) do
@@ -206,8 +207,8 @@ function WorldFX.init(ctx)
 			table.insert(guis, sg)
 			local b = Instance.new("TextButton")
 			b.AnchorPoint = Vector2.new(0.5, 0.5)
-			b.Position = UDim2.fromScale(0.5, 0.58)
-			b.Size = UDim2.fromScale(0.8, 0.27)
+			b.Position = UDim2.fromScale(0.5, posY or 0.58)
+			b.Size = UDim2.fromScale(0.8, sizeY or 0.27)
 			b.BackgroundColor3 = Color3.fromRGB(70, 210, 60)
 			b.AutoButtonColor = false
 			b.FontFace = UI.Font
@@ -239,7 +240,7 @@ function WorldFX.init(ctx)
 			b.Activated:Connect(function()
 				if os.clock() - state.press < 0.3 then return end
 				state.press = os.clock()
-				task.spawn(function() pcall(ctx.invoke, "UpgradeTreadmill") end)
+				task.spawn(function() pcall(ctx.invoke, action or "UpgradeTreadmill") end)
 			end)
 			table.insert(btns, {b = b, sc = sc})
 		end
@@ -454,6 +455,17 @@ function WorldFX.init(ctx)
 			local prompt = console:FindFirstChildOfClass("ProximityPrompt")
 			if prompt then prompt.ActionText = maxed and "Maxed" or ("Upgrade $" .. formatNum(cost)) end
 			if not treadBtn then treadBtn = makeTreadButton(console) else treadBtn.adorn(console) end
+			local expandSign = plot:FindFirstChild("ExpandPad", true)
+			if expandSign then
+				if not expandBtn then expandBtn = makeTreadButton(expandSign, "ExpandPlot", 0.66, 0.4) else expandBtn.adorn(expandSign) end
+				local have = player:GetAttribute("Stands") or Config.BaseStands
+				local maxedS = have >= Config.MaxStands
+				local costS = Config.StandCost(have)
+				expandBtn.set(maxedS and "MAXED" or ("$" .. formatNum(costS)), (not maxedS) and (data.Cash or 0) >= costS)
+				for _, g in ipairs(expandSign:GetChildren()) do
+					if g:IsA("SurfaceGui") and g:FindFirstChild("Price") then g.Price.Visible = false end
+				end
+			end
 			local ubBoard = plot:FindFirstChild("UpgradeBoard", true)
 			if ubBoard then
 				if not boardUI then
@@ -472,6 +484,7 @@ function WorldFX.init(ctx)
 	end
 	ctx.onData(updateWorldPrices)
 	ctx.onCash(updateWorldPrices)
+	player:GetAttributeChangedSignal("Stands"):Connect(updateWorldPrices)
 	end
 	------------------------------------------------------------------
 	-- FLING: ragdoll physics + big launch + camera shake + "BONK!"
@@ -1422,10 +1435,24 @@ function WorldFX.init(ctx)
 		local show = treadOn and frame ~= nil and frame.Visible
 		tabGui.Enabled = show
 		if show then
+			-- work in the phone's own screen space (its ScreenGui may sit under the top bar)
+			local sg = frame:FindFirstAncestorOfClass("ScreenGui")
+			if sg and tabGui.IgnoreGuiInset ~= sg.IgnoreGuiInset then tabGui.IgnoreGuiInset = sg.IgnoreGuiInset end
 			local p, sz = frame.AbsolutePosition, frame.AbsoluteSize
-			local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(800, 600)
-			local y = math.min(p.Y + sz.Y + 8, vp.Y - 48) -- (stays on screen when the phone fills it)
-			tab.Position = UDim2.fromOffset(p.X + sz.X / 2, y)
+			local vp = (sg and sg.AbsoluteSize) or (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize) or Vector2.new(800, 600)
+			local tw, th = 150, 40
+			if vp.Y - (p.Y + sz.Y) >= th + 14 then
+				-- room under the phone: a tab hanging below it
+				tab.Position = UDim2.fromOffset(p.X + sz.X / 2, p.Y + sz.Y + 8)
+			elseif p.X >= tw + 16 then
+				-- phone fills the height: the tab sits beside it, bottom-left
+				tab.Position = UDim2.fromOffset(p.X - 8 - tw / 2, p.Y + sz.Y - th)
+			elseif vp.X - (p.X + sz.X) >= tw + 16 then
+				tab.Position = UDim2.fromOffset(p.X + sz.X + 8 + tw / 2, p.Y + sz.Y - th)
+			else
+				-- no room anywhere: a small tab on top of the phone's top edge
+				tab.Position = UDim2.fromOffset(p.X + sz.X / 2, math.max(4, p.Y - th - 6))
+			end
 		end
 	end)
 	UserInputService.JumpRequest:Connect(function() if treadOn then leaveTreadmill() end end)

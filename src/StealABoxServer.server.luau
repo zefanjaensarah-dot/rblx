@@ -45,7 +45,7 @@ local SPEED_PER_LEVEL = 1.2
 local GUARD_RETURN_SPEED = 9
 local RAGDOLL_TIME = 2.2
 local MAX_DISPLAY_BOXES = 28
-local LOOSE_BOX_LIFETIME = 30
+local LOOSE_BOX_LIFETIME = 900 -- a dropped box stays put for 15 minutes (max 40 loose boxes per server)
 
 local RED = Color3.fromRGB(255, 90, 90)
 local GREEN = Color3.fromRGB(120, 255, 140)
@@ -603,6 +603,12 @@ local function releaseCarry(player, dropPos)
 	applySpeed(player)
 	if dropPos then
 		local loose = makeBox(c.id, dropPos, c.mutation, c.size)
+		looseBoxes = looseBoxes or {}
+		for i = #looseBoxes, 1, -1 do
+			if not looseBoxes[i].Parent or looseBoxes[i]:GetAttribute("Taken") then table.remove(looseBoxes, i) end
+		end
+		table.insert(looseBoxes, loose)
+		if #looseBoxes > 40 then table.remove(looseBoxes, 1):Destroy() end
 		task.delay(LOOSE_BOX_LIFETIME, function()
 			if loose.Parent and not loose:GetAttribute("Taken") then loose:Destroy() end
 		end)
@@ -934,10 +940,11 @@ end
 local function refreshExpandPad(player)
 	local plot, prof = playerPlot[player], profiles[player]
 	local pad = plot and plot:FindFirstChild("ExpandPad", true)
-	local price = pad and pad:FindFirstChild("ExpandGui") and pad.ExpandGui:FindFirstChild("Price")
-	if price and prof then
-		local have = unlockedStands(prof)
-		price.Text = (have >= Config.MaxStands) and "MAXED" or ("$" .. Config.FormatNum(Config.StandCost(have)))
+	if not pad or not prof then return end
+	local have = unlockedStands(prof)
+	for _, g in ipairs(pad:GetChildren()) do
+		local price = (g.Name == "ExpandGui" or g.Name == "ExpandGuiBack") and g:FindFirstChild("Price")
+		if price then price.Text = (have >= Config.MaxStands) and "MAXED" or ("$" .. Config.FormatNum(Config.StandCost(have))) end
 	end
 end
 
@@ -1244,7 +1251,7 @@ local giftStart = {}   -- [player] = server time when the current gift round sta
 local giftClaimed = {} -- [player] = {[index] = true}
 
 -- find an open spot on the plot floor for a box of this size (nil if the plot is full)
-local function freePlotSpot(prof, size)
+local function freePlotSpot(prof, size, nearU, nearW)
 	local spots = {}
 	for w = PLACE_W_MIN + 4, PLACE_W_MAX - 4, 6 do
 		for u = -PLACE_U + 4, PLACE_U - 4, 6 do
@@ -1259,12 +1266,45 @@ local function freePlotSpot(prof, size)
 		end
 	end
 	if #spots == 0 then return nil end
+	if nearU then
+		-- the open spot closest to where you're standing
+		table.sort(spots, function(a, b) return (a[1] - nearU) ^ 2 + (a[2] - nearW) ^ 2 < (b[1] - nearU) ^ 2 + (b[2] - nearW) ^ 2 end)
+		return spots[1][1], spots[1][2]
+	end
 	-- prefer spots near the front middle of the plot so you see your gift
 	table.sort(spots, function(a, b) return math.abs(a[1]) + a[2] * 0.6 < math.abs(b[1]) + b[2] * 0.6 end)
 	local pickN = math.min(#spots, 6)
 	local sp = spots[math.random(1, pickN)]
 	return sp[1], sp[2]
 end
+
+-- AUTO-PLACE: walk onto your own plot carrying a box and it's put down (and starts unboxing)
+-- right away at the open spot nearest to you - no need to aim at the floor
+task.spawn(function()
+	while true do
+		task.wait(0.2)
+		for player, c in pairs(carrying) do
+			local plot, prof = playerPlot[player], profiles[player]
+			local _, hrp = getChar(player)
+			if plot and prof and hrp and c.id then
+				local lp = plotFrame(plot):PointToObjectSpace(hrp.Position)
+				local u, w = lp.X, -lp.Z
+				if math.abs(u) <= PLACE_U + 4 and w >= 1 and w <= PLACE_W_MAX + 6 and lp.Y < 14 then
+					local n = 0
+					for _ in pairs(prof.Unboxing) do n = n + 1 end
+					local su, sw = nil, nil
+					if n < padLimit(player) then su, sw = freePlotSpot(prof, boxSizeFor(c), u, w) end
+					if su then
+						placeBoxAt(player, plotFrame(plot) * Vector3.new(su, 0.4, -sw))
+					elseif (lastWrongBase[player] or 0) + 4 < os.clock() then
+						lastWrongBase[player] = os.clock()
+						notify(player, n >= padLimit(player) and ("You can only unbox " .. padLimit(player) .. " boxes at once - open one first!") or "Your plot floor is full - open some boxes first!", RED)
+					end
+				end
+			end
+		end
+	end
+end)
 
 local function giftState(player)
 	local start = giftStart[player] or now()
@@ -2154,6 +2194,14 @@ local function customerAction(c, action)
 			prof.Cash = prof.Cash + price + tip
 			syncCash(c.owner)
 			questProgress(c.owner, "sales")
+			-- the first few sales explain what shoppers are for
+			SALE_HINTS = SALE_HINTS or {}
+			local hints = SALE_HINTS[c.owner] or 0
+			if hints < 2 then
+				SALE_HINTS[c.owner] = hints + 1
+				notify(c.owner, hints == 0 and ("A shopper bought from your shop and paid you $" .. Config.FormatNum(price + tip) .. "!")
+					or "Shoppers BUY the items on your podiums - more and better items = more cash!", GREEN)
+			end
 			-- "+$123" floats up from the shopper (not from the shelf, where the product tags are)
 			local head = c.parts and c.parts.head
 			if head then
@@ -2733,6 +2781,10 @@ ActionFunc.OnServerInvoke = function(player, action, arg, expectedId)
 		upgradeTreadmill(player)
 		return {ok = true}
 
+	elseif action == "ExpandPlot" then
+		if playerPlot[player] then expandPlotFor(player, playerPlot[player]) end
+		return {ok = true}
+
 	elseif action == "BuyStand" then
 		local have = unlockedStands(prof)
 		if have >= Config.MaxStands then return {ok = false, msg = "Your shelves are full!"} end
@@ -2944,16 +2996,19 @@ end
 alertGuard = function(area, player)
 	for _, g in ipairs(guards) do
 		if g.area == area and g.mode ~= "chase" then
+			-- a guard who's still up (walking back after you dropped the box) runs again at once;
+			-- a sleeping one needs a short moment to get up
+			local wasAwake = g.mode == "return"
 			setMode(g, "chase")
 			g.target = player
-			-- he needs a moment to get up
-			g.wakeUntil = os.clock() + 0.8
+			g.wakeUntil = wasAwake and 0 or (os.clock() + 0.45)
 			g.laughUntil = nil
 			setAwake(g, true)
 			setChased(player, true)
-			playSound(g.model.PrimaryPart, "rbxasset://sounds/electronicpingshort.wav", 1, 0.5)
-			FXEvent:FireAllClients("Wake", g.model:GetPivot().Position, g.scale)
-			notify(player, "The " .. Config.Areas[area].guard .. " WOKE UP - RUN!", RED)
+			if not wasAwake then
+				FXEvent:FireAllClients("Wake", g.model:GetPivot().Position, g.scale)
+				notify(player, "The " .. Config.Areas[area].guard .. " WOKE UP - RUN!", RED)
+			end
 		end
 	end
 end
@@ -3564,6 +3619,7 @@ Players.PlayerAdded:Connect(onPlayerAdded)
 for _, p in ipairs(Players:GetPlayers()) do task.spawn(onPlayerAdded, p) end
 
 Players.PlayerRemoving:Connect(function(player)
+	if SALE_HINTS then SALE_HINTS[player] = nil end
 	save(player, true)
 	friendsOf[player] = nil
 	giftStart[player] = nil
@@ -3729,7 +3785,7 @@ do
 end
 
 ------------------------------------------------------------------
--- EXPAND PLOT pads: stand on your green pad and press E to buy the next podium slot
+-- EXPAND PLOT signs: click your sign (or its bouncy button) to buy the next podium slot
 ------------------------------------------------------------------
 do
 	for _, plot in ipairs(plotsFolder:GetChildren()) do
@@ -3737,33 +3793,36 @@ do
 		local pp = pad and (pad:FindFirstChild("ExpandClick") or pad:FindFirstChild("ExpandPrompt"))
 		if pp then
 			local signal = pp:IsA("ClickDetector") and pp.MouseClick or pp.Triggered
-			signal:Connect(function(who)
-				if playerPlot[who] ~= plot then
-					notify(who, "That's not your plot!", RED)
-					return
-				end
-				local prof = profiles[who]
-				if not prof then return end
-				local have = unlockedStands(prof)
-				if have >= Config.MaxStands then
-					notify(who, "Your plot is fully expanded!", YELLOW)
-					return
-				end
-				local cost = Config.StandCost(have)
-				if prof.Cash < cost then
-					notify(who, "You need $" .. Config.FormatNum(cost) .. " to expand your plot!", RED)
-					return
-				end
-				prof.Cash = prof.Cash - cost
-				prof.ExtraStands = (prof.ExtraStands or 0) + 1
-				refreshStands(who)
-				refreshIncome(who)
-				sync(who)
-				FXEvent:FireAllClients("LevelUp", pad.Position, 1)
-				notify(who, "Plot expanded! You now have " .. unlockedStands(prof) .. " slots.", GREEN)
-			end)
+			signal:Connect(function(who) expandPlotFor(who, plot) end)
 		end
 	end
+end
+-- (a global so the Action remote above can call it too: the client's bouncy EXPAND button)
+function expandPlotFor(who, plot)
+	local pad = plot:FindFirstChild("ExpandPad", true)
+	if playerPlot[who] ~= plot then
+		notify(who, "That's not your plot!", RED)
+		return
+	end
+	local prof = profiles[who]
+	if not prof then return end
+	local have = unlockedStands(prof)
+	if have >= Config.MaxStands then
+		notify(who, "Your plot is fully expanded!", YELLOW)
+		return
+	end
+	local cost = Config.StandCost(have)
+	if prof.Cash < cost then
+		notify(who, "You need $" .. Config.FormatNum(cost) .. " to expand your plot!", RED)
+		return
+	end
+	prof.Cash = prof.Cash - cost
+	prof.ExtraStands = (prof.ExtraStands or 0) + 1
+	refreshStands(who)
+	refreshIncome(who)
+	sync(who)
+	if pad then FXEvent:FireAllClients("LevelUp", pad.Position, 1) end
+	notify(who, "Plot expanded! You now have " .. unlockedStands(prof) .. " slots.", GREEN)
 end
 
 ------------------------------------------------------------------

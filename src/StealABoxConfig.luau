@@ -287,13 +287,18 @@ end
 
 -- TREADMILL on your plot: stand on the belt and run to earn speed.
 -- Upgrading it makes you earn speed faster.
-Config.Treadmill = {max = 10, beltSpeed = 10}
-function Config.TreadRate(level) -- speed earned per second of running (3/s at level 1, ~7.6K/s at level 10)
-	return 3 * 2.4 ^ ((level or 1) - 1)
+-- (levels 11-20 are the long-term goal: each one still pays off, but costs a lot more)
+Config.Treadmill = {max = 20, beltSpeed = 10}
+function Config.TreadRate(level) -- speed earned per second of running (3/s at level 1, ~7.6K/s at level 10, ~2.7M/s at 20)
+	level = level or 1
+	if level > 10 then return 3 * 2.4 ^ 9 * 1.8 ^ (level - 10) end
+	return 3 * 2.4 ^ (level - 1)
 end
 function Config.TreadmillCost(level) -- price to go from `level` to `level + 1`
-	if (level or 1) <= 1 then return 50 end -- the first upgrade is cheap (end of the tutorial)
-	return math.floor(250 * 2.6 ^ ((level or 1) - 2))
+	level = level or 1
+	if level <= 1 then return 50 end -- the first upgrade is cheap (end of the tutorial)
+	if level > 10 then return math.floor(250 * 2.6 ^ 8 * 2.1 ^ (level - 10)) end
+	return math.floor(250 * 2.6 ^ (level - 2))
 end
 
 -- ROBUX SPEED BOOSTS: multiply the speed your treadmill gives you (stacks with trails).
@@ -327,12 +332,25 @@ Config.CustomerMax = 10
 function Config.CustomerRate(level) return 1 + 0.3 * ((level or 1) - 1) end -- x shoppers
 function Config.CustomerCost(level) return math.floor(120 * 2.3 ^ ((level or 1) - 1)) end
 -- PLOT UPGRADES on the big UPGRADES board: shopper payouts and unbox speed
-Config.PayoutMax = 10
+-- (levels past 10 cost a lot more: the long-term goals)
+Config.PayoutMax = 25
 function Config.PayoutMult(level) return 1 + 0.15 * ((level or 1) - 1) end -- x what shoppers pay
-function Config.PayoutCost(level) return math.floor(300 * 2.5 ^ ((level or 1) - 1)) end
-Config.UnboxMax = 10
-function Config.UnboxMult(level) return 1 - 0.06 * ((level or 1) - 1) end -- x unbox time
-function Config.UnboxCost(level) return math.floor(200 * 2.4 ^ ((level or 1) - 1)) end
+function Config.PayoutCost(level)
+	level = level or 1
+	if level > 10 then return math.floor(300 * 2.5 ^ 9 * 1.9 ^ (level - 10)) end
+	return math.floor(300 * 2.5 ^ (level - 1))
+end
+Config.UnboxMax = 20
+function Config.UnboxMult(level) -- x unbox time
+	level = level or 1
+	if level > 10 then return 0.46 * 0.95 ^ (level - 10) end
+	return 1 - 0.06 * (level - 1)
+end
+function Config.UnboxCost(level)
+	level = level or 1
+	if level > 10 then return math.floor(200 * 2.4 ^ 9 * 1.9 ^ (level - 10)) end
+	return math.floor(200 * 2.4 ^ (level - 1))
+end
 
 ------------------------------------------------------------------
 -- INDEX REWARDS: find all 4 items of a warehouse area to complete that area's Index page.

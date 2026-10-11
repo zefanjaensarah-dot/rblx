@@ -2511,30 +2511,31 @@ local function buildPlot(i, side, zc)
 		end
 	end
 	PP("GlowStrip", V(1, 0.2, 1), 0, -2, 50, glow, M.Neon, GHOST)
-	-- the green EXPAND PLOT pad at the front, just inside the fence: click it to buy the next
-	-- podium slot (the server writes the price)
-	PP("ExpandPadRim", V(9, 0.3, 7), -34, 0.5, 3.6, RGB(150, 150, 165)).TopSurface = Enum.SurfaceType.Studs
-	local pad = PP("ExpandPad", V(7.6, 0.3, 5.6), -34, 0.62, 3.6, RGB(60, 235, 60), M.Neon, NOHIT)
-	pad.CanQuery = true
+	-- the EXPAND PLOT sign: a big standing board right beside the gate (seen from the street and
+	-- from inside). The owner's client puts a bouncy "EXPAND $X" button on it; click to buy the
+	-- next podium slot (the server writes the price for everyone else)
+	for _, u in ipairs({-23.4, -12.6}) do
+		PP("ExpandPost", V(1.2, 9.4, 1.2), u, 4.7, 3, RGB(128, 80, 44)).TopSurface = Enum.SurfaceType.Studs
+	end
+	local pad = PP("ExpandPad", V(10, 6.4, 0.7), -18, 5.6, 3, RGB(60, 190, 70))
+	PP("ExpandTrim", V(11, 0.7, 1), -18, 9.1, 3, RGB(128, 80, 44), nil, NOHIT).TopSurface = Enum.SurfaceType.Studs
+	PP("ExpandTrim", V(11, 0.7, 1), -18, 2.1, 3, RGB(128, 80, 44), nil, NOHIT)
 	local padClick = Instance.new("ClickDetector")
 	padClick.Name = "ExpandClick"
-	padClick.MaxActivationDistance = 40
+	padClick.MaxActivationDistance = 60
 	padClick.Parent = pad
-	do
-		local bb = Instance.new("BillboardGui")
-		bb.Name = "ExpandGui"
-		bb.Size = UDim2.fromScale(10, 4)
-		bb.StudsOffset = V(0, 3.5, 0)
-		bb.MaxDistance = 90
-		bb.LightInfluence = 0
-		bb.Parent = pad
-		local t1 = textLabel(bb, "Expand Plot", WHITE, 4)
-		t1.Size = UDim2.fromScale(1, 0.55)
-		local t2 = textLabel(bb, "", RGB(120, 255, 90), 4)
+	for _, face in ipairs({Enum.NormalId.Front, Enum.NormalId.Back}) do
+		local sg = surfaceGui(pad, face, 40, 160)
+		sg.Name = (face == Enum.NormalId.Front) and "ExpandGui" or "ExpandGuiBack"
+		local t1 = textLabel(sg, "EXPAND PLOT", WHITE, 4)
+		t1.Name = "Title"
+		t1.Position = UDim2.fromScale(0.05, 0.06)
+		t1.Size = UDim2.fromScale(0.9, 0.3)
+		local t2 = textLabel(sg, "", RGB(255, 240, 120), 4)
 		t2.Name = "Price"
-		t2.Position = UDim2.fromScale(0, 0.55)
-		t2.Size = UDim2.fromScale(1, 0.45)
-	end -- (the server reads the empty-slot colour from this)
+		t2.Position = UDim2.fromScale(0.1, 0.48)
+		t2.Size = UDim2.fromScale(0.8, 0.36)
+	end
 	-- a wooden SHOP board at the back
 	for _, u in ipairs({-11, 11}) do PP("ShopSignPost", V(1.2, 9, 1.2), u, 4.5, 91, RGB(128, 80, 44)) end
 	local shopSign = PP("ShopSign", V(24, 5, 0.8), 0, 8.6, 91, RGB(170, 110, 62))
