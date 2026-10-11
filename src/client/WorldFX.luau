@@ -1407,17 +1407,26 @@ function WorldFX.init(ctx)
 		end
 	end
 	jumpBtn.Activated:Connect(leaveTreadmill)
-	-- on phones the normal jump button is gone while you run (the controls are off), so a big
-	-- round JUMP OFF button sits where the jump button usually is
-	local touchJumpGui = UI.new("ScreenGui", {Name = "TreadmillJump", ResetOnSpawn = false, DisplayOrder = 50, IgnoreGuiInset = true, Enabled = false}, playerGui)
-	local touchJump = UI.new("TextButton", {Name = "JumpOff", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -24, 1, -24), Size = UDim2.fromOffset(120, 120),
-		BackgroundColor3 = UI.C.orange, Text = "JUMP\nOFF", TextScaled = true, FontFace = UI.Font, TextColor3 = WHITE, AutoButtonColor = true}, touchJumpGui)
-	UI.corner(touchJump, true)
-	UI.stroke(touchJump, 5)
-	UI.new("UIPadding", {PaddingTop = UDim.new(0.2, 0), PaddingBottom = UDim.new(0.2, 0), PaddingLeft = UDim.new(0.15, 0), PaddingRight = UDim.new(0.15, 0)}, touchJump)
-	touchJump.Activated:Connect(leaveTreadmill)
-	jumpHolder:GetPropertyChangedSignal("Visible"):Connect(function()
-		touchJumpGui.Enabled = jumpHolder.Visible and UserInputService.TouchEnabled
+	-- a small "Jump off" tab sits just under the phone while it's open (on phones the normal jump
+	-- button is gone while you run, and the phone covers the treadmill bar)
+	local tabGui = UI.new("ScreenGui", {Name = "TreadmillJump", ResetOnSpawn = false, DisplayOrder = 50, IgnoreGuiInset = true, Enabled = false}, playerGui)
+	local tab = UI.new("TextButton", {Name = "JumpOff", AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.fromOffset(150, 40),
+		BackgroundColor3 = UI.C.orange, Text = "Jump off", TextScaled = true, FontFace = UI.Font, TextColor3 = WHITE, AutoButtonColor = true}, tabGui)
+	UI.corner(tab, 12)
+	UI.stroke(tab, 3)
+	UI.new("UIPadding", {PaddingTop = UDim.new(0.18, 0), PaddingBottom = UDim.new(0.18, 0)}, tab)
+	tab.Activated:Connect(leaveTreadmill)
+	RunService.RenderStepped:Connect(function()
+		local phone = UI.getWindow and UI.getWindow("Phone")
+		local frame = phone and phone.frame
+		local show = treadOn and frame ~= nil and frame.Visible
+		tabGui.Enabled = show
+		if show then
+			local p, sz = frame.AbsolutePosition, frame.AbsoluteSize
+			local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(800, 600)
+			local y = math.min(p.Y + sz.Y + 8, vp.Y - 48) -- (stays on screen when the phone fills it)
+			tab.Position = UDim2.fromOffset(p.X + sz.X / 2, y)
+		end
 	end)
 	UserInputService.JumpRequest:Connect(function() if treadOn then leaveTreadmill() end end)
 	UserInputService.InputBegan:Connect(function(input)

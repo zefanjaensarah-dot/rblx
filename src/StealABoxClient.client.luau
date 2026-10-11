@@ -65,6 +65,25 @@ end
 -- BACKGROUND MUSIC ("Morning Mood"), switched off with Settings > Music. Tries Config.MusicId, then
 -- every id in Config.MusicIds, and keeps the first one that really loads (private audio fails to load).
 local music = nil
+-- no footstep sound (Roblox's default "Running" sound in every character)
+do
+	local function muteSteps(char)
+		local function check(d)
+			if d:IsA("Sound") and d.Name == "Running" then d.Volume = 0 end
+		end
+		for _, d in ipairs(char:GetDescendants()) do check(d) end
+		char.DescendantAdded:Connect(check)
+	end
+	local Players = game:GetService("Players")
+	local function hook(p)
+		p.CharacterAdded:Connect(muteSteps)
+		if p.Character then muteSteps(p.Character) end
+	end
+	pcall(function()
+		Players.PlayerAdded:Connect(hook)
+		for _, p in ipairs(Players:GetPlayers()) do hook(p) end
+	end)
+end
 task.spawn(function()
 	local ids = {}
 	if (tonumber(Config.MusicId) or 0) > 0 then table.insert(ids, tonumber(Config.MusicId)) end

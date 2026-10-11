@@ -658,9 +658,9 @@ pickUp = function(player, box)
 	playSound(hrp, "rbxasset://sounds/electronicpingshort.wav", 0.7, 1.3)
 	FXEvent:FireAllClients("Grab", box.Position, box.Size.X)
 
-	-- wake up the guardian of this area!
-	local area = Config.ZoneAt(hrp.Position)
-	if area then alertGuard(area, player) end
+	-- wake up the guardian of the area this box belongs to (not the area it was dropped in)
+	local area = (def and def.area) or Config.ZoneAt(hrp.Position)
+	if area and Config.ZoneAt(hrp.Position) then alertGuard(area, player) end
 end
 
 local boxSpawns = {}
