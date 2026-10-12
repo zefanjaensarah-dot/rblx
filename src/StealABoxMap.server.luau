@@ -400,6 +400,12 @@ local STYLE = {
 	{floor = RGB(55, 60, 72),   wallA = RGB(35, 40, 55),   wallB = RGB(28, 32, 45),   shelf = RGB(70, 75, 90),   shelfMat = M.DiamondPlate, post = RGB(60, 170, 255)},
 	{floor = RGB(70, 76, 88),   wallA = RGB(40, 55, 45),   wallB = RGB(30, 45, 36),   shelf = RGB(80, 90, 85),   shelfMat = M.Metal, post = RGB(90, 255, 90)},
 	{floor = RGB(22, 16, 38),   wallA = RGB(30, 20, 55),   wallB = RGB(20, 12, 40),   shelf = RGB(40, 25, 70),   shelfMat = M.SmoothPlastic, post = RGB(255, 80, 200)},
+	-- 11-15 (after the Galaxy Vault): roof = an optional ceiling colour (see buildCeiling)
+	{floor = RGB(48, 38, 36),   wallA = RGB(62, 46, 42),   wallB = RGB(50, 36, 33),   shelf = RGB(58, 56, 64),   shelfMat = M.Metal, post = RGB(255, 110, 40), roof = RGB(30, 22, 22)},
+	{floor = RGB(58, 44, 58),   wallA = RGB(72, 52, 88),   wallB = RGB(58, 40, 72),   shelf = RGB(88, 58, 44),   shelfMat = M.Wood, post = RGB(150, 90, 220), roof = RGB(34, 24, 44)},
+	{floor = RGB(40, 44, 72),   wallA = RGB(52, 56, 98),   wallB = RGB(42, 46, 84),   shelf = RGB(105, 90, 170), shelfMat = M.Slate, post = RGB(90, 230, 255), roof = RGB(28, 28, 52)},
+	{floor = RGB(248, 246, 238),wallA = RGB(250, 246, 236),wallB = RGB(236, 230, 214),shelf = RGB(255, 222, 130),shelfMat = M.Marble, post = RGB(255, 210, 90), roof = RGB(130, 195, 255)},
+	{floor = RGB(70, 30, 30),   wallA = RGB(105, 28, 34),  wallB = RGB(82, 20, 26),   shelf = RGB(92, 56, 36),   shelfMat = M.WoodPlanks, post = RGB(255, 200, 50), roof = RGB(45, 14, 16)},
 }
 
 ------------------------------------------------------------------
@@ -416,6 +422,11 @@ local LOOKS = {
 	{scale = 2.45, shirt = RGB(150, 160, 175), pants = RGB(90, 95, 110), skin = RGB(150, 160, 175), hat = "antenna", hatColor = RGB(60, 170, 255), eyes = RGB(255, 40, 40), extras = {"visorbar", "chestlight", "bigarms"}},
 	{scale = 2.75, shirt = RGB(110, 60, 160), pants = RGB(70, 40, 110), skin = RGB(110, 230, 110), hat = "antenna", hatColor = RGB(90, 255, 90), eyes = RGB(10, 10, 10), extras = {"alieneyes", "hover", "bigarms"}},
 	{scale = 3.2, shirt = RGB(15, 10, 25), pants = RGB(10, 6, 18), skin = RGB(20, 12, 30), hat = nil, eyes = RGB(255, 60, 220), extras = {"horns", "spikes", "cracks", "aura", "claws", "bigarms"}},
+	{scale = 3.4, shirt = RGB(58, 46, 42), pants = RGB(46, 37, 34), skin = RGB(64, 50, 45), hat = nil, eyes = RGB(255, 160, 40), extras = {"rock", "lava", "hammer", "bigarms"}},
+	{scale = 3.6, shirt = RGB(150, 165, 210), pants = RGB(110, 118, 160), skin = RGB(200, 215, 255), hat = "helmet", hatColor = RGB(120, 130, 170), eyes = RGB(140, 255, 220), extras = {"ghost", "plume", "sword", "shield"}},
+	{scale = 3.8, shirt = RGB(84, 72, 150), pants = RGB(62, 56, 116), skin = RGB(120, 210, 240), hat = nil, eyes = RGB(255, 110, 220), extras = {"crystals", "spikes", "club"}},
+	{scale = 4.0, shirt = RGB(70, 92, 145), pants = RGB(52, 62, 100), skin = RGB(175, 195, 232), hat = "crown", hatColor = RGB(255, 205, 60), eyes = RGB(255, 240, 120), extras = {"cloudbeard", "lightning", "wings", "crown"}},
+	{scale = 4.4, shirt = RGB(175, 28, 42), pants = RGB(120, 16, 30), skin = RGB(190, 36, 46), hat = "crown", hatColor = RGB(255, 200, 50), eyes = RGB(255, 210, 40), extras = {"horns", "wings", "tail", "crown", "claws"}},
 }
 
 local function has(list, name)
@@ -425,9 +436,9 @@ end
 
 local function makeGuardian(areaIndex, pos, accent)
 	local area = Config.Areas[areaIndex]
-	local look = LOOKS[areaIndex]
+	local look = LOOKS[areaIndex] or LOOKS[#LOOKS]
 	local CS = game:GetService("CollectionService")
-	local s = math.min(4.4, look.scale * 1.35)
+	local s = math.min(5.6, look.scale * 1.35) -- (areas 1-10 stay <= 4.32; the 5 deepest bosses keep growing)
 	local F = L.floorY
 	local base = F
 	-- a classic R6 body in the area's outfit; every detail below is glued onto the body parts,
@@ -614,7 +625,7 @@ local function makeGuardian(areaIndex, pos, accent)
 	end
 
 	------------------------------------------------------------------
-	-- the 10 bosses
+	-- the 15 bosses
 	------------------------------------------------------------------
 	if areaIndex == 1 then
 		-- SLEEPY WATCHMAN: old night guard with a striped nightcap, glasses, mustache and his coffee
@@ -874,8 +885,8 @@ local function makeGuardian(areaIndex, pos, accent)
 			Speed = NumberRange.new(2, 4), Size = NumberSequence.new(0.3 * s, 0), EmissionDirection = Enum.NormalId.Bottom})
 		bossOrbs(3, RGB(255, 120, 230), 2.2, 3.4, 0.3)
 
-	else
-		-- VOID WARDEN (final boss): a crown of neon horns, glowing cracks, cape, a giant scythe,
+	elseif areaIndex == 10 then
+		-- VOID WARDEN (boss of the Galaxy Vault): a crown of neon horns, glowing cracks, cape, a giant scythe,
 		-- spikes, a purple aura and void orbs circling him
 		local void, pink, purple = RGB(15, 10, 25), RGB(255, 60, 220), RGB(150, 70, 255)
 		face({glow = true, pupil = pink, eyeWhite = RGB(30, 0, 40), noBrows = false, browAngle = 26, brow = pink, fangs = true, noEars = true, noNose = true, noLids = true})
@@ -906,6 +917,281 @@ local function makeGuardian(areaIndex, pos, accent)
 			SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, 4, 0)})
 		light(head, pink, 7 * s, 2.5)
 		bossOrbs(4, purple, 2.6, 3.6, 0.38)
+
+	elseif areaIndex == 11 then
+		-- MAGMA GOLEM: a walking pile of basalt boulders held together by lava - glowing cracks,
+		-- molten eyes, smoking vents on his back and a giant forge hammer
+		local rock, rockDark = look.shirt, RGB(38, 30, 28)
+		local lava, hot = RGB(255, 110, 30), RGB(255, 200, 70)
+		G("HeadRock", V(1.42, 1.25, 1.35), 0, 4.55, 0.02, rock, M.Slate, nil, head)
+		G("BrowRock", V(1.5, 0.32, 0.45), 0, 4.87, -0.5, rockDark, M.Slate, ROTZ(2), head)
+		for _, sx in ipairs({-1, 1}) do
+			G("GlowEye", V(0.34, 0.16, 0.06), sx * 0.3, 4.62, -0.75, hot, M.Neon, ROTZ(-sx * 14), head)
+			G("CheekRock", V(0.45, 0.4, 0.4), sx * 0.6, 4.3, -0.45, rockDark, M.Slate, CFrame.Angles(A(10), A(sx * 20), 0), head)
+		end
+		G("LavaMouth", V(0.72, 0.14, 0.06), 0, 4.25, -0.75, lava, M.Neon, nil, head)
+		for k = -1, 1 do G("MouthFang", V(0.12, 0.16, 0.05), k * 0.24, 4.3, -0.77, rockDark, M.Slate, nil, head) end
+		G("HeadBoulder", V(0.75, 0.55, 0.7), -0.32, 5.25, 0.08, rock, M.Slate, CFrame.Angles(A(12), A(30), A(-8)), head)
+		G("HeadBoulder", V(0.55, 0.45, 0.55), 0.36, 5.2, -0.08, rockDark, M.Slate, CFrame.Angles(A(-10), A(15), A(12)), head)
+		-- a body of stacked boulders with lava running through the cracks
+		G("ChestRock", V(2.25, 1.45, 1.25), 0, 3.35, -0.02, rock, M.Slate, nil, torso)
+		G("BellyRock", V(1.9, 0.95, 1.15), 0, 2.3, 0, rockDark, M.Slate, CFrame.Angles(0, A(5), A(-3)), torso)
+		for _, c in ipairs({{-0.45, 3.35, 25, 1.2}, {0.5, 3.05, -35, 1.0}, {0.05, 2.5, 70, 0.9}, {-0.6, 2.75, -55, 0.6}, {0.62, 3.75, 15, 0.5}}) do
+			G("LavaCrack", V(0.13, c[4], 0.05), c[1], c[2], -0.68, lava, M.Neon, ROTZ(c[3]), torso)
+		end
+		local core = disc("MagmaCore", 0.08, 0.62, 0, 3.4, -0.69, hot, M.Neon, torso, FACE_FWD)
+		light(core, lava, 10, 2)
+		for _, sx in ipairs({-1, 1}) do
+			local arm, leg = (sx < 0) and LA or RA, (sx < 0) and LL or RL
+			GB("ShoulderBoulder", 1.55, sx * 1.62, 4.0, 0, rock, M.Slate, arm)
+			G("ArmRock", V(1.3, 1.05, 1.3), sx * 1.52, 2.95, 0, rockDark, M.Slate, ROTZ(sx * 6), arm)
+			G("ArmCrack", V(0.1, 0.9, 0.05), sx * 1.5, 3.0, -0.69, lava, M.Neon, ROTZ(sx * 25), arm)
+			G("Fist", V(1.45, 1.05, 1.45), sx * 1.5, 1.65, 0, rock, M.Slate, CFrame.Angles(0, A(sx * 8), 0), arm)
+			G("FistGlow", V(1.47, 0.12, 1.47), sx * 1.5, 1.8, 0, lava, M.Neon, CFrame.Angles(0, A(sx * 8), 0), arm)
+			G("LegRock", V(1.22, 1.15, 1.22), sx * 0.5, 1.4, 0, rock, M.Slate, nil, leg)
+			G("FootRock", V(1.3, 0.6, 1.55), sx * 0.5, 0.3, -0.12, rockDark, M.Slate, nil, leg)
+			G("LegCrack", V(0.1, 0.8, 0.05), sx * 0.5, 1.3, -0.64, lava, M.Neon, ROTZ(-sx * 20), leg)
+		end
+		-- smoking volcanic vents on his back
+		for k = -1, 1 do
+			local top = V(k * 0.8, 4.4 - math.abs(k) * 0.3, 1.15)
+			stick("BackVent", V(k * 0.55, 3.3, 0.5), top, 0.42, 0.42, rockDark, M.Slate, torso, true)
+			local vent = GB("VentLava", 0.36, top.X, top.Y, top.Z, lava, M.Neon, torso)
+			if k == 0 then
+				emitter(vent, {Color = ColorSequence.new(RGB(90, 80, 80), RGB(40, 35, 35)), Transparency = NumberSequence.new(0.3, 1), Rate = 6,
+					Lifetime = NumberRange.new(1.5, 2.5), Speed = NumberRange.new(2, 4), Size = NumberSequence.new(0.4 * s, 1.2 * s), EmissionDirection = Enum.NormalId.Top, SpreadAngle = Vector2.new(15, 15)})
+			end
+		end
+		-- the forge hammer
+		stick("HammerShaft", V(1.55, 0.5, -0.6), V(1.55, 6.0, -0.62), 0.24, 0.24, RGB(70, 48, 36), M.Wood, RA, true)
+		G("HammerHead", V(1.0, 1.0, 2.0), 1.55, 6.2, -0.62, RGB(60, 60, 68), M.Metal, nil, RA)
+		G("HammerGlow", V(1.04, 0.22, 2.04), 1.55, 6.2, -0.62, lava, M.Neon, nil, RA)
+		for _, dz in ipairs({-1, 1}) do G("HammerFace", V(1.1, 1.1, 0.12), 1.55, 6.2, -0.62 + dz, RGB(90, 90, 100), M.Metal, nil, RA) end
+		emitter(torso, {Color = ColorSequence.new(hot, lava), LightEmission = 1, Rate = 18,
+			Lifetime = NumberRange.new(0.8, 1.4), Speed = NumberRange.new(2, 4), Size = NumberSequence.new(0.9, 0),
+			SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, 5, 0)})
+		light(head, lava, 7 * s, 2.5)
+		bossOrbs(3, lava, 2.4, 3.8, 0.36) -- fireballs circling him
+
+	elseif areaIndex == 12 then
+		-- PHANTOM KNIGHT: see-through ghostly armour, a great helm with a glowing slit and a purple plume,
+		-- a tattered cape, a spectral sword and a kite shield. Lost souls circle him.
+		local armor, armorDark = RGB(160, 175, 215), RGB(90, 98, 140)
+		local ghost, purple = RGB(140, 255, 220), RGB(150, 90, 220)
+		for _, p in ipairs({head, torso, LA, RA, LL, RL}) do p.Transparency = 0.45 end
+		G("Helm", V(1.45, 1.35, 1.45), 0, 4.62, 0, armor, M.Metal, nil, head, {Transparency = 0.2})
+		G("HelmCrest", V(0.18, 0.3, 1.5), 0, 5.38, 0, armorDark, M.Metal, nil, head)
+		G("GlowEye", V(1.05, 0.14, 0.05), 0, 4.66, -0.74, ghost, M.Neon, nil, head)
+		G("VisorBar", V(0.1, 0.65, 0.05), 0, 4.45, -0.75, armorDark, M.Metal, nil, head)
+		for k = 0, 3 do G("BreathHole", V(0.08, 0.08, 0.04), -0.3 + k * 0.2, 4.3, -0.74, RGB(30, 30, 50), nil, nil, head) end
+		for i, pl in ipairs({{5.5, -0.15, -10}, {5.75, 0.2, -35}, {5.85, 0.55, -60}, {5.78, 0.9, -85}, {5.58, 1.18, -110}, {5.3, 1.38, -135}}) do
+			G("Plume", V(0.3, 0.6 - i * 0.04, 0.42), 0, pl[1], pl[2], (i % 2 == 0) and purple or purple:Lerp(white, 0.25), M.Fabric, CFrame.Angles(A(pl[3]), 0, 0), head)
+		end
+		-- breastplate, skirt, pauldrons, gauntlets, greaves - all a little see-through
+		G("Breastplate", V(2.15, 1.6, 1.2), 0, 3.22, 0, armor, M.Metal, nil, torso, {Transparency = 0.25})
+		G("Emblem", V(0.5, 0.5, 0.06), 0, 3.4, -0.63, ghost, M.Neon, CFrame.Angles(0, 0, A(45)), torso)
+		G("Tasset", V(2.2, 0.72, 1.25), 0, 1.86, 0, armorDark, M.Metal, nil, torso, {Transparency = 0.25})
+		G("ArmorBelt", V(2.22, 0.2, 1.27), 0, 2.25, 0, purple, M.Neon, nil, torso)
+		for _, sx in ipairs({-1, 1}) do
+			local arm, leg = (sx < 0) and LA or RA, (sx < 0) and LL or RL
+			G("Pauldron", V(1.4, 0.58, 1.38), sx * 1.55, 4.0, 0, armor, M.Metal, ROTZ(-sx * 15), arm, {Transparency = 0.2})
+			G("PauldronTrim", V(1.42, 0.1, 1.4), sx * 1.55, 3.74, 0, purple, M.Neon, ROTZ(-sx * 15), arm)
+			G("Gauntlet", V(1.14, 0.85, 1.14), sx * 1.5, 2.42, 0, armor, M.Metal, nil, arm, {Transparency = 0.2})
+			G("Greave", V(1.12, 1.25, 1.14), sx * 0.5, 0.75, -0.02, armor, M.Metal, nil, leg, {Transparency = 0.2})
+			G("KneeGuard", V(0.7, 0.45, 0.2), sx * 0.5, 1.35, -0.62, armorDark, M.Metal, nil, leg)
+			G("Cape", V(1.0, 3.7, 0.1), sx * 0.5, 2.2, 0.66, RGB(55, 35, 85), M.Fabric, CFrame.Angles(A(9), 0, A(-sx * 4)), torso, {Transparency = 0.25})
+			for k = 0, 1 do
+				G("CapeTatter", V(0.36, 0.5, 0.08), sx * (0.25 + k * 0.5), 0.2, 0.95, RGB(55, 35, 85), M.Fabric, CFrame.Angles(A(9), 0, A(sx * (12 - k * 24))), torso, {Transparency = 0.35})
+			end
+		end
+		-- the spectral sword (right hand) and a kite shield (left arm)
+		G("SwordGrip", V(0.18, 0.18, 0.7), 1.5, 1.95, -0.3, RGB(50, 40, 60), M.Fabric, nil, RA)
+		G("SwordGuard", V(1.1, 0.16, 0.2), 1.5, 1.95, -0.72, RGB(200, 170, 90), M.Metal, nil, RA)
+		local blade = stick("SwordBlade", V(1.5, 1.98, -0.8), V(1.5, 2.4, -4.6), 0.1, 0.42, ghost, M.Neon, RA)
+		blade.Transparency = 0.15
+		GB("SwordPommel", 0.24, 1.5, 1.95, 0.08, purple, M.Neon, RA)
+		G("Shield", V(0.22, 2.5, 1.7), -2.12, 2.9, -0.35, armorDark, M.Metal, nil, LA, {Transparency = 0.15})
+		G("ShieldTip", V(0.2, 1.0, 1.0), -2.12, 1.65, -0.35, armorDark, M.Metal, CFrame.Angles(A(45), 0, 0), LA, {Transparency = 0.15})
+		G("ShieldCross", V(0.24, 1.9, 0.26), -2.14, 2.95, -0.35, ghost, M.Neon, nil, LA)
+		G("ShieldCross", V(0.24, 0.26, 1.3), -2.14, 3.3, -0.35, ghost, M.Neon, nil, LA)
+		emitter(torso, {Color = ColorSequence.new(ghost, purple), LightEmission = 0.8, Rate = 14, Transparency = NumberSequence.new(0.3, 1),
+			Lifetime = NumberRange.new(1, 1.8), Speed = NumberRange.new(1, 2), Size = NumberSequence.new(1.0, 0),
+			SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, 3, 0)})
+		light(head, ghost, 7 * s, 2.2)
+		bossOrbs(3, ghost, 2.4, 3.8, 0.34) -- lost souls
+
+	elseif areaIndex == 13 then
+		-- CRYSTAL TITAN: an amethyst rock giant with cyan + pink crystals growing out of his head,
+		-- shoulders, fists and back, a glowing heart gem and a crystal club
+		local cyan, pink, amethyst = RGB(90, 230, 255), RGB(255, 110, 220), RGB(150, 100, 235)
+		local rock = look.shirt
+		local DIAMOND = CFrame.Angles(A(45), 0, A(45))
+		local function crystal(name, a, b, w, color, to) -- a crystal rod from a to b with a glowing tip
+			stick(name, a, b, w, w, color, M.Glass, to)
+			G(name .. "Tip", V(w * 0.72, w * 0.72, w * 0.72), b.X, b.Y, b.Z, color:Lerp(white, 0.3), M.Neon, DIAMOND, to)
+		end
+		G("HeadRock", V(1.38, 1.3, 1.38), 0, 4.55, 0, look.skin:Lerp(rock, 0.55), M.Slate, nil, head)
+		G("BrowRidge", V(1.42, 0.22, 0.3), 0, 4.9, -0.58, rock, M.Slate, nil, head)
+		for _, sx in ipairs({-1, 1}) do
+			G("GlowEye", V(0.26, 0.26, 0.06), sx * 0.3, 4.62, -0.71, pink, M.Neon, ROTZ(45), head)
+		end
+		G("Mouth", V(0.55, 0.1, 0.05), 0, 4.22, -0.71, cyan, M.Neon, nil, head)
+		for k = -2, 2 do
+			local ak = math.abs(k)
+			crystal("HeadCrystal", V(k * 0.24, 5.05, 0.05 * ak), V(k * 0.5, 5.65 + (2 - ak) * 0.38, 0.12 * ak), 0.3 - ak * 0.04, (k % 2 == 0) and cyan or pink, head)
+		end
+		-- body: rocky plates + a glowing crystal heart
+		G("ChestRock", V(2.2, 1.5, 1.22), 0, 3.3, 0, rock, M.Slate, nil, torso)
+		G("ChestCrystal", V(1.0, 1.0, 0.3), 0, 3.35, -0.6, amethyst, M.Glass, ROTZ(45), torso)
+		local heart = G("CrystalHeart", V(0.55, 0.55, 0.22), 0, 3.35, -0.72, pink, M.Neon, ROTZ(45), torso)
+		light(heart, pink, 10, 2)
+		G("HipRock", V(2.15, 0.6, 1.18), 0, 2.2, 0, rock:Lerp(RGB(0, 0, 0), 0.25), M.Slate, nil, torso)
+		for _, sx in ipairs({-1, 1}) do
+			local arm, leg = (sx < 0) and LA or RA, (sx < 0) and LL or RL
+			G("ShoulderRock", V(1.4, 0.7, 1.35), sx * 1.55, 3.95, 0, rock, M.Slate, ROTZ(-sx * 10), arm)
+			for k = -1, 1 do
+				crystal("ShoulderCrystal", V(sx * (1.55 + k * 0.32), 4.2, k * 0.25), V(sx * (1.95 + k * 0.4), 5.4 - math.abs(k) * 0.35, k * 0.4),
+					0.36 - math.abs(k) * 0.08, (k == 0) and cyan or ((k < 0) and pink or amethyst), arm)
+			end
+			G("CrystalArm", V(1.22, 1.15, 1.22), sx * 1.5, 2.45, 0, cyan, M.Glass, nil, arm, {Transparency = 0.15})
+			for k = -1, 1 do
+				crystal("KnuckleCrystal", V(sx * 1.5 + k * 0.3, 1.95, -0.45), V(sx * 1.5 + k * 0.34, 1.7, -0.95), 0.18, pink, arm)
+			end
+			G("CrystalBoot", V(1.16, 0.95, 1.3), sx * 0.5, 0.47, -0.06, amethyst, M.Glass, nil, leg, {Transparency = 0.1})
+			G("LegRock", V(1.12, 0.6, 1.12), sx * 0.5, 1.45, 0, rock, M.Slate, nil, leg)
+		end
+		-- big crystals growing out of his back
+		for k = -1, 1 do
+			crystal("BackCrystal", V(k * 0.5, 3.4, 0.45), V(k * 0.95, 4.9 - math.abs(k) * 0.4, 1.35), 0.5 - math.abs(k) * 0.12, (k == 0) and cyan or pink, torso)
+		end
+		-- a crystal club in his right hand
+		stick("ClubHandle", V(1.55, 1.9, -0.4), V(1.55, 1.25, -2.2), 0.26, 0.26, rock, M.Slate, RA, true)
+		for k = 1, 4 do
+			G("ClubCrystal", V(0.55, 1.0, 0.55), 1.55 + (k - 2.5) * 0.22, 1.2 + (k % 2) * 0.22, -2.3 - k * 0.12, (k % 2 == 0) and cyan or pink, M.Glass,
+				CFrame.Angles(A(k * 23), A(k * 41), A(k * 17)), RA, {Transparency = 0.1})
+		end
+		emitter(torso, {Color = ColorSequence.new(cyan, pink), LightEmission = 1, Rate = 14,
+			Lifetime = NumberRange.new(0.8, 1.4), Speed = NumberRange.new(1, 3), Size = NumberSequence.new(0.6, 0),
+			SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, 2, 0)})
+		light(head, cyan, 7 * s, 2.2)
+		bossOrbs(4, cyan, 2.6, 3.8, 0.34)
+
+	elseif areaIndex == 14 then
+		-- STORM GIANT: a sky king with a fluffy cloud beard, a golden crown and feathered wings,
+		-- storm-cloud shoulders, a lightning bolt in his hand and his very own rain cloud
+		local cloud, cloudGrey, bolt = RGB(250, 252, 255), RGB(150, 160, 185), RGB(255, 235, 90)
+		uniform({sleeve = shirt, cuff = gold, boots = RGB(200, 170, 90), tallBoots = true, noPockets = true, noButtons = true, noCollar = true, noPouches = true, belt = RGB(200, 160, 40)})
+		face({glow = true, pupil = bolt, eyeWhite = RGB(30, 40, 75), browAngle = 18, brow = cloud})
+		-- the cloud beard, mustache and hair
+		for _, b in ipairs({{0, 4.0, -0.6, 0.85}, {-0.38, 4.1, -0.52, 0.62}, {0.38, 4.1, -0.52, 0.62}, {0, 3.6, -0.66, 0.7}, {-0.3, 3.72, -0.62, 0.55}, {0.3, 3.72, -0.62, 0.55}, {0, 3.22, -0.68, 0.5}}) do
+			GB("CloudBeard", b[4], b[1], b[2], b[3], cloud, M.SmoothPlastic, head)
+		end
+		for _, sx in ipairs({-1, 1}) do
+			GB("CloudMustache", 0.38, sx * 0.2, 4.3, -0.68, cloud, M.SmoothPlastic, head)
+			GB("CloudHair", 0.7, sx * 0.5, 4.85, 0.32, cloud, M.SmoothPlastic, head)
+		end
+		GB("CloudHair", 0.85, 0, 4.95, 0.45, cloud, M.SmoothPlastic, head)
+		-- golden crown with a lightning gem
+		G("CrownBand", V(1.36, 0.32, 1.36), 0, 5.1, 0, gold, M.Metal, nil, head)
+		for k = 0, 7 do
+			local a = k * math.pi / 4
+			G("CrownPoint", V(0.3, 0.3, 0.3), math.cos(a) * 0.62, 5.4, math.sin(a) * 0.62, gold, M.Metal, CFrame.Angles(A(45), 0, A(45)), head)
+		end
+		GB("CrownGem", 0.26, 0, 5.1, -0.7, bolt, M.Neon, head)
+		-- feathered wings (white, gold tips), storm-cloud shoulders, gold bracers
+		for _, sx in ipairs({-1, 1}) do
+			for k = 0, 3 do
+				stick("WingFeather", V(sx * 0.5, 3.7 - k * 0.15, 0.58), V(sx * (2.8 - k * 0.35), 5.6 - k * 0.75, 1.0 + k * 0.08), 0.08, 0.75 - k * 0.08,
+					(k % 2 == 0) and cloud or RGB(232, 238, 255), M.SmoothPlastic, torso)
+			end
+			GB("WingTip", 0.4, sx * 2.8, 5.6, 1.0, gold, M.Metal, torso)
+			local arm = (sx < 0) and LA or RA
+			GB("StormShoulder", 1.25, sx * 1.6, 4.05, 0, cloudGrey, M.SmoothPlastic, arm)
+			GB("StormShoulder", 0.85, sx * 1.95, 4.3, 0.3, cloudGrey:Lerp(cloud, 0.4), M.SmoothPlastic, arm)
+			G("Bracer", V(1.14, 0.42, 1.14), sx * 1.5, 2.55, 0, gold, M.Metal, nil, arm)
+		end
+		G("Sash", V(0.45, 2.7, 1.12), 0.05, 3.0, 0, gold, M.Fabric, ROTZ(35), torso)
+		disc("ChestBolt", 0.06, 0.5, -0.5, 3.55, -0.58, bolt, M.Neon, torso, FACE_FWD)
+		-- a lightning bolt in his right hand
+		local pts = {V(1.5, 1.6, -0.5), V(1.85, 2.9, -0.8), V(1.35, 3.5, -0.95), V(1.75, 4.8, -1.15), V(1.3, 5.4, -1.3), V(1.55, 6.8, -1.5)}
+		for k = 1, #pts - 1 do stick("Lightning", pts[k], pts[k + 1], 0.2, 0.2, bolt, M.Neon, RA) end
+		local spark = GB("BoltSpark", 0.45, 1.55, 6.8, -1.5, RGB(255, 255, 220), M.Neon, RA)
+		light(spark, bolt, 10, 2.5)
+		-- his own little rain cloud floating over his head
+		for _, c in ipairs({{0, 6.7, 0.1, 1.1}, {-0.6, 6.55, 0.15, 0.8}, {0.6, 6.55, 0.05, 0.8}}) do
+			GB("RainCloud", c[4], c[1], c[2], c[3], cloudGrey, M.SmoothPlastic, head)
+		end
+		local rain = G("RainZone", V(1.4, 0.2, 0.8), 0, 6.3, 0.1, cloudGrey, nil, nil, head, {Transparency = 1})
+		emitter(rain, {Color = ColorSequence.new(RGB(170, 200, 255)), Transparency = NumberSequence.new(0.2, 0.6), Rate = 18, Lifetime = NumberRange.new(0.35, 0.5),
+			Speed = NumberRange.new(10, 14), Size = NumberSequence.new(0.12 * s, 0.08 * s), EmissionDirection = Enum.NormalId.Bottom, SpreadAngle = Vector2.new(4, 4)})
+		light(head, bolt, 7 * s, 2.2)
+		bossOrbs(3, bolt, 2.6, 4.2, 0.3) -- crackling ball lightning
+
+	elseif areaIndex == 15 then
+		-- DRAGON KING (the final boss): a red dragon in a golden crown - a snout full of fangs, curved horns,
+		-- huge bat wings, a spiked tail, golden claws + belly, a ruby medallion, and he breathes fire
+		local scaleDark = RGB(110, 14, 26)
+		local belly, horn, fire = RGB(255, 190, 80), RGB(240, 225, 190), RGB(255, 120, 30)
+		G("Snout", V(0.95, 0.55, 0.85), 0, 4.32, -0.95, look.skin, nil, nil, head)
+		G("Jaw", V(0.85, 0.22, 0.7), 0, 3.98, -0.85, scaleDark, nil, nil, head)
+		for k = -1.5, 1.5 do G("Fang", V(0.1, 0.22, 0.1), k * 0.24, 3.98, -1.3, white, nil, nil, head) end
+		for _, sx in ipairs({-1, 1}) do
+			GB("Nostril", 0.14, sx * 0.22, 4.52, -1.36, RGB(40, 10, 10), nil, head)
+			G("GlowEye", V(0.32, 0.16, 0.06), sx * 0.3, 4.68, -0.66, gold, M.Neon, ROTZ(-sx * 15), head)
+			G("EyePupil", V(0.05, 0.15, 0.03), sx * 0.3, 4.68, -0.7, RGB(20, 10, 10), nil, nil, head)
+			G("BrowScale", V(0.45, 0.14, 0.3), sx * 0.3, 4.86, -0.6, scaleDark, nil, ROTZ(sx * 20), head)
+			stick("Horn", V(sx * 0.42, 5.0, 0.15), V(sx * 0.85, 5.55, 0.55), 0.28, 0.28, horn, nil, head, true)
+			stick("HornTip", V(sx * 0.85, 5.55, 0.55), V(sx * 0.9, 6.1, 1.1), 0.18, 0.18, horn, nil, head, true)
+			G("CheekSpike", V(0.12, 0.12, 0.5), sx * 0.66, 4.45, 0.1, horn, nil, CFrame.Angles(0, A(sx * 30), 0), head)
+		end
+		G("CrownBand", V(1.32, 0.3, 1.32), 0, 5.12, 0, gold, M.Metal, nil, head)
+		for k = 0, 5 do
+			local a = k * math.pi / 3
+			G("CrownPoint", V(0.28, 0.28, 0.28), math.cos(a) * 0.6, 5.38, math.sin(a) * 0.6, gold, M.Metal, CFrame.Angles(A(45), 0, A(45)), head)
+		end
+		GB("CrownGem", 0.24, 0, 5.12, -0.68, RGB(255, 40, 60), M.Neon, head)
+		-- golden spines down his back, a golden belly, a royal chain with a ruby medallion
+		for k = 0, 4 do G("Spine", V(0.12, 0.42, 0.42), 0, 4.0 - k * 0.5, 0.55, gold, M.Metal, CFrame.Angles(A(45), 0, 0), torso) end
+		G("Belly", V(1.3, 1.75, 0.08), 0, 2.95, -0.52, belly, nil, nil, torso)
+		for k = 0, 3 do G("BellyRidge", V(1.32, 0.07, 0.1), 0, 2.3 + k * 0.42, -0.55, belly:Lerp(RGB(0, 0, 0), 0.25), nil, nil, torso) end
+		for k = 0, 9 do
+			local a = (k / 10) * math.pi * 2
+			GB("Chain", 0.15, math.cos(a) * 0.62, 3.9 - math.max(0, -math.sin(a)) * 0.3, math.sin(a) * 0.45, gold, M.Metal, torso)
+		end
+		GB("Medallion", 0.4, 0, 3.58, -0.6, RGB(255, 40, 60), M.Neon, torso)
+		for _, sx in ipairs({-1, 1}) do
+			local arm, leg = (sx < 0) and LA or RA, (sx < 0) and LL or RL
+			-- a huge bat wing: two bones with the skin hanging under them
+			local sh, el, tip = V(sx * 0.6, 3.9, 0.6), V(sx * 2.6, 5.9, 1.2), V(sx * 4.6, 4.6, 1.5)
+			stick("WingBone", sh, el, 0.2, 0.2, scaleDark, nil, torso, true)
+			stick("WingBone", el, tip, 0.15, 0.15, scaleDark, nil, torso, true)
+			GB("WingClaw", 0.26, el.X, el.Y + 0.1, el.Z, horn, nil, torso)
+			stick("WingSkin", sh - V(0, 0.95, 0), el - V(0, 0.95, 0), 0.06, 1.9, RGB(150, 20, 35), nil, torso)
+			stick("WingSkin", el - V(0, 1.1, 0), tip - V(0, 1.1, 0), 0.06, 2.2, RGB(150, 20, 35), nil, torso)
+			G("Pauldron", V(1.35, 0.55, 1.32), sx * 1.52, 4.02, 0, gold, M.Metal, ROTZ(-sx * 14), arm)
+			for k = -1, 1 do stick("PauldronSpike", V(sx * (1.5 + k * 0.32), 4.25, 0), V(sx * (1.75 + k * 0.42), 4.85, k * 0.1), 0.15, 0.15, horn, nil, arm, true) end
+			G("ArmScales", V(1.1, 0.9, 1.1), sx * 1.5, 2.8, 0, scaleDark, nil, nil, arm)
+			for k = -1, 1 do stick("Claw", V(sx * 1.5 + k * 0.28, 2.0, -0.3), V(sx * 1.5 + k * 0.32, 1.45, -0.65), 0.12, 0.12, gold, M.Metal, arm) end
+			G("LegScales", V(1.1, 0.8, 1.1), sx * 0.5, 1.5, 0, scaleDark, nil, nil, leg)
+			for k = -1, 1 do stick("ToeClaw", V(sx * 0.5 + k * 0.3, 0.2, -0.5), V(sx * 0.5 + k * 0.32, 0.05, -0.85), 0.12, 0.12, horn, nil, leg) end
+		end
+		-- a long spiked tail
+		for k = 1, 6 do
+			local w = 0.72 - k * 0.08
+			local y, z = 2.05 - k * 0.24, 0.45 + k * 0.62
+			G("Tail", V(w, w, 0.75), 0, y, z, (k % 2 == 0) and look.skin or scaleDark, nil, CFrame.Angles(A(-12 - k * 2), 0, 0), torso)
+			G("TailSpike", V(0.08, 0.28, 0.28), 0, y + w / 2, z, gold, M.Metal, CFrame.Angles(A(45), 0, 0), torso)
+		end
+		G("TailSpade", V(0.08, 0.7, 0.7), 0, 0.45, 4.6, gold, M.Metal, CFrame.Angles(A(45), 0, 0), torso)
+		-- fire breath + embers
+		local mouth = G("FireBreath", V(0.3, 0.3, 0.3), 0, 4.15, -1.4, fire, nil, nil, head, {Transparency = 1})
+		emitter(mouth, {Color = ColorSequence.new(RGB(255, 220, 90), RGB(255, 60, 20)), LightEmission = 1, Rate = 14, Transparency = NumberSequence.new(0.1, 1),
+			Lifetime = NumberRange.new(0.3, 0.6), Speed = NumberRange.new(5, 9), Size = NumberSequence.new(0.35 * s, 0.9 * s), EmissionDirection = Enum.NormalId.Front, SpreadAngle = Vector2.new(12, 12)})
+		emitter(torso, {Color = ColorSequence.new(RGB(255, 210, 60), fire), LightEmission = 1, Rate = 14,
+			Lifetime = NumberRange.new(0.8, 1.4), Speed = NumberRange.new(2, 4), Size = NumberSequence.new(0.9, 0),
+			SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, 5, 0)})
+		light(head, fire, 8 * s, 2.5)
+		bossOrbs(4, fire, 2.8, 3.8, 0.4) -- fireballs
 	end
 	if areaIndex == 1 then
 		-- the sleepy watchman dozes next to his old chair (not part of the model, so it stays put)
@@ -1003,7 +1289,7 @@ local function makeGuardian(areaIndex, pos, accent)
 	local chs = Instance.new("UIStroke")
 	chs.Thickness = 1.5
 	chs.Parent = chipL
-	local threat = math.clamp(math.ceil(areaIndex / 2), 1, 5)
+	local threat = math.clamp(math.ceil(areaIndex * 5 / math.max(10, #Config.Areas)), 1, 5) -- (5 diamonds = the last areas)
 	for k = 1, 5 do
 		local d = Instance.new("Frame")
 		d.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1318,6 +1604,132 @@ THEMES[10] = function(r) -- GALAXY VAULT: neon grid, black hole, planets, crysta
 	ambience(r, {RGB(255, 255, 255), RGB(220, 170, 255)}, {rate = 40, speed = 0.3, size = 0.2, glow = 1, accel = Vector3.new(0, 0, 0), y = 12, life = 6})
 end
 
+THEMES[11] = function(r) -- LAVA FORGE: lava rivers, a forge furnace, anvils, chains, embers
+	local lava, ember = RGB(255, 90, 20), RGB(255, 170, 40)
+	for _, x in ipairs({-29, 29}) do
+		D(r, "LavaRiver", V(5, 0.3, 44), x, F + 0.1, 26, lava, M.CrackedLava, FX)
+		D(r, "LavaGlow", V(4, 0.2, 42), x, F + 0.3, 26, ember, M.Neon, FX)
+	end
+	D(r, "Furnace", V(12, 10, 7), -24, F + 5, 44, RGB(60, 50, 50), M.Brick)
+	local mouth = D(r, "FurnaceFire", V(7, 4, 0.4), -24, F + 3.5, 40.4, ember, M.Neon, FX)
+	light(mouth, lava, 40, 2.5)
+	emitter(mouth, {Color = ColorSequence.new(ember, lava), LightEmission = 1, Rate = 12, Lifetime = NumberRange.new(1, 2),
+		Speed = NumberRange.new(2, 4), Size = NumberSequence.new(0.8, 0), SpreadAngle = Vector2.new(30, 30), Acceleration = Vector3.new(0, 4, 0)})
+	pillar(r, "Chimney", 14, 3, -24, F + 10, 46, RGB(50, 42, 42), M.Brick)
+	for i = 1, 3 do
+		local x, d = 22, 12 + i * 10
+		D(r, "AnvilBase", V(2, 2, 2), x, F + 1, d, RGB(70, 70, 80), M.Metal)
+		D(r, "AnvilTop", V(4.5, 1.2, 2), x, F + 2.6, d, RGB(90, 90, 100), M.Metal)
+	end
+	for k = 1, 4 do
+		D(r, "Chain", V(0.5, 14, 0.5), -12 + k * 6, WH - 7, 30, RGB(60, 60, 66), M.Metal, FX)
+		ball(r, "ChainHook", 1.4, -12 + k * 6, WH - 14.5, 30, RGB(255, 120, 40), M.Neon, FX)
+	end
+	ambience(r, {ember, lava}, {rate = 30, speed = 1.5, size = 0.25, glow = 1, accel = Vector3.new(0, 2, 0), y = 2, dir = Enum.NormalId.Top, life = 5})
+end
+
+THEMES[12] = function(r) -- HAUNTED MANOR: gravestones, crooked lamps, floating candles, portraits, fog
+	local ghostly, purple = RGB(160, 255, 200), RGB(150, 90, 220)
+	for i = 1, 8 do
+		local x = (i % 2 == 0) and 30 or -30
+		local d = 6 + i * 5
+		D(r, "Gravestone", V(3, 4, 0.8), x, F + 2, d, RGB(120, 120, 135), M.Slate, nil, CFrame.Angles(0, 0, math.rad((i % 3 - 1) * 8)))
+	end
+	for _, x in ipairs({-26, 26}) do
+		D(r, "LampPost", V(0.6, 12, 0.6), x, F + 6, 40, RGB(30, 28, 36), M.Metal, nil, CFrame.Angles(0, 0, math.rad(x > 0 and 6 or -6)))
+		local bulb = ball(r, "GhostLamp", 1.8, x + (x > 0 and 0.6 or -0.6), F + 12.2, 40, ghostly, M.Neon, FX)
+		light(bulb, ghostly, 30, 1.8)
+	end
+	for k = 1, 6 do
+		local c = D(r, "FloatCandle", V(0.6, 1.6, 0.6), -15 + k * 5, 14 + (k % 2) * 2, 20 + (k % 3) * 9, RGB(240, 235, 215), M.SmoothPlastic, FX)
+		ball(r, "CandleFlame", 0.6, -15 + k * 5, 15.2 + (k % 2) * 2, 20 + (k % 3) * 9, RGB(255, 200, 90), M.Neon, FX)
+	end
+	for _, x in ipairs({-33, 33}) do
+		for k = 0, 1 do
+			D(r, "Portrait", V(0.3, 6, 4.5), x, F + 9, 18 + k * 16, RGB(110, 70, 40), M.Wood)
+			D(r, "PortraitArt", V(0.35, 4.8, 3.4), x + (x > 0 and -0.05 or 0.05), F + 9, 18 + k * 16, purple, M.SmoothPlastic, FX)
+		end
+	end
+	ambience(r, {RGB(200, 190, 255), RGB(150, 255, 210)}, {rate = 18, speed = 0.4, size = 1.2, accel = Vector3.new(0.3, 0, 0), y = 3, life = 8})
+end
+
+THEMES[13] = function(r) -- CRYSTAL CAVERNS: crystal clusters, glowing mushrooms, stalactites, sparkles
+	local cols = {RGB(90, 230, 255), RGB(255, 110, 210), RGB(170, 90, 255)}
+	for i = 1, 6 do
+		local x = (i % 2 == 0) and 29 or -29
+		local col = cols[(i % 3) + 1]
+		for k = 0, 2 do
+			D(r, "Crystal", V(1.8, 6 + k * 2.5, 1.8), x + (k - 1) * 1.4, F + 3 + k, 4 + i * 7, col, M.Glass, {Transparency = 0.2}, CFrame.Angles(0, math.rad(45), math.rad((k - 1) * 20)))
+		end
+		local tip = D(r, "CrystalTip", V(0.8, 2.5, 0.8), x, F + 10, 4 + i * 7, col, M.Neon, FX)
+		if i % 2 == 0 then light(tip, col, 24, 1.4) end
+	end
+	for i = 1, 6 do
+		local x = (i % 2 == 0) and 22 or -22
+		pillar(r, "MushroomStem", 2.5, 0.8, x, F, 10 + i * 6, RGB(235, 230, 255), M.SmoothPlastic)
+		D(r, "MushroomCap", V(3.2, 1.2, 3.2), x, F + 3, 10 + i * 6, cols[(i % 3) + 1], M.Neon, FX)
+	end
+	for k = 1, 8 do
+		D(r, "Stalactite", V(1.5, 5 + (k % 3) * 2, 1.5), -28 + k * 7, WH - 3, 8 + (k * 13) % 40, RGB(120, 110, 150), M.Slate, FX, CFrame.Angles(0, math.rad(45), 0))
+	end
+	ambience(r, {RGB(255, 255, 255), RGB(140, 240, 255), RGB(255, 150, 230)}, {rate = 35, speed = 0.3, size = 0.2, glow = 1, accel = Vector3.new(0, 0, 0), y = 10, life = 6})
+end
+
+THEMES[14] = function(r) -- SKY KINGDOM: marble columns, clouds, a golden gate, a rainbow arch
+	local gold, marble = RGB(255, 210, 80), RGB(245, 242, 235)
+	for i = 0, 4 do
+		for _, x in ipairs({-30, 30}) do
+			pillar(r, "MarbleColumn", 16, 2.6, x, F, 6 + i * 10, marble, M.Marble)
+			D(r, "ColumnCap", V(3.6, 1, 3.6), x, F + 16.5, 6 + i * 10, gold, M.SmoothPlastic)
+		end
+	end
+	for i = 1, 8 do
+		ball(r, "Cloud", 5 + (i % 3) * 2, -26 + (i * 17) % 52, WH - 6 - (i % 2) * 3, 6 + i * 5, RGB(255, 255, 255), M.SmoothPlastic, FX)
+	end
+	for _, x in ipairs({-20, 20}) do D(r, "GatePost", V(2, 14, 2), x, F + 7, 46, gold, M.SmoothPlastic) end
+	D(r, "GateTop", V(42, 2, 2), 0, F + 14.5, 46, gold, M.SmoothPlastic)
+	local rainbow = {RGB(255, 80, 80), RGB(255, 170, 60), RGB(255, 230, 70), RGB(90, 220, 110), RGB(80, 160, 255), RGB(180, 110, 255)}
+	for k, c in ipairs(rainbow) do
+		disc(r, "RainbowBand", 0.6, 34 - k * 2.2, 0, F + 2, 47.5 - k * 0.1, c, M.Neon, {Transparency = 0.15, CanCollide = false, CanQuery = false}, CFrame.Angles(0, math.rad(90), 0))
+	end
+	ambience(r, {RGB(255, 250, 220), RGB(255, 255, 255)}, {rate = 20, speed = 0.5, size = 0.3, glow = 1, accel = Vector3.new(0, -0.3, 0), life = 7})
+end
+
+THEMES[15] = function(r) -- DRAGON'S HOARD: gold mountains, treasure chests, a sleeping dragon, braziers, banners
+	local gold, red = RGB(255, 200, 50), RGB(200, 30, 50)
+	for i = 1, 6 do
+		local x = (i % 2 == 0) and 27 or -27
+		ball(r, "GoldPile", 9 + (i % 3) * 2, x, F - 2.5, 6 + i * 6.5, gold, M.Foil)
+		ball(r, "GoldShine", 2, x + (x > 0 and -2 or 2), F + 2, 6 + i * 6.5, RGB(255, 240, 150), M.Neon, FX)
+	end
+	for i = 1, 4 do
+		local x = (i % 2 == 0) and 19 or -19
+		D(r, "TreasureChest", V(4, 2.6, 2.8), x, F + 1.3, 12 + i * 8, RGB(130, 70, 30), M.Wood)
+		D(r, "ChestBand", V(4.1, 0.5, 2.9), x, F + 2, 12 + i * 8, gold, M.SmoothPlastic, FX)
+	end
+	-- the sleeping dragon curled up at the back
+	ball(r, "DragonBody", 14, 0, F + 5, 48, red, M.SmoothPlastic)
+	ball(r, "DragonHead", 7, 9, F + 3.5, 42, red, M.SmoothPlastic)
+	for _, dz in ipairs({-1.4, 1.4}) do
+		D(r, "DragonHorn", V(0.8, 3.5, 0.8), 9 + dz, F + 7.5, 43, RGB(250, 235, 200), M.SmoothPlastic, FX, CFrame.Angles(math.rad(-25), 0, 0))
+	end
+	for _, side in ipairs({-1, 1}) do
+		D(r, "DragonWing", V(14, 0.6, 8), side * 7, F + 10, 50, RGB(150, 20, 40), M.SmoothPlastic, FX, CFrame.Angles(0, 0, math.rad(side * 30)))
+	end
+	for _, x in ipairs({-32, 32}) do
+		for k = 0, 1 do
+			D(r, "Banner", V(0.3, 9, 4), x, WH - 8, 14 + k * 20, red, M.Fabric, FX)
+			D(r, "BannerTrim", V(0.35, 0.8, 4.2), x, WH - 12, 14 + k * 20, gold, M.SmoothPlastic, FX)
+		end
+		pillar(r, "Brazier", 4, 2.4, x * 0.75, F, 4, RGB(70, 60, 55), M.Metal)
+		local fire = ball(r, "BrazierFire", 2.2, x * 0.75, F + 4.8, 4, RGB(255, 140, 40), M.Neon, FX)
+		light(fire, RGB(255, 140, 50), 30, 2)
+		emitter(fire, {Color = ColorSequence.new(RGB(255, 200, 60), RGB(255, 60, 20)), LightEmission = 1, Rate = 10, Lifetime = NumberRange.new(0.6, 1.2),
+			Speed = NumberRange.new(3, 5), Size = NumberSequence.new(1, 0), SpreadAngle = Vector2.new(15, 15)})
+	end
+	ambience(r, {RGB(255, 220, 90), RGB(255, 140, 40)}, {rate = 25, speed = 0.4, size = 0.25, glow = 1, accel = Vector3.new(0, 0.5, 0), y = 3, dir = Enum.NormalId.Top, life = 6})
+end
+
 ------------------------------------------------------------------
 -- OPEN-AIR BIOMES (v18): every area is an open zone on a floating island
 -- under the night sky. The lane itself stays the same (invisible walls keep
@@ -1552,6 +1964,35 @@ local BIOMES = {
 		leaves = {RGB(200, 120, 255)}, crystal = {RGB(200, 100, 255), RGB(255, 90, 210), RGB(110, 140, 255)}, lamp = RGB(220, 150, 255), rock = RGB(70, 55, 110),
 		props = {{"crystal", 4}, {"floatrock", 3}, {"mushroom", 1}, {"rock", 1}},
 		landmark = "bigcrystal",
+	},
+	{ -- 11 Lava Forge -> basalt fields + a volcano
+		ground = RGB(58, 44, 40), lane = RGB(66, 50, 46), cliff = RGB(36, 26, 24), trunk = RGB(50, 34, 30),
+		leaves = {RGB(255, 120, 40)}, crystal = {RGB(255, 110, 40), RGB(255, 170, 60), RGB(255, 70, 30)}, lamp = RGB(255, 140, 60), rock = RGB(55, 44, 42),
+		props = {{"rock", 5}, {"crystal", 2}, {"deadtree", 2}, {"lantern", 1}},
+		landmark = "volcano",
+	},
+	{ -- 12 Haunted Manor -> misty graveyard
+		ground = RGB(58, 48, 72), lane = RGB(74, 60, 84), cliff = RGB(34, 24, 44), stone = RGB(130, 120, 155), trunk = RGB(55, 40, 45),
+		leaves = {RGB(120, 80, 160)}, crystal = {RGB(170, 110, 255), RGB(120, 255, 190)}, lamp = RGB(190, 140, 255), rock = RGB(80, 70, 95),
+		props = {{"tombstone", 6}, {"deadtree", 4}, {"pumpkin", 1}, {"lantern", 1}},
+		fog = {RGB(170, 120, 255)},
+	},
+	{ -- 13 Crystal Caverns -> glowing crystal field
+		ground = RGB(44, 48, 84), lane = RGB(58, 62, 100), cliff = RGB(28, 28, 58), trunk = RGB(80, 70, 120),
+		leaves = {RGB(120, 230, 255)}, crystal = {RGB(90, 230, 255), RGB(255, 120, 220), RGB(170, 110, 255)}, lamp = RGB(140, 240, 255), rock = RGB(70, 70, 110),
+		props = {{"crystal", 6}, {"mushroom", 3}, {"rock", 2}},
+		landmark = "bigcrystal",
+	},
+	{ -- 14 Sky Kingdom -> cloud gardens
+		ground = RGB(238, 243, 255), lane = RGB(236, 230, 214), cliff = RGB(200, 212, 238), trunk = RGB(250, 250, 250),
+		leaves = {RGB(255, 255, 255), RGB(238, 244, 255)}, crystal = {RGB(255, 220, 110), RGB(255, 255, 255)}, lamp = RGB(255, 235, 170), rock = RGB(230, 230, 240),
+		props = {{"tree", 4}, {"crystal", 2}, {"lantern", 2}, {"rock", 1}},
+	},
+	{ -- 15 Dragon's Hoard -> scorched dragon mountain
+		ground = RGB(92, 40, 34), lane = RGB(98, 46, 36), cliff = RGB(50, 20, 20), trunk = RGB(70, 35, 25),
+		leaves = {RGB(200, 40, 60)}, crystal = {RGB(255, 200, 50), RGB(255, 60, 80)}, lamp = RGB(255, 170, 70), rock = RGB(80, 45, 40),
+		props = {{"rock", 4}, {"crystal", 3}, {"lantern", 2}, {"deadtree", 1}},
+		landmark = "volcano",
 	},
 }
 
@@ -2250,6 +2691,11 @@ local MOOD = {
 	{RGB(120, 220, 255), 0.85, 28}, -- Tech Lab: cyan
 	{RGB(140, 255, 140), 0.7, 26},  -- Alien Hangar: eerie green
 	{RGB(190, 130, 255), 0.6, 24},  -- Galaxy Vault: dark purple
+	{RGB(255, 140, 60), 0.9, 30},   -- Lava Forge: forge-fire orange
+	{RGB(175, 130, 255), 0.6, 24},  -- Haunted Manor: ghostly purple
+	{RGB(130, 240, 255), 0.85, 28}, -- Crystal Caverns: crystal cyan
+	{RGB(255, 242, 205), 1.3, 34},  -- Sky Kingdom: bright heavenly gold
+	{RGB(255, 165, 80), 0.85, 30},  -- Dragon's Hoard: treasure glow
 }
 
 ------------------------------------------------------------------
@@ -2257,11 +2703,12 @@ local MOOD = {
 -- neon trims and swinging lamps (+ a starry ceiling in the Galaxy Vault). It sits high up
 -- (above everything that flies around) and the sides stay open, so you still see the islands.
 ------------------------------------------------------------------
-local CEIL_MAT = {M.WoodPlanks, M.WoodPlanks, M.SmoothPlastic, M.SmoothPlastic, M.WoodPlanks, M.Marble, M.Ice, M.DiamondPlate, M.Metal, M.SmoothPlastic}
+local CEIL_MAT = {M.WoodPlanks, M.WoodPlanks, M.SmoothPlastic, M.SmoothPlastic, M.WoodPlanks, M.Marble, M.Ice, M.DiamondPlate, M.Metal, M.SmoothPlastic,
+	M.Slate, M.WoodPlanks, M.Slate, M.SmoothPlastic, M.Slate}
 local function buildCeiling(r, st, acc)
 	local idx = r.index
 	local mood = MOOD[idx] or MOOD[1]
-	local roofCol = st.wallA:Lerp(RGB(0, 0, 0), 0.3)
+	local roofCol = st.roof or st.wallA:Lerp(RGB(0, 0, 0), 0.3)
 	local beamCol = st.shelf:Lerp(RGB(0, 0, 0), 0.15)
 	D(r, "Ceiling", V(HW * 2 + 6, 1.2, SL + 0.2), 0, WH + 0.6, SL / 2, roofCol, CEIL_MAT[idx] or M.SmoothPlastic)
 	for k = 0, 5 do
@@ -2384,7 +2831,7 @@ for areaIndex, area in ipairs(Config.Areas) do
 	end
 
 	-- theme decorations + effects
-	THEMES[areaIndex](r)
+	if THEMES[areaIndex] then THEMES[areaIndex](r) end
 	-- the lane has a roof again: the hanging bulbs, lanterns, cobwebs and spotlights are back.
 	-- Only things that were stuck on the (now invisible) side walls are removed.
 	-- the roof over the lane

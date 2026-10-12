@@ -1226,6 +1226,7 @@ local function placeBoxAt(player, worldPos)
 	if prof.Stolen >= 500 then achieve(player, "Steal500") end
 	if def.area >= 5 then achieve(player, "Deep5") end
 	if def.area >= 10 then achieve(player, "Deep10") end
+	if def.area >= 15 then achieve(player, "Deep15") end
 	prof.Boxes[def.id] = (prof.Boxes[def.id] or 0) + 1
 	prof.Mutations[c.mutation] = (prof.Mutations[c.mutation] or 0) + 1
 	if prof.Boxes[def.id] == 1 then

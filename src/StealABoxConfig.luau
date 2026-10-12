@@ -3,10 +3,10 @@ local Config = {}
 local M = Enum.Material
 local function rgb(r, g, b) return Color3.fromRGB(r, g, b) end
 
--- The warehouse is one long lane: Area 1 starts at the front door, Area 10 is at the very back.
+-- The warehouse is one long lane: Area 1 starts at the front door, Area 15 (Dragon's Hoard) is at the very back.
 Config.Layout = {
 	frontZ = -4,        -- inside face of the warehouse front wall
-	sectionLen = 90,    -- area 1 is 90 studs deep; every next area is longer (see AreaLen)
+	sectionLen = 90,    -- area 1 is 90 studs deep; every next area is longer, up to area 10 (see AreaLen)
 	halfWidth = 63,     -- the warehouse is 126 studs wide (x -63..63)
 	floorY = 0.75,
 	wallHeight = 45,
@@ -167,6 +167,37 @@ Config.Areas = {
 		{id = "GalaxyBox",    name = "Galaxy Box",     emoji = "🌌", value = 13000, color = rgb(95, 55, 185),   material = M.Glass},
 		{id = "BlackHoleBox", name = "Black Hole Box", emoji = "🕳️", value = 25000, color = rgb(20, 12, 30),    material = M.SmoothPlastic},
 	}},
+	-- areas 11-15: the endgame, behind the Galaxy Vault at the very back of the warehouse
+	{name = "Lava Forge", face = "😈", accent = rgb(255, 110, 40), guardSpeed = 92, fling = 380, recommended = 0,
+		guard = "Magma Golem", boxes = {
+		{id = "MagmaBox",       name = "Magma Box",        emoji = "🌋", value = 15000,  color = rgb(255, 90, 30),   material = M.CrackedLava},
+		{id = "AnvilCrate",     name = "Anvil Crate",      emoji = "⚒️", value = 25000,  color = rgb(90, 90, 100),   material = M.Metal},
+		{id = "PhoenixBox",     name = "Phoenix Box",      emoji = "🔥", value = 45000,  color = rgb(255, 170, 40),  material = M.Neon},
+	}},
+	{name = "Haunted Manor", face = "👻", accent = rgb(150, 90, 220), guardSpeed = 103, fling = 420, recommended = 0,
+		guard = "Phantom Knight", boxes = {
+		{id = "GhostBox",       name = "Ghost Box",        emoji = "👻", value = 28000,  color = rgb(225, 230, 255), material = M.Glass},
+		{id = "CoffinCrate",    name = "Coffin Crate",     emoji = "⚰️", value = 46000,  color = rgb(70, 45, 35),    material = M.Wood},
+		{id = "SpellbookBox",   name = "Spellbook Box",    emoji = "📖", value = 85000,  color = rgb(120, 50, 170),  material = M.SmoothPlastic},
+	}},
+	{name = "Crystal Caverns", face = "🤯", accent = rgb(90, 230, 255), guardSpeed = 115, fling = 460, recommended = 0,
+		guard = "Crystal Titan", boxes = {
+		{id = "GeodeBox",       name = "Geode Box",        emoji = "🪨", value = 52000,  color = rgb(150, 120, 200), material = M.Slate},
+		{id = "AmethystBox",    name = "Amethyst Box",     emoji = "💜", value = 90000,  color = rgb(170, 90, 255),  material = M.Glass},
+		{id = "PrismBox",       name = "Prism Box",        emoji = "💠", value = 160000, color = rgb(120, 255, 240), material = M.Neon},
+	}},
+	{name = "Sky Kingdom", face = "⛈️", accent = rgb(255, 220, 110), guardSpeed = 128, fling = 500, recommended = 0,
+		guard = "Storm Giant", boxes = {
+		{id = "CloudBox",       name = "Cloud Box",        emoji = "☁️", value = 100000, color = rgb(245, 248, 255), material = M.SmoothPlastic},
+		{id = "ThunderCrate",   name = "Thunder Crate",    emoji = "⚡", value = 170000, color = rgb(255, 230, 60),  material = M.Neon},
+		{id = "AngelChest",     name = "Angel Chest",      emoji = "😇", value = 300000, color = rgb(255, 245, 200), material = M.Marble},
+	}},
+	{name = "Dragon's Hoard", face = "🐉", accent = rgb(255, 60, 80), guardSpeed = 142, fling = 560, recommended = 0,
+		guard = "Dragon King", boxes = {
+		{id = "DragonEggBox",   name = "Dragon Egg Box",   emoji = "🥚", value = 190000, color = rgb(200, 40, 60),   material = M.SmoothPlastic},
+		{id = "HoardChest",     name = "Hoard Chest",      emoji = "💰", value = 320000, color = rgb(255, 200, 50),  material = M.Foil},
+		{id = "DragonHeartBox", name = "Dragon Heart Box", emoji = "🐉", value = 600000, color = rgb(160, 0, 30),    material = M.Neon},
+	}},
 }
 
 -- lookup: Config.Boxes[id] = box def (with .area and .rarity filled in)
@@ -193,7 +224,7 @@ end
 ------------------------------------------------------------------
 Config.StartSpeed = 100
 Config.SpeedPerDoubling = 2.6
-Config.MaxWalkSpeed = 120
+Config.MaxWalkSpeed = 200 -- (area 15's guardian runs 142)
 function Config.PointsToWalk(points)
 	points = math.max(Config.StartSpeed, tonumber(points) or Config.StartSpeed)
 	return math.min(Config.MaxWalkSpeed, 16 + Config.SpeedPerDoubling * math.log(points / Config.StartSpeed, 2))
@@ -250,7 +281,7 @@ function Config.AreaStartZ(areaIndex)
 	return L.frontZ - (areaIndex - 1) * L.sectionLen
 end
 
--- which area a position is in (1..10), or nil when outside the warehouse
+-- which area a position is in (1..#Config.Areas = 1..15), or nil when outside the warehouse
 function Config.ZoneAt(pos)
 	local L = Config.Layout
 	if math.abs(pos.X) > L.halfWidth + 1 then return nil end
@@ -287,20 +318,19 @@ end
 
 -- TREADMILL on your plot: stand on the belt and run to earn speed.
 -- Upgrading it makes you earn speed faster.
--- (levels 11-20 are the long-term goal: each one still pays off, but costs a lot more)
-Config.Treadmill = {max = 20, beltSpeed = 10}
-function Config.TreadRate(level) -- speed earned per second of running (3/s at level 1, ~7.6K/s at level 10, ~2.7M/s at 20)
-	level = level or 1
-	if level > 10 then return 3 * 2.4 ^ 9 * 1.8 ^ (level - 10) end
-	return 3 * 2.4 ^ (level - 1)
+-- Every upgrade goes to level 100. The first levels are cheap; after that each level costs a lot
+-- more, so the last areas take DAYS of grinding (tuned with an economy simulation: free-to-play,
+-- area 10 after ~3h, area 14 after ~2 days, area 15 ~5 days after that).
+Config.Treadmill = {max = 100, beltSpeed = 10}
+function Config.TreadRate(level) -- speed earned per second of running (3/s at level 1, ~1.9K/s at 30, ~33T/s at 100)
+	level = math.max(1, level or 1)
+	return 3 * 1.25 ^ (math.min(level, 30) - 1) * 1.4 ^ math.max(0, level - 30)
 end
 function Config.TreadmillCost(level) -- price to go from `level` to `level + 1`
-	level = level or 1
+	level = math.max(1, level or 1)
 	if level <= 1 then return 50 end -- the first upgrade is cheap (end of the tutorial)
-	if level > 10 then return math.floor(250 * 2.6 ^ 8 * 2.1 ^ (level - 10)) end
-	return math.floor(250 * 2.6 ^ (level - 2))
+	return math.floor(250 * 1.6 ^ (math.min(level, 30) - 2) * 1.45 ^ math.max(0, level - 30))
 end
-
 -- ROBUX SPEED BOOSTS: multiply the speed your treadmill gives you (stacks with trails).
 -- It keeps doubling: 2x for 3 Robux, 4x for 6, 8x for 12, 16x for 24 ... and so on.
 -- Bought in order. Change SpeedBoostTiers to have more (or fewer) steps.
@@ -328,29 +358,23 @@ function Config.GiftMaxArea(index) -- best warehouse a gift box can come from
 end
 
 -- CUSTOMER KIOSK on your plot: more shoppers = more money
-Config.CustomerMax = 10
-function Config.CustomerRate(level) return 1 + 0.3 * ((level or 1) - 1) end -- x shoppers
-function Config.CustomerCost(level) return math.floor(120 * 2.3 ^ ((level or 1) - 1)) end
--- PLOT UPGRADES on the big UPGRADES board: shopper payouts and unbox speed
--- (levels past 10 cost a lot more: the long-term goals)
-Config.PayoutMax = 25
-function Config.PayoutMult(level) return 1 + 0.15 * ((level or 1) - 1) end -- x what shoppers pay
-function Config.PayoutCost(level)
-	level = level or 1
-	if level > 10 then return math.floor(300 * 2.5 ^ 9 * 1.9 ^ (level - 10)) end
-	return math.floor(300 * 2.5 ^ (level - 1))
+Config.CustomerMax = 100
+function Config.CustomerRate(level) -- x shoppers (= x cash): +0.3 per level up to 10, then +0.15
+	level = math.max(1, level or 1)
+	return 1 + 0.3 * (math.min(level, 10) - 1) + 0.15 * math.max(0, level - 10)
 end
-Config.UnboxMax = 20
-function Config.UnboxMult(level) -- x unbox time
-	level = level or 1
-	if level > 10 then return 0.46 * 0.95 ^ (level - 10) end
+function Config.CustomerCost(level) return math.floor(120 * 1.7 ^ (math.max(1, level or 1) - 1)) end
+-- PLOT UPGRADES on the big UPGRADES board: shopper payouts and unbox speed (both up to level 100)
+Config.PayoutMax = 100
+function Config.PayoutMult(level) return 1 + 0.15 * ((level or 1) - 1) end -- x what shoppers pay
+function Config.PayoutCost(level) return math.floor(300 * 1.7 ^ (math.max(1, level or 1) - 1)) end
+Config.UnboxMax = 100
+function Config.UnboxMult(level) -- x unbox time (0.46 at level 10, ~0.12 at 100)
+	level = math.max(1, level or 1)
+	if level > 10 then return 0.46 * 0.985 ^ (level - 10) end
 	return 1 - 0.06 * (level - 1)
 end
-function Config.UnboxCost(level)
-	level = level or 1
-	if level > 10 then return math.floor(200 * 2.4 ^ 9 * 1.9 ^ (level - 10)) end
-	return math.floor(200 * 2.4 ^ (level - 1))
-end
+function Config.UnboxCost(level) return math.floor(200 * 1.7 ^ (math.max(1, level or 1) - 1)) end
 
 ------------------------------------------------------------------
 -- INDEX REWARDS: find all 4 items of a warehouse area to complete that area's Index page.
@@ -358,7 +382,7 @@ end
 ------------------------------------------------------------------
 Config.IndexReward = {
 	seconds = 900,     -- the cash = 15 minutes of what that area's 4 items earn together
-	cashBonus = 0.1,   -- +10% cash forever for every completed area (all 10 = x2)
+	cashBonus = 0.1,   -- +10% cash forever for every completed area (all 15 = x2.5)
 }
 function Config.IndexCash(areaIndex)
 	local total = 0
@@ -472,6 +496,11 @@ Config.AreaItems = {
 	{{"Battery", "Battery", "🔋"}, {"Chip", "Memory Chip", "💾"}, {"Laptop", "Laptop", "💻"}, {"Satellite", "Satellite", "🛰️"}},
 	{{"Comet", "Comet Shard", "☄️"}, {"CrystalBall", "Crystal Ball", "🔮"}, {"UFOModel", "UFO Model", "🛸"}, {"AlienPlush", "Alien Plushie", "👽"}},
 	{{"Moon", "Moon Rock", "🌙"}, {"Shooting", "Shooting Star", "🌠"}, {"GalaxyOrb", "Galaxy Orb", "🌌"}, {"BlackHoleCore", "Black Hole Core", "🕳️"}},
+	{{"Ember", "Ember Stone", "🔥"}, {"ForgeHammer", "Forge Hammer", "🔨"}, {"LavaLamp", "Lava Lamp", "🏮"}, {"PhoenixFeather", "Phoenix Feather", "🪶"}},
+	{{"Candle", "Spooky Candle", "🕯️"}, {"Potion", "Magic Potion", "🧪"}, {"GhostPlush", "Ghost Plushie", "👻"}, {"HauntedMirror", "Haunted Mirror", "🪞"}},
+	{{"Quartz", "Quartz Shard", "🔹"}, {"Geode", "Geode", "🪨"}, {"CrystalHeart", "Crystal Heart", "💖"}, {"PrismCrown", "Prism Crown", "💠"}},
+	{{"CloudPuff", "Cloud Puff", "☁️"}, {"Lightning", "Bottled Lightning", "⚡"}, {"Harp", "Golden Harp", "🎵"}, {"Halo", "Angel Halo", "😇"}},
+	{{"DragonScale", "Dragon Scale", "🐉"}, {"GoldPile", "Gold Pile", "🪙"}, {"DragonEgg", "Dragon Egg", "🥚"}, {"DragonCrown", "Dragon Crown", "👑"}},
 }
 Config.Items = {}
 for areaIndex, list in ipairs(Config.AreaItems) do
@@ -836,6 +865,94 @@ Config.ItemModels = {
 		C(0.06, 2.1, 2.1, 0, 0, 0, rgb(90, 220, 255), MAT.Neon, 0, 0, 70, 0.45)},
 	BlackHoleCore = {S(1.05, 1.05, 1.05, 0, 0, 0, rgb(8, 6, 12)), C(0.06, 2.3, 2.3, 0, 0, 0, rgb(255, 140, 30), MAT.Neon, 20, 0, 80, 0.3),
 		C(0.07, 1.5, 1.5, 0, 0, 0, rgb(255, 230, 120), MAT.Neon, 20, 0, 80, 0.1), S(1.35, 1.35, 1.35, 0, 0, 0, rgb(170, 60, 255), MAT.Neon, 0, 0, 0, 0.75)},
+	-- 11 LAVA FORGE
+	Ember = {S(1.35, 1.15, 1.2, 0, -0.15, 0, rgb(85, 55, 45), MAT.CrackedLava), S(0.7, 0.55, 0.25, 0.05, -0.1, -0.52, rgb(255, 110, 30), MAT.Neon),
+		B(0.08, 0.55, 0.06, -0.3, 0.05, -0.53, rgb(255, 170, 40), MAT.Neon, 0, 0, 30), B(0.08, 0.5, 0.06, 0.42, -0.3, -0.47, rgb(255, 170, 40), MAT.Neon, 0, 0, -35),
+		S(0.38, 0.6, 0.38, 0, 0.62, 0, rgb(255, 150, 40), MAT.Neon, 0, 0, 0, 0.25), S(0.2, 0.35, 0.2, 0, 0.55, 0, rgb(255, 235, 140), MAT.Neon)},
+	ForgeHammer = {B(0.22, 1.55, 0.22, 0, -0.3, 0, rgb(125, 80, 45), MAT.Wood), B(0.28, 0.42, 0.28, 0, -0.78, 0, rgb(200, 60, 40), MAT.Fabric),
+		B(0.32, 0.18, 0.32, 0, -1.0, 0, rgb(60, 60, 70), MAT.Metal), B(1.3, 0.55, 0.55, 0, 0.62, 0, rgb(90, 90, 100), MAT.Metal),
+		B(0.14, 0.6, 0.6, -0.3, 0.62, 0, rgb(55, 55, 62), MAT.Metal), B(0.14, 0.6, 0.6, 0.3, 0.62, 0, rgb(55, 55, 62), MAT.Metal),
+		B(0.12, 0.5, 0.5, 0.66, 0.62, 0, rgb(255, 110, 40), MAT.Neon)},
+	LavaLamp = {C(0.42, 0.95, 0.95, 0, -0.8, 0, rgb(70, 70, 80), MAT.Metal, 0, 0, 90), C(1.25, 0.72, 0.72, 0, 0.02, 0, rgb(255, 140, 60), MAT.Glass, 0, 0, 90, 0.45),
+		S(0.42, 0.5, 0.42, 0, -0.3, 0, rgb(255, 70, 30), MAT.Neon), S(0.32, 0.4, 0.32, 0.06, 0.32, 0, rgb(255, 120, 40), MAT.Neon), S(0.22, 0.24, 0.22, -0.1, 0.02, 0, rgb(255, 190, 60), MAT.Neon),
+		C(0.32, 0.56, 0.56, 0, 0.78, 0, rgb(70, 70, 80), MAT.Metal, 0, 0, 90), S(0.56, 0.2, 0.56, 0, 0.94, 0, rgb(70, 70, 80), MAT.Metal)},
+	PhoenixFeather = {S(0.9, 1.9, 0.12, 0.03, 0.09, 0, rgb(255, 120, 30), MAT.SmoothPlastic, 0, 0, -20), S(0.58, 1.35, 0.16, 0.1, 0.28, 0, rgb(255, 200, 60), MAT.Neon, 0, 0, -20),
+		S(0.36, 0.55, 0.2, 0.24, 0.66, 0, rgb(255, 60, 40), MAT.Neon, 0, 0, -20), B(0.07, 2.1, 0.24, -0.03, -0.09, 0, rgb(255, 240, 200), MAT.SmoothPlastic, 0, 0, -20),
+		S(0.16, 0.16, 0.16, -0.55, 0.55, -0.1, rgb(255, 210, 60), MAT.Neon), S(0.12, 0.12, 0.12, 0.6, -0.35, -0.1, rgb(255, 150, 40), MAT.Neon),
+		S(0.1, 0.1, 0.1, -0.4, -0.55, -0.05, rgb(255, 100, 30), MAT.Neon)},
+	-- 12 HAUNTED MANOR
+	Candle = {C(0.14, 1.15, 1.15, 0, -0.88, 0, rgb(80, 70, 95), MAT.Metal, 0, 0, 90), C(0.3, 0.42, 0.42, 0, -0.68, 0, rgb(80, 70, 95), MAT.Metal, 0, 0, 90),
+		C(1.2, 0.55, 0.55, 0, -0.05, 0, rgb(240, 235, 215), MAT.SmoothPlastic, 0, 0, 90), S(0.18, 0.4, 0.18, 0.24, 0.25, -0.08, rgb(240, 235, 215)),
+		S(0.16, 0.3, 0.16, -0.18, 0.35, -0.2, rgb(240, 235, 215)), B(0.05, 0.16, 0.05, 0, 0.62, 0, black),
+		S(0.3, 0.5, 0.3, 0, 0.88, 0, rgb(140, 255, 190), MAT.Neon, 0, 0, 0, 0.2), S(0.14, 0.24, 0.14, 0, 0.8, 0, white, MAT.Neon)},
+	Potion = {S(1.25, 1.2, 1.25, 0, -0.38, 0, rgb(210, 235, 255), MAT.Glass, 0, 0, 0, 0.5), S(1.05, 0.85, 1.05, 0, -0.5, 0, rgb(180, 80, 255), MAT.Neon),
+		C(0.55, 0.4, 0.4, 0, 0.42, 0, rgb(210, 235, 255), MAT.Glass, 0, 0, 90, 0.4), C(0.1, 0.5, 0.5, 0, 0.66, 0, rgb(150, 90, 220), MAT.SmoothPlastic, 0, 0, 90),
+		C(0.32, 0.34, 0.34, 0, 0.82, 0, rgb(150, 100, 60), MAT.Wood, 0, 0, 90), S(0.16, 0.16, 0.16, 0.18, -0.15, -0.3, white, MAT.Neon),
+		S(0.11, 0.11, 0.11, -0.2, -0.05, -0.25, white, MAT.Neon)},
+	GhostPlush = {S(1.2, 1.3, 1.2, 0, 0.3, 0, rgb(240, 242, 255)), C(0.85, 1.2, 1.2, 0, -0.33, 0, rgb(240, 242, 255), MAT.SmoothPlastic, 0, 0, 90),
+		S(0.46, 0.42, 0.46, -0.4, -0.78, 0, rgb(240, 242, 255)), S(0.46, 0.42, 0.46, 0.4, -0.78, 0, rgb(240, 242, 255)),
+		S(0.46, 0.42, 0.46, 0, -0.78, -0.4, rgb(240, 242, 255)), S(0.46, 0.42, 0.46, 0, -0.78, 0.4, rgb(240, 242, 255)),
+		S(0.2, 0.3, 0.08, -0.22, 0.35, -0.57, black), S(0.2, 0.3, 0.08, 0.22, 0.35, -0.57, black), S(0.24, 0.18, 0.06, 0, 0.08, -0.56, rgb(70, 40, 90)),
+		S(0.3, 0.45, 0.3, -0.68, 0, 0, rgb(240, 242, 255), MAT.SmoothPlastic, 0, 0, 40), S(0.3, 0.45, 0.3, 0.68, 0, 0, rgb(240, 242, 255), MAT.SmoothPlastic, 0, 0, -40)},
+	HauntedMirror = {S(1.5, 2, 0.18, 0, 0.15, 0, rgb(90, 50, 130)), S(1.32, 1.8, 0.2, 0, 0.15, 0, gold, MAT.Metal), S(1.12, 1.58, 0.24, 0, 0.15, 0, rgb(170, 150, 230), MAT.Glass, 0, 0, 0, 0.1),
+		S(0.18, 0.26, 0.06, -0.2, 0.32, -0.12, rgb(190, 255, 220), MAT.Neon), S(0.18, 0.26, 0.06, 0.2, 0.32, -0.12, rgb(190, 255, 220), MAT.Neon),
+		S(0.22, 0.32, 0.06, 0, -0.05, -0.12, rgb(190, 255, 220), MAT.Neon), B(0.3, 0.3, 0.16, 0, 1.12, 0, rgb(200, 120, 255), MAT.Neon, 0, 0, 45),
+		B(0.2, 0.3, 0.2, 0, -0.9, 0, gold, MAT.Metal), C(0.16, 0.85, 0.85, 0, -1.02, 0, rgb(60, 40, 75), MAT.Wood, 0, 0, 90)},
+	-- 13 CRYSTAL CAVERNS
+	Quartz = {S(1.45, 0.5, 1.1, 0, -0.8, 0, rgb(115, 105, 125), MAT.Slate), B(0.46, 1.25, 0.46, 0, -0.1, 0, rgb(215, 235, 255), MAT.Glass, 0, 45, 0, 0.15),
+		B(0.4, 0.4, 0.4, 0, 0.52, 0, rgb(215, 235, 255), MAT.Glass, -35, 0, 45, 0.15), B(0.18, 1, 0.18, 0, -0.1, 0, rgb(150, 220, 255), MAT.Neon, 0, 45, 0),
+		B(0.32, 0.85, 0.32, -0.42, -0.35, 0.05, rgb(195, 220, 255), MAT.Glass, 0, 0, 25, 0.15), B(0.3, 0.7, 0.3, 0.4, -0.4, -0.1, rgb(195, 220, 255), MAT.Glass, 0, 0, -25, 0.15)},
+	Geode = {S(1.6, 1.6, 1, 0, 0, 0.1, rgb(125, 110, 100), MAT.Slate), C(0.3, 1.6, 1.6, 0, 0, -0.28, rgb(140, 125, 115), MAT.Slate, 0, 90, 0),
+		C(0.32, 1.3, 1.3, 0, 0, -0.29, rgb(175, 95, 255), MAT.Glass, 0, 90, 0), S(0.55, 0.55, 0.12, 0, 0, -0.44, rgb(235, 200, 255), MAT.Neon),
+		B(0.2, 0.2, 0.2, -0.3, 0.28, -0.44, rgb(210, 160, 255), MAT.Neon, 45, 0, 45), B(0.18, 0.18, 0.18, 0.32, -0.22, -0.44, rgb(210, 160, 255), MAT.Neon, 45, 0, 45),
+		B(0.16, 0.16, 0.16, 0.28, 0.32, -0.44, white, MAT.Neon, 45, 0, 45), B(0.16, 0.16, 0.16, -0.3, -0.3, -0.44, rgb(210, 160, 255), MAT.Neon, 45, 0, 45)},
+	CrystalHeart = {S(0.95, 0.95, 0.62, -0.336, 0.255, 0, rgb(255, 110, 190), MAT.Glass, 0, 0, 0, 0.2), S(0.95, 0.95, 0.62, 0.336, 0.255, 0, rgb(255, 110, 190), MAT.Glass, 0, 0, 0, 0.2),
+		B(0.95, 0.95, 0.56, 0, -0.08, 0, rgb(255, 110, 190), MAT.Glass, 0, 0, 45, 0.2), S(0.43, 0.43, 0.3, -0.15, 0.12, 0, rgb(255, 60, 150), MAT.Neon),
+		S(0.43, 0.43, 0.3, 0.15, 0.12, 0, rgb(255, 60, 150), MAT.Neon), B(0.43, 0.43, 0.28, 0, -0.04, 0, rgb(255, 60, 150), MAT.Neon, 0, 0, 45),
+		S(0.22, 0.15, 0.06, -0.42, 0.45, -0.28, white, MAT.Neon)},
+	PrismCrown = {C(0.5, 1.45, 1.45, 0, -0.42, 0, rgb(220, 235, 245), MAT.Metal, 0, 0, 90), C(0.52, 1.2, 1.2, 0, -0.4, 0, rgb(60, 40, 130), MAT.Fabric, 0, 0, 90),
+		B(0.3, 0.95, 0.3, 0, 0.2, -0.5, rgb(120, 255, 240), MAT.Neon, 0, 45, 0), B(0.3, 0.3, 0.3, 0, 0.68, -0.5, rgb(120, 255, 240), MAT.Neon, -35, 0, 45),
+		B(0.26, 0.7, 0.26, -0.476, 0.1, -0.155, rgb(170, 235, 255), MAT.Glass, 0, 45, 0, 0.1), B(0.26, 0.26, 0.26, -0.476, 0.45, -0.155, rgb(170, 235, 255), MAT.Glass, -35, 0, 45, 0.1),
+		B(0.26, 0.7, 0.26, 0.476, 0.1, -0.155, rgb(170, 235, 255), MAT.Glass, 0, 45, 0, 0.1), B(0.26, 0.26, 0.26, 0.476, 0.45, -0.155, rgb(170, 235, 255), MAT.Glass, -35, 0, 45, 0.1),
+		B(0.26, 0.7, 0.26, -0.294, 0.1, 0.405, rgb(170, 235, 255), MAT.Glass, 0, 45, 0, 0.1), B(0.26, 0.26, 0.26, -0.294, 0.45, 0.405, rgb(170, 235, 255), MAT.Glass, -35, 0, 45, 0.1),
+		B(0.26, 0.7, 0.26, 0.294, 0.1, 0.405, rgb(170, 235, 255), MAT.Glass, 0, 45, 0, 0.1), B(0.26, 0.26, 0.26, 0.294, 0.45, 0.405, rgb(170, 235, 255), MAT.Glass, -35, 0, 45, 0.1),
+		S(0.26, 0.26, 0.12, 0, -0.42, -0.74, rgb(255, 120, 240), MAT.Neon)},
+	-- 14 SKY KINGDOM
+	CloudPuff = {S(1.15, 1.05, 1, 0, 0.2, 0, rgb(250, 252, 255)), S(0.85, 0.8, 0.85, -0.6, -0.1, 0.05, rgb(250, 252, 255)), S(0.85, 0.8, 0.85, 0.6, -0.1, 0.05, rgb(250, 252, 255)),
+		S(1.9, 0.55, 0.9, 0, -0.38, 0.05, rgb(235, 242, 255)), S(0.1, 0.15, 0.05, -0.18, 0.25, -0.49, black), S(0.1, 0.15, 0.05, 0.18, 0.25, -0.49, black),
+		S(0.18, 0.07, 0.05, 0, 0.06, -0.49, black), S(0.15, 0.08, 0.04, -0.32, 0.1, -0.41, rgb(255, 170, 200)), S(0.15, 0.08, 0.04, 0.32, 0.1, -0.41, rgb(255, 170, 200))},
+	Lightning = {C(1.3, 0.85, 0.85, 0, -0.3, 0, rgb(205, 230, 255), MAT.Glass, 0, 0, 90, 0.5), S(0.85, 0.55, 0.85, 0, 0.35, 0, rgb(205, 230, 255), MAT.Glass, 0, 0, 0, 0.5),
+		C(0.4, 0.38, 0.38, 0, 0.7, 0, rgb(205, 230, 255), MAT.Glass, 0, 0, 90, 0.5), C(0.28, 0.44, 0.44, 0, 0.95, 0, rgb(150, 100, 60), MAT.Wood, 0, 0, 90),
+		B(0.12, 0.52, 0.12, 0.025, 0.1, 0, rgb(255, 230, 60), MAT.Neon, 0, 0, -32), B(0.12, 0.42, 0.12, 0.01, -0.25, 0, rgb(255, 230, 60), MAT.Neon, 0, 0, 36),
+		B(0.12, 0.48, 0.12, 0.035, -0.6, 0, rgb(255, 230, 60), MAT.Neon, 0, 0, -23), S(0.6, 1, 0.6, 0, -0.25, 0, rgb(255, 245, 150), MAT.Neon, 0, 0, 0, 0.75)},
+	Harp = {C(1.8, 0.2, 0.2, -0.6, -0.02, 0, gold, MAT.Metal, 0, 0, 90), S(0.32, 0.32, 0.32, -0.6, 0.92, 0, gold, MAT.Metal), B(0.6, 0.15, 0.4, -0.55, -0.93, 0, gold, MAT.Metal),
+		B(0.3, 1.8, 0.35, 0.05, -0.12, 0, rgb(255, 215, 100), MAT.SmoothPlastic, 0, 0, -35), S(1.45, 0.38, 0.3, -0.02, 0.8, 0, gold, MAT.Metal, 0, 0, -15),
+		B(0.04, 1.4, 0.04, -0.35, 0, 0, rgb(255, 250, 225), MAT.Neon), B(0.04, 0.97, 0.04, -0.1, 0.145, 0, rgb(255, 250, 225), MAT.Neon),
+		B(0.04, 0.54, 0.04, 0.15, 0.29, 0, rgb(255, 250, 225), MAT.Neon)},
+	Halo = {S(0.42, 0.42, 0.42, 0.72, 0.45, 0, rgb(255, 225, 90), MAT.Neon), S(0.42, 0.42, 0.42, 0.582, 0.693, 0.347, rgb(255, 225, 90), MAT.Neon),
+		S(0.42, 0.42, 0.42, 0.222, 0.843, 0.561, rgb(255, 225, 90), MAT.Neon), S(0.42, 0.42, 0.42, -0.222, 0.843, 0.561, rgb(255, 225, 90), MAT.Neon),
+		S(0.42, 0.42, 0.42, -0.582, 0.693, 0.347, rgb(255, 225, 90), MAT.Neon), S(0.42, 0.42, 0.42, -0.72, 0.45, 0, rgb(255, 225, 90), MAT.Neon),
+		S(0.42, 0.42, 0.42, -0.582, 0.207, -0.347, rgb(255, 225, 90), MAT.Neon), S(0.42, 0.42, 0.42, -0.222, 0.057, -0.561, rgb(255, 225, 90), MAT.Neon),
+		S(0.42, 0.42, 0.42, 0.222, 0.057, -0.561, rgb(255, 225, 90), MAT.Neon), S(0.42, 0.42, 0.42, 0.582, 0.207, -0.347, rgb(255, 225, 90), MAT.Neon),
+		S(0.7, 0.45, 0.14, -0.95, 0.5, 0.05, white, MAT.SmoothPlastic, 0, 0, -20), S(0.7, 0.45, 0.14, 0.95, 0.5, 0.05, white, MAT.SmoothPlastic, 0, 0, 20),
+		S(1.3, 0.5, 0.9, 0, -0.62, 0, rgb(245, 248, 255))},
+	-- 15 DRAGON'S HOARD
+	DragonScale = {S(1, 1.15, 0.25, 0.45, 0.4, 0.18, rgb(150, 20, 40), MAT.Metal), S(1.3, 1.45, 0.3, 0, 0.15, 0, rgb(205, 40, 60), MAT.Metal),
+		B(0.85, 0.85, 0.28, 0, -0.4, 0, rgb(205, 40, 60), MAT.Metal, 0, 0, 45), B(0.1, 1.55, 0.2, 0, -0.12, -0.07, rgb(140, 15, 35), MAT.Metal),
+		S(0.28, 0.42, 0.06, -0.3, 0.45, -0.13, rgb(255, 150, 160))},
+	GoldPile = {S(1.8, 0.9, 1.4, 0, -0.55, 0, gold, MAT.Metal), S(1.1, 0.7, 0.9, 0.05, -0.05, 0.05, gold, MAT.Metal),
+		C(0.1, 0.55, 0.55, -0.45, -0.3, -0.5, rgb(255, 220, 80), MAT.Metal, 20, 90, 0), C(0.1, 0.5, 0.5, 0.55, -0.22, -0.25, rgb(255, 220, 80), MAT.Metal, 0, 0, 80),
+		C(0.1, 0.55, 0.55, 0.1, 0.5, 0.05, rgb(255, 220, 80), MAT.Metal, 0, 70, 0), C(0.1, 0.45, 0.45, -0.55, -0.18, 0.1, rgb(255, 220, 80), MAT.Metal, 0, 0, 100),
+		B(0.3, 0.3, 0.3, -0.25, 0.15, -0.3, rgb(255, 50, 70), MAT.Neon, 45, 0, 45)},
+	DragonEgg = {S(1.7, 0.55, 1.7, 0, -0.78, 0, rgb(120, 80, 45), MAT.Wood), S(1.25, 1.65, 1.25, 0, 0.1, 0, rgb(200, 40, 60)),
+		S(0.35, 0.3, 0.1, -0.25, 0.45, -0.52, rgb(255, 170, 60)), S(0.3, 0.25, 0.1, 0.3, -0.1, -0.53, rgb(255, 170, 60)), S(0.22, 0.2, 0.08, -0.12, -0.35, -0.53, rgb(255, 170, 60)),
+		B(0.06, 0.32, 0.06, 0.2, 0.46, -0.53, rgb(255, 200, 60), MAT.Neon, 0, 0, 30), B(0.06, 0.32, 0.06, 0.188, 0.189, -0.6, rgb(255, 200, 60), MAT.Neon, 0, 0, -35)},
+	DragonCrown = {C(0.6, 1.45, 1.45, 0, -0.4, 0, gold, MAT.Metal, 0, 0, 90), C(0.62, 1.2, 1.2, 0, -0.37, 0, rgb(150, 0, 30), MAT.Fabric, 0, 0, 90),
+		B(0.28, 0.8, 0.12, 0, 0.2, -0.62, gold, MAT.Metal), B(0.26, 0.6, 0.12, -0.364, 0.1, -0.5, gold, MAT.Metal, 0, 36, 0),
+		B(0.26, 0.6, 0.12, 0.364, 0.1, -0.5, gold, MAT.Metal, 0, -36, 0), B(0.26, 0.6, 0.12, 0, 0.1, 0.62, gold, MAT.Metal),
+		S(0.22, 0.22, 0.22, 0, 0.65, -0.62, rgb(255, 40, 60), MAT.Neon), B(0.32, 0.32, 0.14, 0, -0.4, -0.74, rgb(255, 40, 60), MAT.Neon, 0, 0, 45),
+		B(0.24, 0.62, 0.24, -0.825, 0.1, 0, rgb(90, 15, 25), MAT.SmoothPlastic, 0, 0, 27), B(0.16, 0.45, 0.16, -0.935, 0.55, 0, rgb(90, 15, 25), MAT.SmoothPlastic, 0, 0, -4),
+		B(0.24, 0.62, 0.24, 0.825, 0.1, 0, rgb(90, 15, 25), MAT.SmoothPlastic, 0, 0, -27), B(0.16, 0.45, 0.16, 0.935, 0.55, 0, rgb(90, 15, 25), MAT.SmoothPlastic, 0, 0, 4)},
 }
 
 -- 3D models for the upgrades at the Upgrade Shop booth
@@ -958,8 +1075,9 @@ end
 Config.Court.length = 360
 Config.LobbySpawnZ = 330
 -- every area is the same size (helpers used by the server / client)
--- harder area = longer area: 90 studs for area 1, +14 for every area after it (216 for area 10)
-function Config.AreaLen(areaIndex) return Config.Layout.sectionLen + ((areaIndex or 1) - 1) * 14 end
+-- harder area = longer area: 90 studs for area 1, +14 for every area after it, up to 216 for area 10;
+-- areas 11-15 stay at 216 (the warehouse would get too long otherwise)
+function Config.AreaLen(areaIndex) return Config.Layout.sectionLen + (math.min(areaIndex or 1, 10) - 1) * 14 end
 function Config.AreaStartZ(areaIndex)
 	local z = Config.Layout.frontZ
 	for k = 1, (areaIndex or 1) - 1 do z = z - Config.AreaLen(k) end
@@ -1040,7 +1158,8 @@ Config.Achievements = {
 	{id = "Bonk",        name = "BONK!",              minutes = 2,  base = 300},    -- get flung by a guard
 	{id = "Bonk25",      name = "Bouncy Castle",      minutes = 8,  base = 5000},   -- get flung 25 times
 	{id = "Deep5",       name = "Deep Diver",         minutes = 8,  base = 5000},   -- steal from area 5 or deeper
-	{id = "Deep10",      name = "To The Galaxy",      minutes = 25, base = 100000}, -- steal from area 10
+	{id = "Deep10",      name = "To The Galaxy",      minutes = 25, base = 100000}, -- steal from area 10 or deeper
+	{id = "Deep15",      name = "Dragon Slayer",      minutes = 40, base = 1000000}, -- steal from area 15 (Dragon's Hoard, the very back)
 	{id = "Legendary",   name = "Legendary!",         minutes = 10, base = 10000},  -- unbox a Legendary item
 	{id = "Galaxy",      name = "Out Of This World",  minutes = 15, base = 20000},  -- get a Galaxy item
 	{id = "Million",     name = "Millionaire",        minutes = 5,  base = 0},      -- have $1M

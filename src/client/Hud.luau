@@ -316,7 +316,7 @@ function Hud.init(ctx)
 	-- AREA NAME: when you walk into an area, a big emoji pops up with the area's name under it
 	------------------------------------------------------------------
 	do
-		local EMOJI = {"📦", "🐄", "🧸", "🍭", "🏴‍☠️", "🦖", "❄️", "🤖", "👽", "🌌"}
+		local EMOJI = {"📦", "🐄", "🧸", "🍭", "🏴‍☠️", "🦖", "❄️", "🤖", "👽", "🌌", "🌋", "👻", "💎", "☁️", "🐉"}
 		local holder = box(top, {Name = "AreaBanner", Size = UDim2.fromOffset(560, 150), LayoutOrder = 1, Visible = false})
 		hud.areaBanner = holder
 		local group = new("CanvasGroup", {Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, GroupTransparency = 1}, holder)
