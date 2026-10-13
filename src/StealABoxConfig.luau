@@ -1200,7 +1200,7 @@ Config.IconSheets = {121181129357514, 119828445968430}
 -- For the safest setup put YOUR Roblox user id below (the number in your profile link:
 -- roblox.com/users/<THIS NUMBER>/profile). The name is a backup in case the id is 0.
 Config.AdminOwnerName = "thisgenerationbruh"
-Config.AdminOwnerId = 0
+Config.AdminOwnerId = 5790145019 -- thisgenerationbruh
 Config.AdminUserIds = {} -- extra admins by user id (you can also give admin in the panel)
 
 return Config
