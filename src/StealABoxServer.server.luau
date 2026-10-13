@@ -3846,3 +3846,248 @@ do
 		end)
 	end
 end
+
+------------------------------------------------------------------
+-- ADMIN PANEL: only the owner (Config.AdminOwnerId / AdminOwnerName, or the game's creator) and
+-- the people the owner gives admin to. Safe against exploiters:
+--  * the panel script lives in ServerStorage (clients can't see it) and is only given to admins
+--  * EVERY request is checked again here (who you are, what you send), so a faked panel does nothing
+--  * non-admins who call it anyway get kicked after a few tries
+------------------------------------------------------------------
+do
+	local ServerStorage = game:GetService("ServerStorage")
+	local adminFunc = remotes:FindFirstChild("AdminAction") or Instance.new("RemoteFunction")
+	adminFunc.Name = "AdminAction"
+	adminFunc.Parent = remotes
+	local adminStore = nil
+	pcall(function() adminStore = DataStoreService:GetDataStore("StealABox_Admins") end)
+	local A = {owners = {}, granted = {}, strikes = {}, last = {}, spawned = {}}
+	if (tonumber(Config.AdminOwnerId) or 0) > 0 then A.owners[tonumber(Config.AdminOwnerId)] = true end
+	pcall(function()
+		if game.CreatorType == Enum.CreatorType.User and game.CreatorId > 0 then A.owners[game.CreatorId] = true end
+	end)
+	for _, id in ipairs(Config.AdminUserIds or {}) do
+		if tonumber(id) then A.granted[tonumber(id)] = "config" end
+	end
+	function A.isOwner(p) return p and A.owners[p.UserId] == true end
+	function A.isAdmin(p) return p and (A.owners[p.UserId] == true or A.granted[p.UserId] ~= nil) end
+	-- give / take away the panel
+	function A.refresh(p)
+		if not p or not p.Parent then return end
+		local admin = A.isAdmin(p)
+		p:SetAttribute("SAB_Admin", admin and (A.isOwner(p) and "owner" or "admin") or nil)
+		pcall(function()
+			local pg = p:FindFirstChildOfClass("PlayerGui")
+			if not pg then return end
+			local gui = pg:FindFirstChild("SAB_AdminPanel")
+			if admin and not gui then
+				local src = ServerStorage:FindFirstChild("StealABoxAdmin")
+				if not src then return end
+				gui = Instance.new("ScreenGui")
+				gui.Name = "SAB_AdminPanel"
+				gui.ResetOnSpawn = false
+				gui.DisplayOrder = 60
+				src:Clone().Parent = gui
+				gui.Parent = pg
+			elseif not admin and gui then
+				gui:Destroy()
+			end
+		end)
+	end
+	function A.refreshAll() for _, p in ipairs(Players:GetPlayers()) do A.refresh(p) end end
+	-- the owner's name -> user id (backup when AdminOwnerId isn't filled in)
+	task.spawn(function()
+		local ok, id = pcall(function() return Players:GetUserIdFromNameAsync(Config.AdminOwnerName) end)
+		if ok and type(id) == "number" and id > 0 then A.owners[id] = true A.refreshAll() end
+	end)
+	-- admins the owner gave the panel to (saved, so it works in every server)
+	function A.load()
+		if not adminStore then return end
+		local ok, list = pcall(function() return adminStore:GetAsync("admins") end)
+		if ok and type(list) == "table" then
+			for id, name in pairs(A.granted) do
+				if name ~= "config" then A.granted[id] = nil end
+			end
+			for id, name in pairs(list) do
+				if tonumber(id) then A.granted[tonumber(id)] = tostring(name) end
+			end
+		end
+	end
+	task.spawn(function() A.load() A.refreshAll() end)
+	Players.PlayerAdded:Connect(function(p)
+		p.CharacterAdded:Connect(function() task.wait(0.5) A.refresh(p) end)
+		task.delay(2, function()
+			A.load() -- (picks up admins given / removed in other servers)
+			A.refresh(p)
+		end)
+	end)
+	Players.PlayerRemoving:Connect(function(p) A.strikes[p], A.last[p] = nil, nil end)
+	for _, p in ipairs(Players:GetPlayers()) do task.spawn(A.refresh, p) end
+
+	local function saveAdmins()
+		if not adminStore then return false end
+		local list = {}
+		for id, name in pairs(A.granted) do
+			if name ~= "config" then list[tostring(id)] = name end
+		end
+		return (pcall(function() adminStore:SetAsync("admins", list) end))
+	end
+	local function num(v, lo, hi)
+		v = tonumber(v)
+		if not v or v ~= v or v == math.huge or v == -math.huge then return nil end
+		return math.clamp(v, lo, hi)
+	end
+	local function pickBox(areaIndex, rarity)
+		local area = Config.Areas[areaIndex] or Config.Areas[1]
+		if rarity and area.boxes[rarity] then return area.boxes[rarity] end
+		local weights = {}
+		for r, b in ipairs(area.boxes) do table.insert(weights, {chance = Config.Rarities[r].weight, def = b}) end
+		return weightedPick(weights).def
+	end
+	local MUTS, SIZES = {}, {}
+	for _, m in ipairs(Config.Mutations) do MUTS[m.id] = true end
+	for i, z in ipairs(Config.Sizes) do SIZES[z.id] = i end
+
+	local handlers = {}
+	-- money / speed for you or another player in the server
+	local function targetOf(admin, args)
+		local id = tonumber(args.target)
+		local t = id and Players:GetPlayerByUserId(id) or admin
+		if t and profiles[t] then return t, profiles[t] end
+		return nil
+	end
+	handlers.Cash = function(admin, args)
+		local t, prof = targetOf(admin, args)
+		local amount = num(args.amount, 0, 1e30)
+		if not t or not amount then return {ok = false, msg = "Pick a player and type an amount."} end
+		prof.Cash = (args.mode == "add") and math.min(1e30, prof.Cash + amount) or amount
+		syncCash(t)
+		sync(t)
+		return {ok = true, msg = t.Name .. " now has $" .. Config.FormatNum(prof.Cash)}
+	end
+	handlers.Speed = function(admin, args)
+		local t, prof = targetOf(admin, args)
+		local amount = num(args.amount, 0, 1e30)
+		if not t or not amount then return {ok = false, msg = "Pick a player and type an amount."} end
+		local cur = prof.SpeedPoints or Config.StartSpeed
+		prof.SpeedPoints = math.max(Config.StartSpeed, (args.mode == "add") and math.min(1e30, cur + amount) or amount)
+		applySpeed(t)
+		sync(t)
+		return {ok = true, msg = t.Name .. " now has " .. Config.FormatNum(prof.SpeedPoints) .. " speed"}
+	end
+	-- boxes: around you, or on every shelf spot in the whole warehouse
+	handlers.Boxes = function(admin, args)
+		local areaIndex = math.floor(num(args.area, 0, #Config.Areas) or 0)
+		local rarity = math.floor(num(args.rarity, 0, 3) or 0)
+		local mutation = (type(args.mutation) == "string" and MUTS[args.mutation]) and args.mutation or nil
+		local size = (type(args.size) == "string" and SIZES[args.size]) and args.size or nil
+		local function rollMut() return mutation or weightedPick(mutationTable()).id end
+		local function rollSize(shelf)
+			local z = size or weightedPick(Config.Sizes).id
+			if shelf and SIZES[z] > Config.ShelfMaxSize then z = Config.Sizes[Config.ShelfMaxSize].id end -- big boxes don't fit on shelves
+			return z
+		end
+		if args.where == "everywhere" then
+			local n = 0
+			for _, sp in ipairs(world:WaitForChild("BoxSpawns"):GetChildren()) do
+				local old = spawnFilled[sp]
+				if not (old and old.Parent and old:GetAttribute("Taken")) then
+					if old then
+						boxSpawnOf[old] = nil
+						if old.Parent then old:Destroy() end
+					end
+					spawnFilled[sp] = nil
+					local def = pickBox(areaIndex > 0 and areaIndex or (sp:GetAttribute("Area") or 1), rarity > 0 and rarity or nil)
+					local box = makeBox(def.id, sp.Position, rollMut(), rollSize(sp:GetAttribute("Shelf")))
+					boxSpawnOf[box] = sp
+					spawnFilled[sp] = box
+					n = n + 1
+				end
+			end
+			return {ok = true, msg = "Filled " .. n .. " spots in the warehouse!"}
+		end
+		local _, hrp = getChar(admin)
+		if not hrp then return {ok = false, msg = "You need a character."} end
+		local count = math.floor(num(args.count, 1, 50) or 1)
+		for i = 1, count do
+			local ang = (i / count) * math.pi * 2
+			local radius = 6 + math.floor((i - 1) / 12) * 5
+			local pos = hrp.Position + Vector3.new(math.cos(ang) * radius, -2.9, math.sin(ang) * radius)
+			local def = pickBox(areaIndex > 0 and areaIndex or (Config.ZoneAt(hrp.Position) or 1), rarity > 0 and rarity or nil)
+			local box = makeBox(def.id, pos, rollMut(), rollSize(false))
+			table.insert(A.spawned, box)
+			if i <= 12 then FXEvent:FireAllClients("Spawn", box.Position, box.Size.X) end
+		end
+		-- never more than 300 admin boxes lying around (oldest go first)
+		while #A.spawned > 300 do
+			local b = table.remove(A.spawned, 1)
+			if b and b.Parent and not b:GetAttribute("Taken") then b:Destroy() end
+		end
+		return {ok = true, msg = "Spawned " .. count .. " boxes!"}
+	end
+	handlers.ClearBoxes = function()
+		local n = 0
+		for _, b in ipairs(A.spawned) do
+			if b.Parent and not b:GetAttribute("Taken") then b:Destroy() n = n + 1 end
+		end
+		A.spawned = {}
+		return {ok = true, msg = "Removed " .. n .. " boxes."}
+	end
+	-- the owner gives / takes admin (by username)
+	local function resolveName(name)
+		if type(name) ~= "string" or #name < 3 or #name > 20 or not name:match("^[%w_]+$") then return nil end
+		for _, p in ipairs(Players:GetPlayers()) do
+			if string.lower(p.Name) == string.lower(name) then return p.UserId, p.Name end
+		end
+		local ok, id = pcall(function() return Players:GetUserIdFromNameAsync(name) end)
+		if ok and type(id) == "number" and id > 0 then return id, name end
+		return nil
+	end
+	handlers.Grant = function(admin, args)
+		if not A.isOwner(admin) then return {ok = false, msg = "Only the owner can give admin."} end
+		local id, name = resolveName(args.name)
+		if not id then return {ok = false, msg = "No Roblox user with that name."} end
+		A.granted[id] = name
+		saveAdmins()
+		local p = Players:GetPlayerByUserId(id)
+		if p then A.refresh(p) notify(p, "You got the ADMIN PANEL from " .. admin.Name .. "!", GREEN) end
+		return {ok = true, msg = name .. " is now an admin."}
+	end
+	handlers.Revoke = function(admin, args)
+		if not A.isOwner(admin) then return {ok = false, msg = "Only the owner can remove admin."} end
+		local id, name = resolveName(args.name)
+		if not id or A.granted[id] == nil then return {ok = false, msg = "That player isn't an admin."} end
+		if A.granted[id] == "config" then return {ok = false, msg = "That admin is set in the Config (AdminUserIds)."} end
+		A.granted[id] = nil
+		saveAdmins()
+		local p = Players:GetPlayerByUserId(id)
+		if p then A.refresh(p) end
+		return {ok = true, msg = name .. " is no longer an admin."}
+	end
+	handlers.Info = function(admin)
+		local list = {}
+		for id, name in pairs(A.granted) do table.insert(list, {id = id, name = name}) end
+		return {ok = true, owner = A.isOwner(admin), admins = A.isOwner(admin) and list or nil}
+	end
+
+	adminFunc.OnServerInvoke = function(player, action, args)
+		if not A.isAdmin(player) then
+			A.strikes[player] = (A.strikes[player] or 0) + 1
+			warn("[Steal a Box] " .. player.Name .. " (" .. player.UserId .. ") tried to use the admin panel")
+			if A.strikes[player] >= 3 then player:Kick("Nice try.") end
+			return {ok = false, msg = "No."}
+		end
+		if os.clock() - (A.last[player] or 0) < 0.2 then return {ok = false, msg = "Slow down!"} end
+		A.last[player] = os.clock()
+		local h = type(action) == "string" and handlers[action]
+		if not h then return {ok = false, msg = "Unknown action."} end
+		if type(args) ~= "table" then args = {} end
+		local ok, result = pcall(h, player, args)
+		if not ok then
+			warn("[Steal a Box] admin action failed: " .. tostring(result))
+			return {ok = false, msg = "That didn't work."}
+		end
+		if action ~= "Info" then print("[Steal a Box] ADMIN " .. player.Name .. ": " .. action .. " -> " .. tostring(result.msg)) end
+		return result
+	end
+end

@@ -21,6 +21,9 @@ src = src:gsub('(key = "%w+",%s+id = )%d+', '%10') -- (passes/products back to i
 src = src:gsub('{key = "CashS",  id = 0,', '{key = "CashS",  id = 1111,', 1)
 src = src:gsub('{key = "LuckyBox",   id = 0,', '{key = "LuckyBox",   id = 2222,', 1)
 shopModule.Source = src
+-- the test player (user id 1) is an admin, user id 7 is not
+local cfgModule = realGame:GetService("ReplicatedStorage"):FindFirstChild("StealABoxConfig")
+cfgModule.Source = cfgModule.Source:gsub("Config.AdminUserIds = {}", "Config.AdminUserIds = {1}", 1)
 
 local game = H.wrap(realGame)
 H.game = game
@@ -93,6 +96,31 @@ for _ = 1, 40 do if player:GetAttribute("Loaded") then break end task.wait(0.05)
 check(player:GetAttribute("Loaded") == true, "player loaded")
 local plotName = player:GetAttribute("PlotName")
 check(plotName ~= nil, "player got a plot: " .. tostring(plotName))
+
+-- ADMIN PANEL: admins can give cash / speed / boxes, everybody else is refused
+do
+	local admin = remotes:FindFirstChild("AdminAction")
+	check(admin ~= nil, "admin remote exists")
+	local ask = function(plr, ...) task.wait(0.25) return admin.OnServerInvoke(plr, ...) end
+	local r = ask(player, "Cash", {amount = 123456, mode = "set"})
+	check(r.ok and player:GetAttribute("Cash") == 123456, "admin set cash: " .. tostring(r.msg))
+	r = ask(player, "Speed", {amount = 5000, mode = "add"})
+	check(r.ok, "admin add speed: " .. tostring(r.msg))
+	r = ask(player, "Boxes", {area = 15, rarity = 3, mutation = "Galaxy", size = "Huge", count = 5, where = "me"})
+	check(r.ok, "admin spawns boxes: " .. tostring(r.msg))
+	r = ask(player, "Boxes", {area = 0, rarity = 0, mutation = "Rainbow", size = "Random", where = "everywhere"})
+	check(r.ok, "admin fills the warehouse: " .. tostring(r.msg))
+	r = ask(player, "Grant", {name = "Someone"})
+	check(not r.ok, "a non-owner admin can't give admin: " .. tostring(r.msg))
+	r = ask(player, "Cash", {amount = 0 / 0, mode = "set"})
+	check(not r.ok, "NaN cash is refused: " .. tostring(r.msg))
+	r = ask(player, "ClearBoxes", {})
+	check(r.ok, "admin clears boxes: " .. tostring(r.msg))
+	local cheater = makePlayer(9, "Cheater")
+	r = ask(cheater, "Cash", {amount = 1e9, mode = "set"})
+	check(not r.ok, "a normal player is refused")
+	ask(player, "Cash", {amount = 0, mode = "set"})
+end
 local plot = root.Plots:FindFirstChild(plotName)
 local origin = plot:FindFirstChild("PlotOrigin").CFrame
 local function plotPos(u, w) return (origin * CF(u, 0.5, -w)).Position end

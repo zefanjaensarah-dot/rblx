@@ -73,6 +73,8 @@ local client = script(SPS, "StealABoxClient", "LocalScript", read("src/StealABox
 for _, name in { "UI", "Hud", "Panels", "Windows", "ShopWindow", "Phone", "Tutorial", "WorldFX" } do
 	script(client, name, "ModuleScript", read("src/client/" .. name .. ".luau"))
 end
+-- the ADMIN PANEL lives in ServerStorage (clients can't see it): the server gives it to admins only
+script(SS, "StealABoxAdmin", "LocalScript", read("src/client/Admin.client.luau"))
 
 -- ServerStorage > BuildMapInStudio: the same map code, for building the map in Studio
 -- (paste its source into the command bar). It only builds the MAP - it never touches scripts.

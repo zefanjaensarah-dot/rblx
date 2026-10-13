@@ -1195,4 +1195,12 @@ Config.OldBoxToNew, Config.OldItemToNew = {}, {}
 -- screenshots with a light background, so every icon would sit on a white square.)
 Config.IconSheets = {121181129357514, 119828445968430}
 
+-- ADMIN PANEL: only the owner (and the people the owner gives it to in the panel) get it.
+-- Everything is checked on the server, so exploiters can't use it.
+-- For the safest setup put YOUR Roblox user id below (the number in your profile link:
+-- roblox.com/users/<THIS NUMBER>/profile). The name is a backup in case the id is 0.
+Config.AdminOwnerName = "thisgenerationbruh"
+Config.AdminOwnerId = 0
+Config.AdminUserIds = {} -- extra admins by user id (you can also give admin in the panel)
+
 return Config
