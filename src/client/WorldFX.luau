@@ -178,7 +178,7 @@ function WorldFX.init(ctx)
 				else
 					local maxed = lvl >= max
 					local can = (not maxed) and (data.Cash or 0) >= cost
-					UI.setText(c.level, "Lv " .. lvl .. "/" .. max)
+					UI.setText(c.level, Config.LevelText(lvl, max))
 					UI.setText(c.effect, effect)
 					c.btn.Text = maxed and "MAXED" or ("$" .. Config.FormatNum(cost))
 					c.btn.BackgroundColor3 = can and GREEN_BTN or GREY_BTN

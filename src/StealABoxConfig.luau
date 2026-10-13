@@ -318,10 +318,15 @@ end
 
 -- TREADMILL on your plot: stand on the belt and run to earn speed.
 -- Upgrading it makes you earn speed faster.
--- Every upgrade goes to level 100. The first levels are cheap; after that each level costs a lot
+-- Upgrades have NO level limit. The first levels are cheap; after that each level costs a lot
 -- more, so the last areas take DAYS of grinding (tuned with an economy simulation: free-to-play,
--- area 10 after ~3h, area 14 after ~2 days, area 15 ~5 days after that).
-Config.Treadmill = {max = 100, beltSpeed = 10}
+-- area 10 after ~3h, area 14 after ~2.5 days, area 15 ~4 days after that).
+Config.Treadmill = {max = math.huge, beltSpeed = 10}
+-- "Lv 12" (no limit) or "Lv 12/20"
+function Config.LevelText(level, max)
+	if not max or max == math.huge then return "Lv " .. Config.FormatNum(level or 1) end
+	return "Lv " .. (level or 1) .. "/" .. max
+end
 function Config.TreadRate(level) -- speed earned per second of running (3/s at level 1, ~1.9K/s at 30, ~33T/s at 100)
 	level = math.max(1, level or 1)
 	return 3 * 1.25 ^ (math.min(level, 30) - 1) * 1.4 ^ math.max(0, level - 30)
@@ -329,7 +334,7 @@ end
 function Config.TreadmillCost(level) -- price to go from `level` to `level + 1`
 	level = math.max(1, level or 1)
 	if level <= 1 then return 50 end -- the first upgrade is cheap (end of the tutorial)
-	return math.floor(250 * 1.6 ^ (math.min(level, 30) - 2) * 1.45 ^ math.max(0, level - 30))
+	return math.floor(250 * 1.6 ^ (math.min(level, 30) - 2) * 1.6 ^ math.max(0, level - 30))
 end
 -- ROBUX SPEED BOOSTS: multiply the speed your treadmill gives you (stacks with trails).
 -- It keeps doubling: 2x for 3 Robux, 4x for 6, 8x for 12, 16x for 24 ... and so on.
@@ -358,20 +363,20 @@ function Config.GiftMaxArea(index) -- best warehouse a gift box can come from
 end
 
 -- CUSTOMER KIOSK on your plot: more shoppers = more money
-Config.CustomerMax = 100
+Config.CustomerMax = math.huge
 function Config.CustomerRate(level) -- x shoppers (= x cash): +0.3 per level up to 10, then +0.15
 	level = math.max(1, level or 1)
 	return 1 + 0.3 * (math.min(level, 10) - 1) + 0.15 * math.max(0, level - 10)
 end
 function Config.CustomerCost(level) return math.floor(120 * 1.7 ^ (math.max(1, level or 1) - 1)) end
--- PLOT UPGRADES on the big UPGRADES board: shopper payouts and unbox speed (both up to level 100)
-Config.PayoutMax = 100
+-- PLOT UPGRADES on the big UPGRADES board: shopper payouts and unbox speed (no level limit)
+Config.PayoutMax = math.huge
 function Config.PayoutMult(level) return 1 + 0.15 * ((level or 1) - 1) end -- x what shoppers pay
 function Config.PayoutCost(level) return math.floor(300 * 1.7 ^ (math.max(1, level or 1) - 1)) end
-Config.UnboxMax = 100
-function Config.UnboxMult(level) -- x unbox time (0.46 at level 10, ~0.12 at 100)
+Config.UnboxMax = math.huge
+function Config.UnboxMult(level) -- x unbox time (0.46 at level 10, ~0.12 at 100, never under 0.05)
 	level = math.max(1, level or 1)
-	if level > 10 then return 0.46 * 0.985 ^ (level - 10) end
+	if level > 10 then return math.max(0.05, 0.46 * 0.985 ^ (level - 10)) end
 	return 1 - 0.06 * (level - 1)
 end
 function Config.UnboxCost(level) return math.floor(200 * 1.7 ^ (math.max(1, level or 1) - 1)) end
@@ -472,6 +477,7 @@ Config.CustomerSpeed = 16
 -- how long a box takes to open (seconds)
 function Config.UnboxTime(def, sizeId, unboxLevel)
 	local t = (8 + def.area * 6) * ({1, 1.6, 2.4})[def.rarity] * math.sqrt(Config.GetSize(sizeId).scale)
+	t = t * 1.8 ^ math.max(0, def.area - 10) -- the endgame areas take WAY longer (area 15: ~30 min for a common box)
 	return math.floor(t * (1 - 0.08 * (unboxLevel or 0)) + 0.5)
 end
 
@@ -506,7 +512,8 @@ Config.Items = {}
 for areaIndex, list in ipairs(Config.AreaItems) do
 	for tier, it in ipairs(list) do
 		Config.Items[it[1]] = {id = it[1], name = it[2], emoji = it[3], area = areaIndex, tier = tier,
-			income = math.floor(2.2 ^ (areaIndex - 1) * Config.ItemTiers[tier].mult + 0.5)}
+			-- x2.2 per area up to area 10, then x5 per area (the endgame areas pay WAY more)
+			income = math.floor(2.2 ^ (math.min(areaIndex, 10) - 1) * 5 ^ math.max(0, areaIndex - 10) * Config.ItemTiers[tier].mult + 0.5)}
 	end
 end
 

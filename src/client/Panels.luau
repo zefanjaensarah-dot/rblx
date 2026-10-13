@@ -67,7 +67,7 @@ function Panels.init(ctx)
 			local r = row(page, 0, 60)
 			r.BackgroundColor3 = UI.rgb(120, 200, 255)
 			UI.icon("star", r, UDim2.fromOffset(44, 44), UDim2.fromOffset(8, 8), C.yellow)
-			UI.label(r, "Shoppers  Lv " .. level .. "/" .. Config.CustomerMax, {Position = UDim2.fromOffset(60, 4), Size = UDim2.new(1, -190, 0, 28), Max = 21,
+			UI.label(r, "Shoppers  " .. Config.LevelText(level, Config.CustomerMax), {Position = UDim2.fromOffset(60, 4), Size = UDim2.new(1, -190, 0, 28), Max = 21,
 				Stroke = 2.4, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false})
 			UI.label(r, "x" .. string.format("%.1f", Config.CustomerRate(level)) .. " cash from your shelf", {Position = UDim2.fromOffset(60, 32), Size = UDim2.new(1, -190, 0, 22),
 				Max = 17, Stroke = 2, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false, TextColor3 = C.money})

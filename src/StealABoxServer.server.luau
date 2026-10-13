@@ -1718,7 +1718,7 @@ clearPlotVisuals = function(plot)
 		end
 	end
 	setSign(plot, "CustomerSign", "Lv 1/" .. Config.CustomerMax, "x1 shoppers")
-	setSign(plot, "TreadConsole", "$" .. Config.FormatNum(Config.TreadmillCost(1)), "Lv 1/" .. Config.Treadmill.max .. "  +" .. Config.FormatNum(Config.TreadRate(1)) .. "/s")
+	setSign(plot, "TreadConsole", "$" .. Config.FormatNum(Config.TreadmillCost(1)), Config.LevelText(1, Config.Treadmill.max) .. "  +" .. Config.FormatNum(Config.TreadRate(1)) .. "/s")
 end
 
 -- every second: finished boxes get an "Open!" prompt
@@ -2457,7 +2457,7 @@ refreshTreadmill = function(player)
 	local label = screen and screen:FindFirstChild("ScreenGui", true)
 	local level = prof.Treadmill or 1
 	local price = (level >= Config.Treadmill.max) and "MAXED" or ("$" .. Config.FormatNum(Config.TreadmillCost(level)))
-	setSign(plot, "TreadConsole", price, "Lv " .. level .. "/" .. Config.Treadmill.max .. "  +" .. Config.FormatNum(Config.TreadRate(level) * trailMult(prof) * speedMult(prof)) .. "/s")
+	setSign(plot, "TreadConsole", price, Config.LevelText(level, Config.Treadmill.max) .. "  +" .. Config.FormatNum(Config.TreadRate(level) * trailMult(prof) * speedMult(prof)) .. "/s")
 end
 
 for _, plot in ipairs(plotsFolder:GetChildren()) do
@@ -2480,7 +2480,7 @@ local function refreshKiosk(player)
 	local plot, prof = playerPlot[player], profiles[player]
 	if not plot then return end
 	local level = prof and prof.Customers or 1
-	setSign(plot, "CustomerSign", "Lv " .. level .. "/" .. Config.CustomerMax, "x" .. string.format("%.1f", Config.CustomerRate(level)) .. " shoppers")
+	setSign(plot, "CustomerSign", Config.LevelText(level, Config.CustomerMax), "x" .. string.format("%.1f", Config.CustomerRate(level)) .. " shoppers")
 end
 -- PAYOUTS / UNBOX SPEED: upgraded on the UPGRADES board on your plot
 local function upgradeStat(who, field, max, costFn, what)

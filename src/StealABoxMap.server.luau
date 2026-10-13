@@ -3046,7 +3046,7 @@ local function buildPlot(i, side, zc)
 			PP("TreadSignPole", V(0.5, 4, 0.5), su + sd * 3, 2, sw, darkMetal, M.Metal)
 		end
 		local sign = upgradeSign("TreadConsole", "TreadTag", V(7.4, 4, 0.4), su, 5.6, sw,
-			"UPGRADE", "$" .. Config.FormatNum(Config.TreadmillCost(1)), "Lv 1/" .. Config.Treadmill.max .. "  +" .. Config.FormatNum(Config.TreadRate(1)) .. "/s")
+			"UPGRADE", "$" .. Config.FormatNum(Config.TreadmillCost(1)), Config.LevelText(1, Config.Treadmill.max) .. "  +" .. Config.FormatNum(Config.TreadRate(1)) .. "/s")
 		-- (each player's client puts a bouncy UPGRADE button on their own sign)
 	end
 
