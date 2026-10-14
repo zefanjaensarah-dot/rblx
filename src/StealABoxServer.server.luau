@@ -4319,7 +4319,7 @@ function ADMIN_INIT()
 	end
 	-- HALL OF FAME board in the lobby: admins choose who is on it (saved, shows in every server)
 	A.featured = {}
-	local fame = {rows = {}}
+	local fame = {rows = {}, scores = {}}
 	do
 		local lobby = world:FindFirstChild("Lobby")
 		local part = lobby and lobby:FindFirstChild("BoardFeatured")
@@ -4367,7 +4367,16 @@ function ADMIN_INIT()
 		table.sort(list, function(x, y) return x.at < y.at end)
 		for i, row in ipairs(fame.rows) do
 			local e = list[i]
-			row.Text = e and ("  #" .. i .. "  " .. e.name .. ((e.title or "") ~= "" and ("   - " .. e.title) or "")) or ""
+			local stats = ""
+			if e then
+				-- money + speed: live when they're in this server, otherwise their saved leaderboard score
+				local p = Players:GetPlayerByUserId(e.id)
+				local prof = p and profiles[p]
+				local cash = prof and prof.Cash or (fame.scores[e.id] and fame.scores[e.id].Cash)
+				local speed = prof and prof.SpeedPoints or (fame.scores[e.id] and fame.scores[e.id].SpeedPoints)
+				stats = "   $" .. (cash and Config.FormatNum(cash) or "?") .. "  |  " .. (speed and Config.FormatNum(speed) or "?") .. " speed"
+			end
+			row.Text = e and ("  #" .. i .. "  " .. e.name .. ((e.title or "") ~= "" and (" - " .. e.title) or "") .. stats) or ""
 			row.BackgroundTransparency = e and 0.15 or 1
 		end
 	end
@@ -4389,8 +4398,25 @@ function ADMIN_INIT()
 					A.featured = fresh
 				end
 			end
+			-- saved scores of the people on the board (for the ones who aren't in this server)
+			for id in pairs(A.featured) do
+				local sc = {}
+				for _, b in ipairs(LEADERBOARD and LEADERBOARD.boards or {}) do
+					if b.store then
+						local ok, v = pcall(function() return b.store:GetAsync(tostring(id)) end)
+						if ok and tonumber(v) then sc[b.key] = 10 ^ (tonumber(v) / 1e6) end
+					end
+				end
+				fame.scores[id] = sc
+			end
 			fame.draw()
 			task.wait(60)
+		end
+	end)
+	task.spawn(function()
+		while true do
+			task.wait(15)
+			pcall(fame.draw)
 		end
 	end)
 	handlers.FameAdd = function(admin, args)
