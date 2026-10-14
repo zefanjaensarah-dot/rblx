@@ -640,8 +640,8 @@ function Hud.init(ctx)
 			local st = pop:FindFirstChildOfClass("UIStroke")
 			if st then UI.tween(st, 1, {Transparency = 1}) end
 			Debris:AddItem(pop, 1.05)
-			-- a few coins fly from the middle of the screen into the counter (not too often)
-			if os.clock() - lastCoins < 0.7 or ctx.settings.Effects == false then return end
+			-- (no flying coins any more: they filled the screen every time you earned money)
+			if true then return end
 			lastCoins = os.clock()
 			local vp = UI.over.AbsoluteSize
 			local target = cashC.icon.AbsolutePosition + cashC.icon.AbsoluteSize / 2 + Vector2.new(0, game:GetService("GuiService"):GetGuiInset().Y)
