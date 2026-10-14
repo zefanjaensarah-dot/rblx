@@ -247,6 +247,20 @@ do
 	button(r2, "PUT BACK", GREEN, 0.6, 0.4, function() send("LbRestore", args()) end)
 end
 
+section("HALL OF FAME BOARD", GOLD)
+do
+	local r = row(42)
+	local name = input(r, "Username (empty = picked player)", 0, 0.6)
+	local title = input(r, "Title (optional)", 0.6, 0.4)
+	local r2 = row(44)
+	local function args()
+		local n = (name.Text or ""):gsub("%s", "")
+		return {name = n, target = (n == "") and who.value() or nil, title = title.Text}
+	end
+	button(r2, "ADD TO HALL OF FAME", GREEN, 0, 0.6, function() send("FameAdd", args()) end)
+	button(r2, "REMOVE", RED, 0.6, 0.4, function() send("FameRemove", args()) end)
+end
+
 ------------------------------------------------------------------
 -- TAB 2: BOXES
 ------------------------------------------------------------------

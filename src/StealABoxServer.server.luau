@@ -4317,6 +4317,119 @@ function ADMIN_INIT()
 		notifyAll("SERVER LUCK! " .. Config.ServerLuck.mult .. "x mutations for " .. Config.ServerLuck.minutes .. " minutes!", Color3.fromRGB(120, 255, 120))
 		return {ok = true, msg = "Server luck is on!"}
 	end
+	-- HALL OF FAME board in the lobby: admins choose who is on it (saved, shows in every server)
+	A.featured = {}
+	local fame = {rows = {}}
+	do
+		local lobby = world:FindFirstChild("Lobby")
+		local part = lobby and lobby:FindFirstChild("BoardFeatured")
+		if part then
+			local sg = Instance.new("SurfaceGui")
+			sg.Face = Enum.NormalId.Front
+			sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+			sg.PixelsPerStud = 20
+			sg.LightInfluence = 0
+			sg.Parent = part
+			local list = Instance.new("Frame")
+			list.BackgroundTransparency = 1
+			list.Size = UDim2.new(0.86, 0, 0.78, 0)
+			list.Position = UDim2.fromScale(0.07, 0.17)
+			list.Parent = sg
+			local layout = Instance.new("UIListLayout")
+			layout.Padding = UDim.new(0.01, 0)
+			layout.SortOrder = Enum.SortOrder.LayoutOrder
+			layout.Parent = list
+			for i = 1, 10 do
+				local row = Instance.new("TextLabel")
+				row.Size = UDim2.new(1, 0, 0.09, 0)
+				row.BackgroundColor3 = Color3.fromRGB(255, 170, 30)
+				row.BackgroundTransparency = 1
+				row.FontFace = Config.Font
+				row.TextScaled = true
+				row.TextColor3 = Color3.new(1, 1, 1)
+				row.TextXAlignment = Enum.TextXAlignment.Left
+				row.Text = ""
+				row.LayoutOrder = i
+				local rc = Instance.new("UICorner")
+				rc.CornerRadius = UDim.new(0.25, 0)
+				rc.Parent = row
+				local st = Instance.new("UIStroke")
+				st.Thickness = 2
+				st.Parent = row
+				row.Parent = list
+				fame.rows[i] = row
+			end
+		end
+	end
+	function fame.draw()
+		local list = {}
+		for id, e in pairs(A.featured) do table.insert(list, {id = id, name = e.name, title = e.title, at = e.at or 0}) end
+		table.sort(list, function(x, y) return x.at < y.at end)
+		for i, row in ipairs(fame.rows) do
+			local e = list[i]
+			row.Text = e and ("  #" .. i .. "  " .. e.name .. ((e.title or "") ~= "" and ("   - " .. e.title) or "")) or ""
+			row.BackgroundTransparency = e and 0.15 or 1
+		end
+	end
+	function fame.save()
+		if not adminStore then return end
+		local out = {}
+		for id, e in pairs(A.featured) do out[tostring(id)] = e end
+		pcall(function() adminStore:SetAsync("featured", out) end)
+	end
+	task.spawn(function()
+		while true do
+			if adminStore then
+				local ok, saved = pcall(function() return adminStore:GetAsync("featured") end)
+				if ok and type(saved) == "table" then
+					local fresh = {}
+					for id, e in pairs(saved) do
+						if tonumber(id) and type(e) == "table" then fresh[tonumber(id)] = e end
+					end
+					A.featured = fresh
+				end
+			end
+			fame.draw()
+			task.wait(60)
+		end
+	end)
+	handlers.FameAdd = function(admin, args)
+		local id, name
+		if type(args.name) == "string" and args.name ~= "" then id, name = resolveName(args.name)
+		else
+			local t = targetOf(admin, args)
+			if t then id, name = t.UserId, t.Name end
+		end
+		if not id then return {ok = false, msg = "Type a username (or pick a player)."} end
+		local count = 0
+		for _ in pairs(A.featured) do count = count + 1 end
+		if not A.featured[id] and count >= 10 then return {ok = false, msg = "The Hall of Fame is full (10). Remove someone first."} end
+		local title = ""
+		if type(args.title) == "string" and args.title ~= "" then
+			local okF, f = pcall(function()
+				return TextService:FilterStringAsync(args.title:sub(1, 24), admin.UserId, Enum.TextFilterContext.PublicChat):GetNonChatStringForBroadcastAsync()
+			end)
+			if not okF then return {ok = false, msg = "Roblox's text filter didn't answer - try again."} end
+			title = f
+		end
+		A.featured[id] = {name = name, title = title, at = (A.featured[id] and A.featured[id].at) or os.time()}
+		fame.save()
+		fame.draw()
+		return {ok = true, msg = name .. " is in the Hall of Fame!"}
+	end
+	handlers.FameRemove = function(admin, args)
+		local id, name
+		if type(args.name) == "string" and args.name ~= "" then id, name = resolveName(args.name)
+		else
+			local t = targetOf(admin, args)
+			if t then id, name = t.UserId, t.Name end
+		end
+		if not id or not A.featured[id] then return {ok = false, msg = "That player isn't in the Hall of Fame."} end
+		A.featured[id] = nil
+		fame.save()
+		fame.draw()
+		return {ok = true, msg = name .. " was removed from the Hall of Fame."}
+	end
 	handlers.Info = function(admin)
 		local list = {}
 		for id, name in pairs(A.granted) do table.insert(list, {id = id, name = name}) end

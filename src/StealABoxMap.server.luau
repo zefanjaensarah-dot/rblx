@@ -251,6 +251,8 @@ do
 	-- (no rotation: the front of each board looks down -Z, back up the street)
 	leaderboard("BoardTopMoney", CFrame.new(-42, 0, COURT_LEN - 9), "Top Money", RGB(80, 200, 60))
 	leaderboard("BoardTopSpeed", CFrame.new(42, 0, COURT_LEN - 9), "Top Speed", RGB(60, 135, 255))
+	-- the HALL OF FAME in the middle: only the people an admin puts there (admin panel)
+	leaderboard("BoardFeatured", CFrame.new(0, 0, COURT_LEN - 9), "Hall of Fame", RGB(255, 170, 30))
 end
 
 -- (helpers the warehouse uses)
