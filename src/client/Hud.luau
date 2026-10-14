@@ -789,6 +789,43 @@ function Hud.init(ctx)
 		end
 	end
 
+	------------------------------------------------------------------
+	-- ANNOUNCEMENTS from the admins: a big banner at the top for a few seconds
+	------------------------------------------------------------------
+	do
+		local banner = new("Frame", {Name = "Announcement", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, -200),
+			Size = UDim2.new(0.9, 0, 0, 120), BackgroundColor3 = UI.rgb(255, 80, 70), Visible = false, ZIndex = 50}, root)
+		new("UISizeConstraint", {MaxSize = Vector2.new(720, 140)}, banner)
+		UI.corner(banner, 18)
+		UI.stroke(banner, 4)
+		new("UIGradient", {Rotation = 90, Color = ColorSequence.new(Color3.new(1, 1, 1), UI.rgb(210, 210, 210))}, banner)
+		local title = UI.label(banner, "ANNOUNCEMENT", {Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -24, 0, 30), Max = 28, Stroke = 3,
+			TextColor3 = UI.rgb(255, 240, 120), TextWrapped = false, ZIndex = 51})
+		local body = UI.label(banner, "", {Position = UDim2.fromOffset(16, 38), Size = UDim2.new(1, -32, 1, -46), Max = 26, Stroke = 2.5, ZIndex = 51})
+		local token = 0
+		task.spawn(function()
+			local remotesFolder = game:GetService("ReplicatedStorage"):WaitForChild("StealABoxRemotes")
+			local ev = remotesFolder:WaitForChild("Announce", 60)
+			if not ev then return end
+			ev.OnClientEvent:Connect(function(text, from)
+				if type(text) ~= "string" then return end
+				token = token + 1
+				local tok = token
+				UI.setText(title, "ANNOUNCEMENT" .. (type(from) == "string" and ("  -  " .. from) or ""))
+				UI.setText(body, text)
+				banner.Visible = true
+				banner.Position = UDim2.new(0.5, 0, 0, -200)
+				UI.tween(banner, 0.5, {Position = UDim2.new(0.5, 0, 0, 70)}, Enum.EasingStyle.Back)
+				UI.SFX.play("open", 1, 0.5)
+				task.delay(9, function()
+					if tok ~= token then return end
+					UI.tween(banner, 0.4, {Position = UDim2.new(0.5, 0, 0, -200)})
+					task.delay(0.45, function() if tok == token then banner.Visible = false end end)
+				end)
+			end)
+		end)
+	end
+
 	return hud
 end
 

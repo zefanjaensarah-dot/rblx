@@ -3917,6 +3917,51 @@ do
 		end
 	end
 	task.spawn(function() A.load() A.refreshAll() end)
+	-- BANS (saved): banned players are kicked when they join (and within a minute in other servers)
+	A.bans = {}
+	function A.saveBans()
+		if not adminStore then return end
+		local list = {}
+		for id, b in pairs(A.bans) do list[tostring(id)] = b end
+		pcall(function() adminStore:SetAsync("bans", list) end)
+	end
+	local function kickIfBanned(p)
+		local b = A.bans[p.UserId]
+		if b and not A.owners[p.UserId] then
+			p:Kick("You are banned from this game." .. ((b.reason or "") ~= "" and (" Reason: " .. b.reason) or ""))
+		end
+	end
+	Players.PlayerAdded:Connect(kickIfBanned)
+	task.spawn(function()
+		while adminStore do
+			local ok, list = pcall(function() return adminStore:GetAsync("bans") end)
+			if ok and type(list) == "table" then
+				local fresh = {}
+				for id, b in pairs(list) do
+					if tonumber(id) then fresh[tonumber(id)] = type(b) == "table" and b or {} end
+				end
+				A.bans = fresh
+				for _, p in ipairs(Players:GetPlayers()) do kickIfBanned(p) end
+			end
+			task.wait(60)
+		end
+	end)
+	-- ANNOUNCEMENTS: a big banner on everyone's screen (this server, or every server)
+	announceEvent = remotes:FindFirstChild("Announce") or Instance.new("RemoteEvent")
+	announceEvent.Name = "Announce"
+	announceEvent.Parent = remotes
+	task.spawn(function()
+		local okMS, MS = pcall(function() return game:GetService("MessagingService") end)
+		if not okMS or not MS then return end
+		pcall(function()
+			MS:SubscribeAsync("SAB_Announce", function(message)
+				local d = message and message.Data
+				if type(d) == "table" and type(d.text) == "string" and d.job ~= game.JobId then
+					announceEvent:FireAllClients(d.text:sub(1, 250), tostring(d.from or "Admin"):sub(1, 30))
+				end
+			end)
+		end)
+	end)
 	-- players removed from the leaderboards (saved, so it holds in every server)
 	LB_HIDDEN = {}
 	task.spawn(function()
@@ -3974,7 +4019,19 @@ do
 		if t and profiles[t] then return t, profiles[t] end
 		return nil
 	end
+	-- target -1 = everybody in this server
+	local function forEveryone(admin, args, fn)
+		local n = 0
+		for _, p in ipairs(Players:GetPlayers()) do
+			if profiles[p] then
+				local r = fn(admin, {target = p.UserId, amount = args.amount, mode = args.mode})
+				if r and r.ok then n = n + 1 end
+			end
+		end
+		return {ok = n > 0, msg = "Done for " .. n .. " players."}
+	end
 	handlers.Cash = function(admin, args)
+		if tonumber(args.target) == -1 then return forEveryone(admin, args, handlers.Cash) end
 		local t, prof = targetOf(admin, args)
 		local amount = num(args.amount, 0, 1e30)
 		if not t or not amount then return {ok = false, msg = "Pick a player and type an amount."} end
@@ -3984,6 +4041,7 @@ do
 		return {ok = true, msg = t.Name .. " now has $" .. Config.FormatNum(prof.Cash)}
 	end
 	handlers.Speed = function(admin, args)
+		if tonumber(args.target) == -1 then return forEveryone(admin, args, handlers.Speed) end
 		local t, prof = targetOf(admin, args)
 		local amount = num(args.amount, 0, 1e30)
 		if not t or not amount then return {ok = false, msg = "Pick a player and type an amount."} end
@@ -4114,6 +4172,145 @@ do
 		saveHidden()
 		if LEADERBOARD then task.spawn(pcall, LEADERBOARD.refresh) end
 		return {ok = true, msg = name .. " is back on the leaderboards."}
+	end
+	-- PLAYERS: stats, teleport, bring, kick, ban, unban
+	handlers.Stats = function(admin, args)
+		local t, prof = targetOf(admin, args)
+		if not t then return {ok = false, msg = "Pick a player."} end
+		local best = 0
+		for id in pairs(prof.Boxes or {}) do
+			local def = Config.Boxes[id]
+			if def and def.area > best then best = def.area end
+		end
+		return {ok = true, msg = t.Name .. " stats", stats = {
+			{"Cash", "$" .. Config.FormatNum(prof.Cash)}, {"Income", "$" .. Config.FormatNum(t:GetAttribute("Income") or 0) .. "/s"},
+			{"Speed", Config.FormatNum(prof.SpeedPoints or 0)}, {"Treadmill", Config.LevelText(prof.Treadmill, Config.Treadmill.max)},
+			{"Shoppers", Config.LevelText(prof.Customers or 1, Config.CustomerMax)}, {"Payouts", Config.LevelText(prof.PayoutLevel or 1, Config.PayoutMax)},
+			{"Unbox", Config.LevelText(prof.UnboxLevel or 1, Config.UnboxMax)}, {"Stolen", Config.FormatNum(prof.Stolen or 0)},
+			{"Deepest area", best > 0 and (best .. ". " .. Config.Areas[best].name) or "-"}, {"Slots", tostring(unlockedStands(prof))},
+		}}
+	end
+	local function canModerate(admin, t)
+		if t == admin then return false, "You can't do that to yourself." end
+		if A.isOwner(t) then return false, "You can't do that to the owner." end
+		if A.isAdmin(t) and not A.isOwner(admin) then return false, "Only the owner can do that to another admin." end
+		return true
+	end
+	handlers.Goto = function(admin, args)
+		local t = targetOf(admin, args)
+		local _, hrp = getChar(admin)
+		local _, thrp = getChar(t)
+		if not hrp or not thrp or t == admin then return {ok = false, msg = "Pick another player."} end
+		admin.Character:PivotTo(thrp.CFrame * CFrame.new(0, 0, 5))
+		return {ok = true, msg = "Teleported to " .. t.Name}
+	end
+	handlers.Bring = function(admin, args)
+		local t = targetOf(admin, args)
+		local _, hrp = getChar(admin)
+		local _, thrp = getChar(t)
+		if not hrp or not thrp or t == admin then return {ok = false, msg = "Pick another player."} end
+		if carrying[t] then releaseCarry(t) end -- (no free box teleports)
+		t.Character:PivotTo(hrp.CFrame * CFrame.new(0, 0, -5))
+		return {ok = true, msg = "Brought " .. t.Name}
+	end
+	local function cleanReason(r)
+		if type(r) ~= "string" then return "" end
+		return r:sub(1, 80):gsub("[%c]", " ")
+	end
+	handlers.Kick = function(admin, args)
+		local t = targetOf(admin, args)
+		if not t then return {ok = false, msg = "Pick a player."} end
+		local okM, why = canModerate(admin, t)
+		if not okM then return {ok = false, msg = why} end
+		local reason = cleanReason(args.reason)
+		t:Kick("You were kicked by an admin." .. (reason ~= "" and (" Reason: " .. reason) or ""))
+		return {ok = true, msg = "Kicked " .. t.Name}
+	end
+	handlers.Ban = function(admin, args)
+		local id, name
+		if type(args.name) == "string" and args.name ~= "" then id, name = resolveName(args.name)
+		else
+			local t = targetOf(admin, args)
+			if t then id, name = t.UserId, t.Name end
+		end
+		if not id then return {ok = false, msg = "Pick a player or type a username."} end
+		if A.owners[id] then return {ok = false, msg = "You can't ban the owner."} end
+		if A.granted[id] ~= nil and not A.isOwner(admin) then return {ok = false, msg = "Only the owner can ban an admin."} end
+		if id == admin.UserId then return {ok = false, msg = "You can't ban yourself."} end
+		local reason = cleanReason(args.reason)
+		A.bans[id] = {name = name, reason = reason, by = admin.Name, at = os.time()}
+		A.saveBans()
+		local t = Players:GetPlayerByUserId(id)
+		if t then t:Kick("You are banned from this game." .. (reason ~= "" and (" Reason: " .. reason) or "")) end
+		return {ok = true, msg = "Banned " .. name}
+	end
+	handlers.Unban = function(admin, args)
+		local id, name = resolveName(args.name)
+		if not id or not A.bans[id] then return {ok = false, msg = "That player isn't banned."} end
+		A.bans[id] = nil
+		A.saveBans()
+		return {ok = true, msg = "Unbanned " .. name}
+	end
+	-- SERVER: announcements (filtered by Roblox, like chat), events, server luck
+	local TextService = game:GetService("TextService")
+	local okMS, MessagingService = pcall(function() return game:GetService("MessagingService") end)
+	handlers.Announce = function(admin, args)
+		local text = type(args.text) == "string" and args.text:gsub("[%c]", " "):gsub("^%s+", ""):gsub("%s+$", "") or ""
+		if #text < 1 or #text > 200 then return {ok = false, msg = "Type a message (max 200 letters)."} end
+		if os.clock() - (A.lastAnnounce or 0) < 5 then return {ok = false, msg = "Wait a few seconds between announcements."} end
+		local okF, filtered = pcall(function()
+			return TextService:FilterStringAsync(text, admin.UserId, Enum.TextFilterContext.PublicChat):GetNonChatStringForBroadcastAsync()
+		end)
+		if not okF or type(filtered) ~= "string" then return {ok = false, msg = "Roblox's text filter didn't answer - try again."} end
+		A.lastAnnounce = os.clock()
+		announceEvent:FireAllClients(filtered, admin.Name)
+		if args.global and okMS and MessagingService then
+			local okP = pcall(function() MessagingService:PublishAsync("SAB_Announce", {text = filtered, from = admin.Name, job = game.JobId}) end)
+			if not okP then return {ok = true, msg = "Sent here, but the other servers didn't get it."} end
+			return {ok = true, msg = "Announced in ALL servers!"}
+		end
+		return {ok = true, msg = "Announced in this server!"}
+	end
+	handlers.Event = function(admin, args)
+		local e
+		for _, ev in ipairs(Config.Events) do if ev.id == args.id then e = ev end end
+		if not e then return {ok = false, msg = "Pick an event."} end
+		local ends = workspace:GetServerTimeNow() + e.seconds
+		ReplicatedStorage:SetAttribute("EventId", e.id)
+		ReplicatedStorage:SetAttribute("EventName", e.name)
+		ReplicatedStorage:SetAttribute("EventEndsAt", ends)
+		notifyAll(e.name .. " " .. e.text, Color3.fromRGB(255, 200, 60))
+		if e.id == "GoldRain" then
+			for _ = 1, 14 do
+				local sp = boxSpawns[math.random(1, #boxSpawns)]
+				local old = spawnFilled[sp]
+				if not (old and old:GetAttribute("Taken")) then
+					if old then
+						boxSpawnOf[old] = nil
+						spawnFilled[sp] = nil
+						old:Destroy()
+					end
+					spawnBox(sp, (math.random() < 0.15) and "Rainbow" or "Gold")
+				end
+			end
+		elseif e.id == "LuckyHour" then
+			ReplicatedStorage:SetAttribute("ServerLuckUntil", math.max(ReplicatedStorage:GetAttribute("ServerLuckUntil") or 0, ends))
+		end
+		task.delay(e.seconds, function()
+			if ReplicatedStorage:GetAttribute("EventEndsAt") == ends then
+				ReplicatedStorage:SetAttribute("EventId", nil)
+				ReplicatedStorage:SetAttribute("EventName", nil)
+				ReplicatedStorage:SetAttribute("EventEndsAt", nil)
+				notifyAll("The " .. e.name:gsub("!", "") .. " event is over.", Color3.fromRGB(200, 200, 220))
+			end
+		end)
+		return {ok = true, msg = e.name .. " started!"}
+	end
+	handlers.Luck = function()
+		local nowT = workspace:GetServerTimeNow()
+		ReplicatedStorage:SetAttribute("ServerLuckUntil", math.max(nowT, ReplicatedStorage:GetAttribute("ServerLuckUntil") or 0) + Config.ServerLuck.minutes * 60)
+		notifyAll("SERVER LUCK! " .. Config.ServerLuck.mult .. "x mutations for " .. Config.ServerLuck.minutes .. " minutes!", Color3.fromRGB(120, 255, 120))
+		return {ok = true, msg = "Server luck is on!"}
 	end
 	handlers.Info = function(admin)
 		local list = {}
