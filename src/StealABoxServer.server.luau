@@ -4056,6 +4056,36 @@ function ADMIN_INIT()
 		sync(t)
 		return {ok = true, msg = t.Name .. " now has " .. Config.FormatNum(prof.SpeedPoints) .. " speed"}
 	end
+	-- UPGRADE LEVELS: set any upgrade of a player (or everyone) to an exact level
+	local LEVEL_FIELDS = {Treadmill = "Treadmill", Shoppers = "Customers", Payouts = "PayoutLevel", Unbox = "UnboxLevel", Slots = "ExtraStands"}
+	handlers.Level = function(admin, args)
+		if tonumber(args.target) == -1 then
+			local n = 0
+			for _, p in ipairs(Players:GetPlayers()) do
+				local r = handlers.Level(admin, {target = p.UserId, stat = args.stat, level = args.level})
+				if r and r.ok then n = n + 1 end
+			end
+			return {ok = n > 0, msg = "Done for " .. n .. " players."}
+		end
+		local t, prof = targetOf(admin, args)
+		local field = type(args.stat) == "string" and LEVEL_FIELDS[args.stat]
+		local level = num(args.level, 1, 1e6)
+		if not t or not field or not level then return {ok = false, msg = "Pick a player, an upgrade and a level."} end
+		level = math.floor(level)
+		if field == "ExtraStands" then
+			-- (the level is the number of podium slots)
+			level = math.clamp(level, Config.BaseStands, Config.MaxStands)
+			prof.ExtraStands = level - Config.BaseStands
+			refreshStands(t)
+		else
+			prof[field] = level
+		end
+		if field == "Treadmill" and refreshTreadmill then refreshTreadmill(t) end
+		if field == "Customers" then pcall(refreshKiosk, t) end
+		refreshIncome(t)
+		sync(t)
+		return {ok = true, msg = t.Name .. ": " .. args.stat .. " set to " .. level}
+	end
 	-- boxes: around you, or on every shelf spot in the whole warehouse
 	handlers.Boxes = function(admin, args)
 		local areaIndex = math.floor(num(args.area, 0, #Config.Areas) or 0)

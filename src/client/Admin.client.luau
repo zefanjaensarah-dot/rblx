@@ -222,6 +222,19 @@ for _, kind in ipairs({{"MONEY", "Cash", GREEN, "Cash (e.g. 1.5M, 2B)"}, {"SPEED
 	button(r, "SET", BLUE, 0.5, 0.25, function() go("set") end)
 	button(r, "ADD", GREEN, 0.75, 0.25, function() go("add") end)
 end
+section("UPGRADE LEVELS", PURPLE)
+do
+	local stat = picker("Upgrade", function()
+		return {{"Treadmill", "Treadmill"}, {"Shoppers", "Shoppers"}, {"Payouts", "Payouts"}, {"Unbox Speed", "Unbox"}, {"Podium slots (" .. Config.BaseStands .. "-" .. Config.MaxStands .. ")", "Slots"}}
+	end)
+	local r = row(42)
+	local lvl = input(r, "Level (e.g. 50)", 0, 0.6)
+	button(r, "SET LEVEL", PURPLE, 0.6, 0.4, function()
+		local n = parseNum(lvl.Text)
+		if not n then return fail("Type a level first.") end
+		send("Level", {target = who.value(), stat = stat.value(), level = n})
+	end)
+end
 section("KICK / BAN", RED)
 do
 	local r = row(42)
