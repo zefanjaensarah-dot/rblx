@@ -3861,7 +3861,8 @@ end
 --  * EVERY request is checked again here (who you are, what you send), so a faked panel does nothing
 --  * non-admins who call it anyway get kicked after a few tries
 ------------------------------------------------------------------
-do
+-- (its own function: the main chunk is at Roblox's 200-local limit, a do-block would push it over)
+function ADMIN_INIT()
 	local ServerStorage = game:GetService("ServerStorage")
 	local adminFunc = remotes:FindFirstChild("AdminAction") or Instance.new("RemoteFunction")
 	adminFunc.Name = "AdminAction"
@@ -4343,3 +4344,4 @@ do
 		return result
 	end
 end
+ADMIN_INIT()

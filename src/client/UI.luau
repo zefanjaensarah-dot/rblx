@@ -184,8 +184,9 @@ do
 	local function snd(id, vol, pitch)
 		return new("Sound", {SoundId = id, Volume = vol, PlaybackSpeed = pitch}, SoundService)
 	end
-	SFX.open = snd("rbxasset://sounds/swoosh.wav", 0.25, 1.5)
-	SFX.close = snd("rbxasset://sounds/swoosh.wav", 0.18, 1.9)
+	-- (no open / close sound: rbxasset://sounds/swoosh.wav isn't allowed in published games)
+	SFX.open, SFX.close = nil, nil
+	local _ = snd
 	-- play a short copy (so fast repeats overlap instead of cutting off)
 	function SFX.play(name, pitch, vol)
 		if not SFX.enabled then return end
