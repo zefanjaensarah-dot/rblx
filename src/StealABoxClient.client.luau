@@ -18,6 +18,49 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local remotesFolder = ReplicatedStorage:WaitForChild("StealABoxRemotes")
 
+-- STUDIO ONLY: every error (server + client) shows in a red box at the bottom of the screen
+pcall(function()
+	local RunService = game:GetService("RunService")
+	if RunService:IsStudio() then
+		local RS = game:GetService("ReplicatedStorage")
+		local gui = Instance.new("ScreenGui")
+		gui.Name = "StudioErrors"
+		gui.ResetOnSpawn = false
+		gui.DisplayOrder = 100
+		local box = Instance.new("TextLabel")
+		box.AnchorPoint = Vector2.new(0.5, 1)
+		box.Position = UDim2.new(0.5, 0, 1, -8)
+		box.Size = UDim2.new(0.9, 0, 0, 150)
+		box.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
+		box.BackgroundTransparency = 0.15
+		box.TextColor3 = Color3.fromRGB(255, 220, 220)
+		box.TextXAlignment = Enum.TextXAlignment.Left
+		box.TextYAlignment = Enum.TextYAlignment.Top
+		box.TextWrapped = true
+		box.TextSize = 14
+		box.Font = Enum.Font.Code
+		box.Visible = false
+		box.Parent = gui
+		gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+		local clientErrs = {}
+		local function show()
+			local lines = {}
+			local serverErrs = RS:GetAttribute("StudioServerErrors")
+			if serverErrs and serverErrs ~= "" then table.insert(lines, serverErrs) end
+			for _, e in ipairs(clientErrs) do table.insert(lines, e) end
+			box.Text = "ERRORS (send a screenshot of this):\n" .. table.concat(lines, "\n")
+			box.Visible = #lines > 0
+		end
+		game:GetService("LogService").MessageOut:Connect(function(message, kind)
+			if kind ~= Enum.MessageType.MessageError then return end
+			table.insert(clientErrs, "[CLIENT] " .. string.sub(tostring(message), 1, 300))
+			while #clientErrs > 5 do table.remove(clientErrs, 1) end
+			show()
+		end)
+		RS:GetAttributeChangedSignal("StudioServerErrors"):Connect(show)
+		show()
+	end
+end)
 local UI = require(script:WaitForChild("UI"))
 local Hud = require(script:WaitForChild("Hud"))
 local Panels = require(script:WaitForChild("Panels"))

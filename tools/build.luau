@@ -67,6 +67,7 @@ end
 script(SSS, "StealABoxServer", "Script", read("src/StealABoxServer.server.luau"))
 local mapSource = read("src/StealABoxMap.server.luau")
 script(SSS, "StealABoxMap", "Script", mapSource)
+script(SSS, "StealABoxErrors", "Script", read("src/StealABoxErrors.server.luau"))
 
 -- client: the LocalScript + its modules
 local client = script(SPS, "StealABoxClient", "LocalScript", read("src/StealABoxClient.client.luau"))

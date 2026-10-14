@@ -2948,6 +2948,8 @@ local guardsFolder = world:WaitForChild("Guards")
 local guards = {}
 
 for _, model in ipairs(guardsFolder:GetChildren()) do
+	-- (one broken guardian must never stop the whole server)
+	local okG, errG = pcall(function()
 	if model:IsA("Model") then
 		local pivot = model:GetPivot()
 		local facing = Vector3.new(pivot.LookVector.X, 0, pivot.LookVector.Z)
@@ -2973,6 +2975,8 @@ for _, model in ipairs(guardsFolder:GetChildren()) do
 			tracks = loadTracks(model),
 		})
 	end
+	end)
+	if not okG then warn("[Steal a Box] guardian " .. model.Name .. " failed: " .. tostring(errG)) end
 end
 
 local function setAwake(g, awake)
