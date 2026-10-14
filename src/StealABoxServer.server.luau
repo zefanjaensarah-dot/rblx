@@ -3747,9 +3747,10 @@ do
 		for _, b in ipairs(boards) do
 			if b.rows then
 				local best = {}
+				local hidden = LB_HIDDEN or {} -- (players an admin removed from the boards)
 				for _, p in ipairs(Players:GetPlayers()) do
 					local prof = profiles[p]
-					if prof then
+					if prof and not hidden[p.UserId] then
 						best[p.UserId] = {name = p.Name, value = tonumber(prof[b.key]) or 0}
 						if b.store and not dontSave[p] then
 							pcall(function() b.store:SetAsync(tostring(p.UserId), encode(tonumber(prof[b.key]) or 0)) end)
@@ -3758,10 +3759,10 @@ do
 				end
 				if b.store then
 					pcall(function()
-						local page = b.store:GetSortedAsync(false, 10):GetCurrentPage()
+						local page = b.store:GetSortedAsync(false, 25):GetCurrentPage()
 						for _, e in ipairs(page) do
 							local id = tonumber(e.key)
-							if id and not best[id] then best[id] = {name = nameOf(id), value = decode(e.value)} end
+							if id and not best[id] and not hidden[id] then best[id] = {name = nameOf(id), value = decode(e.value)} end
 						end
 					end)
 				end
@@ -3783,6 +3784,8 @@ do
 			task.wait(60)
 		end
 	end)
+	-- (the admin panel removes players from the boards with this)
+	LEADERBOARD = {boards = boards, refresh = refresh}
 end
 
 ------------------------------------------------------------------
@@ -3914,6 +3917,21 @@ do
 		end
 	end
 	task.spawn(function() A.load() A.refreshAll() end)
+	-- players removed from the leaderboards (saved, so it holds in every server)
+	LB_HIDDEN = {}
+	task.spawn(function()
+		while adminStore do
+			local ok, list = pcall(function() return adminStore:GetAsync("lbHidden") end)
+			if ok and type(list) == "table" then
+				local fresh = {}
+				for id in pairs(list) do
+					if tonumber(id) then fresh[tonumber(id)] = true end
+				end
+				LB_HIDDEN = fresh
+			end
+			task.wait(60) -- (picks up removals made in other servers)
+		end
+	end)
 	Players.PlayerAdded:Connect(function(p)
 		p.CharacterAdded:Connect(function() task.wait(0.5) A.refresh(p) end)
 		task.delay(2, function()
@@ -4063,6 +4081,39 @@ do
 		local p = Players:GetPlayerByUserId(id)
 		if p then A.refresh(p) end
 		return {ok = true, msg = name .. " is no longer an admin."}
+	end
+	-- LEADERBOARDS: remove a player (their saved scores are deleted and never written again) or put them back
+	local function lbTarget(args)
+		if type(args.name) == "string" and args.name ~= "" then return resolveName(args.name) end
+		local p = tonumber(args.target) and Players:GetPlayerByUserId(tonumber(args.target))
+		if p then return p.UserId, p.Name end
+		return nil
+	end
+	local function saveHidden()
+		if not adminStore then return end
+		local list = {}
+		for id in pairs(LB_HIDDEN) do list[tostring(id)] = true end
+		pcall(function() adminStore:SetAsync("lbHidden", list) end)
+	end
+	handlers.LbRemove = function(admin, args)
+		local id, name = lbTarget(args)
+		if not id then return {ok = false, msg = "Type a username (or pick a player)."} end
+		LB_HIDDEN[id] = true
+		saveHidden()
+		local lb = LEADERBOARD
+		for _, b in ipairs(lb and lb.boards or {}) do
+			if b.store then pcall(function() b.store:RemoveAsync(tostring(id)) end) end
+		end
+		if lb then task.spawn(pcall, lb.refresh) end
+		return {ok = true, msg = name .. " was removed from the leaderboards."}
+	end
+	handlers.LbRestore = function(admin, args)
+		local id, name = lbTarget(args)
+		if not id or not LB_HIDDEN[id] then return {ok = false, msg = "That player isn't removed."} end
+		LB_HIDDEN[id] = nil
+		saveHidden()
+		if LEADERBOARD then task.spawn(pcall, LEADERBOARD.refresh) end
+		return {ok = true, msg = name .. " is back on the leaderboards."}
 	end
 	handlers.Info = function(admin)
 		local list = {}

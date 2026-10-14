@@ -217,6 +217,22 @@ for _, b in ipairs(body:GetDescendants()) do
 end
 
 ------------------------------------------------------------------
+-- LEADERBOARDS: take a player off the boards (or put them back)
+------------------------------------------------------------------
+section("LEADERBOARDS", Color3.fromRGB(255, 120, 40))
+do
+	local r = row(42)
+	local name = input(r, "Username (empty = picked player)", 0, 1)
+	local r2 = row(46)
+	local function args()
+		local n = (name.Text or ""):gsub("%s", "")
+		return {name = n, target = (n == "") and who.value() or nil}
+	end
+	button(r2, "REMOVE FROM BOARDS", RED, 0, 0.6, function() send("LbRemove", args()) end)
+	button(r2, "PUT BACK", GREEN, 0.6, 0.4, function() send("LbRestore", args()) end)
+end
+
+------------------------------------------------------------------
 -- ADMINS (only the owner sees this part)
 ------------------------------------------------------------------
 local function buildOwnerPart(info)
