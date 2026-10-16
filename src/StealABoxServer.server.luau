@@ -110,7 +110,7 @@ local function getChar(player)
 end
 
 local function isImmune(player)
-	return (immuneUntil[player] or 0) > os.clock()
+	return (immuneUntil[player] or 0) > os.clock() or (ADMIN_GOD ~= nil and ADMIN_GOD[player] == true)
 end
 
 local function groundBelow(pos, exclude)
@@ -517,7 +517,7 @@ local REVEAL_TIME = 4.1 -- the 3D item hovers, then flies to the shelf; the shel
 local function makeBox(boxId, bottomPos, mutationId, sizeId)
 	local def = Config.Boxes[boxId]
 	local sizeDef = Config.GetSize(sizeId)
-	local s = (2.4 + def.rarity * 0.25) * sizeDef.scale * Config.Layout.scale
+	local s = (2.4 + def.rarity * 0.25) * math.min(sizeDef.scale, 8) * Config.Layout.scale -- (the value keeps growing, the box stops at 8x)
 	local box = Instance.new("Part")
 	box.Name = def.id
 	box.Size = Vector3.new(s, s, s)
@@ -533,7 +533,9 @@ local function makeBox(boxId, bottomPos, mutationId, sizeId)
 	styleBox(box, def, mutationId)
 
 	-- floating tag only for special boxes (no prices!)
-	if mutationId ~= "Normal" or sizeId ~= "Normal" then
+	local sizeWord = Config.SizeText(sizeId)
+	local bigOrSmall = sizeWord and (sizeDef.scale >= 1.5 or sizeDef.scale <= 0.6)
+	if mutationId ~= "Normal" or bigOrSmall then
 		local mut = Config.GetMutation(mutationId)
 		local bb = Instance.new("BillboardGui")
 		bb.Name = "Tag"
@@ -548,7 +550,7 @@ local function makeBox(boxId, bottomPos, mutationId, sizeId)
 		tl.TextColor3 = mut.color or Color3.new(1, 1, 1)
 		local words = {}
 		if mutationId ~= "Normal" then table.insert(words, string.upper(mutationId)) end
-		if sizeId ~= "Normal" then table.insert(words, string.upper(sizeId)) end
+		if bigOrSmall then table.insert(words, string.upper(sizeWord)) end
 		tl.Text = table.concat(words, " • ")
 		local st = Instance.new("UIStroke")
 		st.Thickness = 2
@@ -561,7 +563,7 @@ local function makeBox(boxId, bottomPos, mutationId, sizeId)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Steal"
 	prompt.ObjectText = Config.BoxLabel(def, mutationId, sizeId)
-	local hold = Config.Rarities[def.rarity].hold * (0.8 + sizeDef.scale * 0.2)
+	local hold = Config.Rarities[def.rarity].hold * (0.8 + math.min(sizeDef.scale, 6) * 0.2)
 	prompt.HoldDuration = hold
 	prompt:SetAttribute("BaseHold", hold)
 	prompt.MaxActivationDistance = 18
@@ -580,12 +582,7 @@ local function spawnBox(sp, forcedMutation)
 	for r, b in ipairs(area.boxes) do table.insert(weights, {chance = Config.Rarities[r].weight, def = b}) end
 	local def = weightedPick(weights).def
 	local mutation = forcedMutation or weightedPick(mutationTable()).id
-	local sizeDef = weightedPick(Config.Sizes)
-	if sp:GetAttribute("Shelf") then
-		-- big boxes don't fit on shelves
-		while table.find(Config.Sizes, sizeDef) > Config.ShelfMaxSize do sizeDef = weightedPick(Config.Sizes) end
-	end
-	local box = makeBox(def.id, sp.Position, mutation, sizeDef.id)
+	local box = makeBox(def.id, sp.Position, mutation, Config.RollSize(sp:GetAttribute("Shelf")))
 	boxSpawnOf[box] = sp
 	spawnFilled[sp] = box
 	FXEvent:FireAllClients("Spawn", box.Position, box.Size.X)
@@ -623,6 +620,22 @@ pickUp = function(player, box)
 	end
 	local char, hrp, hum = getChar(player)
 	if not char then return end
+	-- NO STEALING THROUGH WALLS: be close, be inside the warehouse for a warehouse box,
+	-- and no wall (or the closed door) between you and the box
+	do
+		local toBox = box.Position - hrp.Position
+		if toBox.Magnitude > 22 + box.Size.X / 2 then return end
+		if Config.ZoneAt(box.Position) and not Config.ZoneAt(hrp.Position) then return end
+		local rp = RaycastParams.new()
+		rp.FilterType = Enum.RaycastFilterType.Exclude
+		rp.FilterDescendantsInstances = {char, box}
+		local hit = workspace:Raycast(hrp.Position + Vector3.new(0, 1.5, 0), (box.Position - hrp.Position - Vector3.new(0, 1.5, 0)), rp)
+		local part = hit and hit.Instance
+		if part and part.CanCollide and (string.find(part.Name, "Wall") or part:GetAttribute("Door")) then
+			notify(player, "There's a wall in the way!", RED)
+			return
+		end
+	end
 	local c = {id = box:GetAttribute("BoxId"), mutation = box:GetAttribute("Mutation") or "Normal", size = box:GetAttribute("Size") or "Normal",
 		pickedAt = os.clock(), pickedPos = hrp.Position}
 	local def = Config.Boxes[c.id]
@@ -969,6 +982,7 @@ local function refreshStands(player)
 			local idx = onStand[s]
 			if s > unlocked then
 				stand.Color = Color3.fromRGB(90, 90, 100)
+				if plot:FindFirstChild("StandDisc" .. s) then plot["StandDisc" .. s].Color = stand.Color end
 				if top then top.Color = Color3.fromRGB(60, 60, 70) end -- locked spot (grey): buy it with "+1 Equip"
 				if s == unlocked + 1 then -- the next slot you can buy shows its price
 					local bb = billboard(stand, "ItemTag", UDim2.fromScale(6, 2.4), Vector3.new(0, 2.8, 0))
@@ -981,6 +995,7 @@ local function refreshStands(player)
 				local def = Config.Items[item.id]
 				local mut = Config.GetMutation(item.mutation)
 				stand.Color = Color3.fromRGB(245, 245, 250)
+				if plot:FindFirstChild("StandDisc" .. s) then plot["StandDisc" .. s].Color = stand.Color end
 				if top then
 					top.Color = mut.color or Config.ItemTiers[def.tier].color
 					if item.mutation == "Rainbow" then CollectionService:AddTag(top, "RainbowBox") end
@@ -1034,6 +1049,7 @@ local function refreshStands(player)
 				end)
 			else
 				stand.Color = Color3.fromRGB(245, 245, 250)
+				if plot:FindFirstChild("StandDisc" .. s) then plot["StandDisc" .. s].Color = stand.Color end
 				local plotCol = plot:FindFirstChild("GlowStrip")
 				if top then top.Color = plotCol and plotCol.Color or Color3.fromRGB(200, 200, 200) end
 				-- empty spot: just the glowing strip, no label (45 spots would be too busy)
@@ -1332,7 +1348,7 @@ end
 
 -- put a free box on the player's plot (gifts, daily rewards, codes, the Lucky Box).
 -- areaIdx = which warehouse area it comes from, forcedMutation = nil for a normal random roll
-local function giveBox(player, prof, areaIdx, forcedMutation)
+local function giveBox(player, prof, areaIdx, forcedMutation, forcedDef, forcedSize)
 	local plot = playerPlot[player]
 	if not plot then return nil, "You need a plot to get a box!" end
 	local count = 0
@@ -1341,11 +1357,9 @@ local function giveBox(player, prof, areaIdx, forcedMutation)
 	local area = Config.Areas[math.clamp(math.floor(areaIdx or 1), 1, #Config.Areas)]
 	local weights = {}
 	for r, b in ipairs(area.boxes) do table.insert(weights, {chance = Config.Rarities[r].weight, def = b}) end
-	local def = weightedPick(weights).def
+	local def = forcedDef or weightedPick(weights).def
 	local mutation = forcedMutation or weightedPick(mutationTable()).id
-	local sizeDef = weightedPick(Config.Sizes)
-	while table.find(Config.Sizes, sizeDef) > Config.ShelfMaxSize do sizeDef = weightedPick(Config.Sizes) end
-	local entry = {id = def.id, mutation = mutation, size = sizeDef.id}
+	local entry = {id = def.id, mutation = mutation, size = forcedSize or Config.RollSize(true)}
 	local u, w = freePlotSpot(prof, boxSizeFor(entry))
 	if not u then return nil, "No room on your plot - open a box first!" end
 	local key
@@ -3688,6 +3702,121 @@ do
 end
 
 ------------------------------------------------------------------
+-- LEADERBOARD ROWS (shared by every board): rank badge, avatar head, name, value
+------------------------------------------------------------------
+function LB_MAKE_ROWS(part, accent)
+	local sg = Instance.new("SurfaceGui")
+	sg.Name = "BoardRows"
+	sg.Face = Enum.NormalId.Front
+	sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	sg.PixelsPerStud = 24
+	sg.LightInfluence = 0
+	sg.MaxDistance = 250
+	sg.Parent = part
+	local list = Instance.new("Frame")
+	list.BackgroundTransparency = 1
+	list.Size = UDim2.new(0.9, 0, 0.8, 0)
+	list.Position = UDim2.fromScale(0.05, 0.15)
+	list.Parent = sg
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0.012, 0)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = list
+	local MEDAL = {Color3.fromRGB(255, 200, 40), Color3.fromRGB(200, 210, 230), Color3.fromRGB(215, 135, 70)}
+	local rows = {}
+	for i = 1, 10 do
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, 0, 0.088, 0)
+		row.BackgroundColor3 = (i <= 3) and MEDAL[i]:Lerp(Color3.fromRGB(40, 40, 60), 0.55) or Color3.fromRGB(44, 48, 72)
+		row.LayoutOrder = i
+		row.Visible = false
+		local rc = Instance.new("UICorner")
+		rc.CornerRadius = UDim.new(0.3, 0)
+		rc.Parent = row
+		local rs = Instance.new("UIStroke")
+		rs.Thickness = 2.5
+		rs.Color = (i <= 3) and MEDAL[i] or accent
+		rs.Transparency = (i <= 3) and 0 or 0.4
+		rs.Parent = row
+		local g = Instance.new("UIGradient")
+		g.Rotation = 90
+		g.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(175, 175, 190))
+		g.Parent = row
+		-- rank badge
+		local badge = Instance.new("TextLabel")
+		badge.AnchorPoint = Vector2.new(0, 0.5)
+		badge.Position = UDim2.new(0.015, 0, 0.5, 0)
+		badge.Size = UDim2.new(0.085, 0, 0.82, 0)
+		badge.BackgroundColor3 = (i <= 3) and MEDAL[i] or Color3.fromRGB(80, 86, 120)
+		badge.Text = tostring(i)
+		badge.TextScaled = true
+		badge.FontFace = Config.Font
+		badge.TextColor3 = Color3.new(1, 1, 1)
+		badge.Parent = row
+		local bc = Instance.new("UICorner")
+		bc.CornerRadius = UDim.new(1, 0)
+		bc.Parent = badge
+		local bs = Instance.new("UIStroke")
+		bs.Thickness = 2
+		bs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		bs.Color = Color3.fromRGB(25, 20, 40)
+		bs.Parent = badge
+		local ts = Instance.new("UIStroke")
+		ts.Thickness = 1.5
+		ts.Color = Color3.fromRGB(25, 20, 40)
+		ts.Parent = badge
+		-- avatar head
+		local head = Instance.new("ImageLabel")
+		head.AnchorPoint = Vector2.new(0, 0.5)
+		head.Position = UDim2.new(0.115, 0, 0.5, 0)
+		head.Size = UDim2.new(0.085, 0, 0.82, 0)
+		head.BackgroundColor3 = Color3.fromRGB(230, 235, 245)
+		head.Image = ""
+		head.Parent = row
+		local hc = Instance.new("UICorner")
+		hc.CornerRadius = UDim.new(1, 0)
+		hc.Parent = head
+		-- name + value
+		local nameL = Instance.new("TextLabel")
+		nameL.BackgroundTransparency = 1
+		nameL.Position = UDim2.new(0.22, 0, 0.1, 0)
+		nameL.Size = UDim2.new(0.44, 0, 0.8, 0)
+		nameL.TextScaled = true
+		nameL.FontFace = Config.Font
+		nameL.TextColor3 = Color3.new(1, 1, 1)
+		nameL.TextXAlignment = Enum.TextXAlignment.Left
+		nameL.Parent = row
+		local ns = Instance.new("UIStroke")
+		ns.Thickness = 2
+		ns.Color = Color3.fromRGB(25, 20, 40)
+		ns.Parent = nameL
+		local valL = Instance.new("TextLabel")
+		valL.BackgroundTransparency = 1
+		valL.Position = UDim2.new(0.66, 0, 0.1, 0)
+		valL.Size = UDim2.new(0.32, 0, 0.8, 0)
+		valL.TextScaled = true
+		valL.FontFace = Config.Font
+		valL.TextColor3 = accent
+		valL.TextXAlignment = Enum.TextXAlignment.Right
+		valL.Parent = row
+		local vs = Instance.new("UIStroke")
+		vs.Thickness = 2
+		vs.Color = Color3.fromRGB(25, 20, 40)
+		vs.Parent = valL
+		rows[i] = {
+			set = function(userId, name, value)
+				row.Visible = name ~= nil
+				if not name then return end
+				nameL.Text = name
+				valL.Text = value or ""
+				head.Image = userId and ("rbxthumb://type=AvatarHeadShot&id=" .. userId .. "&w=150&h=150") or ""
+			end,
+		}
+	end
+	return rows
+end
+
+------------------------------------------------------------------
 -- LEADERBOARDS: Top Money and Top Speed on the lobby wall (all servers, best 10)
 ------------------------------------------------------------------
 do
@@ -3703,44 +3832,10 @@ do
 		names[userId] = ok and n or ("Player " .. userId)
 		return names[userId]
 	end
-	-- each board gets 10 rows of text
+	-- each board gets 10 rows (rank badge, avatar, name, value)
 	for _, b in ipairs(boards) do
 		if b.part then
-			local gui = Instance.new("SurfaceGui")
-			gui.Face = Enum.NormalId.Front
-			gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-			gui.PixelsPerStud = 20
-			gui.LightInfluence = 0
-			gui.Parent = b.part
-			local list = Instance.new("Frame")
-			list.BackgroundTransparency = 1
-			list.Size = UDim2.new(0.86, 0, 0.78, 0)
-			list.Position = UDim2.fromScale(0.07, 0.17)
-			list.Parent = gui
-			local layout = Instance.new("UIListLayout")
-			layout.Padding = UDim.new(0.01, 0)
-			layout.Parent = list
-			b.rows = {}
-			for i = 1, 10 do
-				local row = Instance.new("TextLabel")
-				row.Size = UDim2.new(1, 0, 0.09, 0)
-				row.BackgroundColor3 = ({Color3.fromRGB(255, 190, 40), Color3.fromRGB(185, 195, 215), Color3.fromRGB(205, 125, 60)})[i] or Color3.fromRGB(50, 56, 80)
-				row.BackgroundTransparency = 0.15
-				local rc = Instance.new("UICorner")
-				rc.CornerRadius = UDim.new(0.25, 0)
-				rc.Parent = row
-				row.FontFace = Config.Font
-				row.TextScaled = true
-				row.TextColor3 = Color3.new(1, 1, 1)
-				row.TextXAlignment = Enum.TextXAlignment.Left
-				row.Text = ""
-				row.LayoutOrder = i
-				local stroke = Instance.new("UIStroke")
-				stroke.Thickness = 2
-				stroke.Parent = row
-				row.Parent = list
-				b.rows[i] = row
-			end
+			b.rows = LB_MAKE_ROWS(b.part, b.color)
 			pcall(function() b.store = DataStoreService:GetOrderedDataStore("StealABox_" .. b.stat) end)
 		end
 	end
@@ -3755,7 +3850,7 @@ do
 				for _, p in ipairs(Players:GetPlayers()) do
 					local prof = profiles[p]
 					if prof and not hidden[p.UserId] then
-						best[p.UserId] = {name = p.Name, value = tonumber(prof[b.key]) or 0}
+						best[p.UserId] = {id = p.UserId, name = p.Name, value = tonumber(prof[b.key]) or 0}
 						if b.store and not dontSave[p] then
 							pcall(function() b.store:SetAsync(tostring(p.UserId), encode(tonumber(prof[b.key]) or 0)) end)
 						end
@@ -3766,7 +3861,7 @@ do
 						local page = b.store:GetSortedAsync(false, 25):GetCurrentPage()
 						for _, e in ipairs(page) do
 							local id = tonumber(e.key)
-							if id and not best[id] and not hidden[id] then best[id] = {name = nameOf(id), value = decode(e.value)} end
+							if id and not best[id] and not hidden[id] then best[id] = {id = id, name = nameOf(id), value = decode(e.value)} end
 						end
 					end)
 				end
@@ -3775,8 +3870,7 @@ do
 				table.sort(list, function(x, y) return x.value > y.value end)
 				for i, row in ipairs(b.rows) do
 					local e = list[i]
-					row.Text = e and ("  #" .. i .. "  " .. e.name .. "   " .. b.prefix .. Config.FormatNum(e.value)) or ""
-					row.BackgroundTransparency = e and 0.15 or 1
+					row.set(e and e.id, e and e.name, e and (b.prefix .. Config.FormatNum(e.value)))
 				end
 			end
 		end
@@ -4012,9 +4106,8 @@ function ADMIN_INIT()
 		for r, b in ipairs(area.boxes) do table.insert(weights, {chance = Config.Rarities[r].weight, def = b}) end
 		return weightedPick(weights).def
 	end
-	local MUTS, SIZES = {}, {}
+	local MUTS = {}
 	for _, m in ipairs(Config.Mutations) do MUTS[m.id] = true end
-	for i, z in ipairs(Config.Sizes) do SIZES[z.id] = i end
 
 	local handlers = {}
 	-- money / speed for you or another player in the server
@@ -4091,13 +4184,11 @@ function ADMIN_INIT()
 		local areaIndex = math.floor(num(args.area, 0, #Config.Areas) or 0)
 		local rarity = math.floor(num(args.rarity, 0, 3) or 0)
 		local mutation = (type(args.mutation) == "string" and MUTS[args.mutation]) and args.mutation or nil
-		local size = (type(args.size) == "string" and SIZES[args.size]) and args.size or nil
+		-- size: any number (no limit; 1 = normal), or random
+		local size = num(args.size, 0.1, 1e9)
+		if size then size = math.floor(size * 100 + 0.5) / 100 end
 		local function rollMut() return mutation or weightedPick(mutationTable()).id end
-		local function rollSize(shelf)
-			local z = size or weightedPick(Config.Sizes).id
-			if shelf and SIZES[z] > Config.ShelfMaxSize then z = Config.Sizes[Config.ShelfMaxSize].id end -- big boxes don't fit on shelves
-			return z
-		end
+		local function rollSize(shelf) return size or Config.RollSize(shelf) end
 		if args.where == "everywhere" then
 			local n = 0
 			for _, sp in ipairs(world:WaitForChild("BoxSpawns"):GetChildren()) do
@@ -4135,6 +4226,38 @@ function ADMIN_INIT()
 			if b and b.Parent and not b:GetAttribute("Taken") then b:Destroy() end
 		end
 		return {ok = true, msg = "Spawned " .. count .. " boxes!"}
+	end
+	-- a box straight onto a player's plot (unboxing right away)
+	handlers.GiveBox = function(admin, args)
+		local t, prof = targetOf(admin, args)
+		if not t then return {ok = false, msg = "Pick a player."} end
+		local areaIndex = math.floor(num(args.area, 0, #Config.Areas) or 0)
+		if areaIndex == 0 then areaIndex = math.random(1, #Config.Areas) end
+		local rarity = math.floor(num(args.rarity, 0, 3) or 0)
+		local def = rarity > 0 and Config.Areas[areaIndex].boxes[rarity] or nil
+		local mutation = (type(args.mutation) == "string" and MUTS[args.mutation]) and args.mutation or nil
+		local size = num(args.size, 0.1, 1e9)
+		if size then size = math.floor(size * 100 + 0.5) / 100 end
+		local label, err = giveBox(t, prof, areaIndex, mutation, def, size)
+		if not label then return {ok = false, msg = err} end
+		sync(t)
+		if t ~= admin then notify(t, "An admin gave you a " .. label .. "!", GREEN) end
+		return {ok = true, msg = "Gave " .. t.Name .. " a " .. label}
+	end
+	-- GOD MODE: the guardians ignore you
+	A.god = {}
+	ADMIN_GOD = A.god -- (isImmune reads it: god mode survives flings and respawns)
+	Players.PlayerRemoving:Connect(function(p) A.god[p] = nil end)
+	handlers.God = function(admin)
+		A.god[admin] = (not A.god[admin]) or nil
+		return {ok = true, msg = A.god[admin] and "God mode ON - the guards ignore you." or "God mode OFF.", on = A.god[admin]}
+	end
+	handlers.ServerInfo = function()
+		local n = #Players:GetPlayers()
+		local up = math.floor(workspace.DistributedGameTime)
+		local ev = ReplicatedStorage:GetAttribute("EventName")
+		local luck = (ReplicatedStorage:GetAttribute("ServerLuckUntil") or 0) > workspace:GetServerTimeNow()
+		return {ok = true, msg = n .. " players  |  up " .. Config.FormatTime(up) .. (ev and ("  |  " .. ev) or "") .. (luck and "  |  SERVER LUCK" or "")}
 	end
 	handlers.ClearBoxes = function()
 		local n = 0
@@ -4353,43 +4476,7 @@ function ADMIN_INIT()
 	do
 		local lobby = world:FindFirstChild("Lobby")
 		local part = lobby and lobby:FindFirstChild("BoardFeatured")
-		if part then
-			local sg = Instance.new("SurfaceGui")
-			sg.Face = Enum.NormalId.Front
-			sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-			sg.PixelsPerStud = 20
-			sg.LightInfluence = 0
-			sg.Parent = part
-			local list = Instance.new("Frame")
-			list.BackgroundTransparency = 1
-			list.Size = UDim2.new(0.86, 0, 0.78, 0)
-			list.Position = UDim2.fromScale(0.07, 0.17)
-			list.Parent = sg
-			local layout = Instance.new("UIListLayout")
-			layout.Padding = UDim.new(0.01, 0)
-			layout.SortOrder = Enum.SortOrder.LayoutOrder
-			layout.Parent = list
-			for i = 1, 10 do
-				local row = Instance.new("TextLabel")
-				row.Size = UDim2.new(1, 0, 0.09, 0)
-				row.BackgroundColor3 = Color3.fromRGB(255, 170, 30)
-				row.BackgroundTransparency = 1
-				row.FontFace = Config.Font
-				row.TextScaled = true
-				row.TextColor3 = Color3.new(1, 1, 1)
-				row.TextXAlignment = Enum.TextXAlignment.Left
-				row.Text = ""
-				row.LayoutOrder = i
-				local rc = Instance.new("UICorner")
-				rc.CornerRadius = UDim.new(0.25, 0)
-				rc.Parent = row
-				local st = Instance.new("UIStroke")
-				st.Thickness = 2
-				st.Parent = row
-				row.Parent = list
-				fame.rows[i] = row
-			end
-		end
+		if part then fame.rows = LB_MAKE_ROWS(part, Color3.fromRGB(255, 200, 60)) end
 	end
 	function fame.draw()
 		local list = {}
@@ -4404,10 +4491,9 @@ function ADMIN_INIT()
 				local prof = p and profiles[p]
 				local cash = prof and prof.Cash or (fame.scores[e.id] and fame.scores[e.id].Cash)
 				local speed = prof and prof.SpeedPoints or (fame.scores[e.id] and fame.scores[e.id].SpeedPoints)
-				stats = "   $" .. (cash and Config.FormatNum(cash) or "?") .. "  |  " .. (speed and Config.FormatNum(speed) or "?") .. " speed"
+				stats = "$" .. (cash and Config.FormatNum(cash) or "?") .. " | " .. (speed and Config.FormatNum(speed) or "?") .. " spd"
 			end
-			row.Text = e and ("  #" .. i .. "  " .. e.name .. ((e.title or "") ~= "" and (" - " .. e.title) or "") .. stats) or ""
-			row.BackgroundTransparency = e and 0.15 or 1
+			row.set(e and e.id, e and (e.name .. ((e.title or "") ~= "" and (" - " .. e.title) or "")), stats)
 		end
 	end
 	function fame.save()

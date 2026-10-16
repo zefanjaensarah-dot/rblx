@@ -91,14 +91,49 @@ function Config.GetMutation(id)
 	for _, m in ipairs(Config.Mutations) do if m.id == id then return m end end
 	return Config.Mutations[1]
 end
+-- RANDOM SIZES: every box now gets a random size NUMBER (1 = normal, 0.5 = half, 3 = three times
+-- as big). Bigger = worth more (x size^2.4) but slower to carry; smaller = worth less but faster.
+-- Most boxes are 0.5x - 2x, a few are huge and there is NO upper limit (10x+ is extremely rare).
+-- (The named sizes above are only kept for old saves.)
+local sizeCache = {}
+function Config.SizeFromScale(s)
+	s = math.max(0.1, tonumber(s) or 1)
+	local hit = sizeCache[s]
+	if hit then return hit end
+	local slow = (s >= 1) and math.min(40, (s - 1) * 4) or (s - 1) * 6.5
+	local d = {id = s, scale = s, mult = (s == 1) and 1 or s ^ 2.4, slow = slow}
+	sizeCache[s] = d
+	return d
+end
+function Config.RollSize(onShelf)
+	local s = math.exp((math.random() + math.random() + math.random() - 1.5) * 0.45)
+	if math.random() < 0.04 then
+		-- the rare BIG ones: usually 2-5x, very rarely 10x+, no limit
+		s = s * (1 + (1 / math.max(1e-9, math.random()) - 1) ^ 0.55)
+	end
+	s = math.max(0.35, s)
+	if onShelf then s = math.min(s, 1.35) end -- (big boxes don't fit on the shelves)
+	return math.floor(s * 100 + 0.5) / 100
+end
 function Config.GetSize(id)
+	if tonumber(id) then return Config.SizeFromScale(tonumber(id)) end
 	for _, s in ipairs(Config.Sizes) do if s.id == id then return s end end
 	for _, s in ipairs(Config.Sizes) do if s.id == "Normal" then return s end end
 	return Config.Sizes[1]
 end
+-- "2.4x" (random sizes) / "Huge" (old named sizes) / nil for a normal box
+function Config.SizeText(id)
+	if id == nil or id == "Normal" then return nil end
+	local n = tonumber(id)
+	if not n then return tostring(id) end
+	if math.abs(n - 1) < 0.05 then return nil end
+	if n >= 10 then return Config.FormatNum(math.floor(n)) .. "x" end
+	return string.format("%.1fx", n)
+end
 function Config.BoxLabel(def, mutationId, sizeId)
 	local parts = {}
-	if sizeId and sizeId ~= "Normal" then table.insert(parts, sizeId) end
+	local st = Config.SizeText(sizeId)
+	if st then table.insert(parts, st) end
 	if mutationId and mutationId ~= "Normal" then table.insert(parts, mutationId) end
 	table.insert(parts, def.name)
 	return table.concat(parts, " ")
@@ -526,7 +561,8 @@ end
 function Config.ItemLabel(item)
 	local def = Config.Items[item.id]
 	local parts = {}
-	if item.size and item.size ~= "Normal" then table.insert(parts, item.size) end
+	local st = Config.SizeText(item.size)
+	if st then table.insert(parts, st) end
 	if item.mutation and item.mutation ~= "Normal" then table.insert(parts, item.mutation) end
 	table.insert(parts, def and def.name or "?")
 	return table.concat(parts, " ")

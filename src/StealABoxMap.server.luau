@@ -2952,8 +2952,13 @@ local function buildPlot(i, side, zc)
 		for c = 0, COLS - 1 do
 			local s = r * COLS + c + 1
 			local u = -38 + c * 9.5
-			PP("Podium", V(5.2, 2, 5.2), u, 1.2, w, RGB(150, 156, 172))
-			local stand = PP("Stand" .. s, V(5.8, 0.4, 5.8), u, 2.4, w, RGB(245, 245, 250))
+			-- round podiums: the square Stand stays as an invisible anchor (items sit on its top),
+			-- the round disc on it is what you see (the server colours both)
+			local UPR = CFrame.Angles(0, 0, math.rad(90))
+			PP("Podium", V(2, 5, 5), u, 1.2, w, RGB(150, 156, 172), nil, nil, UPR).Shape = Enum.PartType.Cylinder
+			PP("PodiumRim", V(0.3, 5.5, 5.5), u, 2.1, w, glow, M.Neon, NOHIT, UPR).Shape = Enum.PartType.Cylinder
+			PP("StandDisc" .. s, V(0.4, 5.8, 5.8), u, 2.4, w, RGB(245, 245, 250), nil, NOHIT, UPR).Shape = Enum.PartType.Cylinder
+			local stand = PP("Stand" .. s, V(5.8, 0.4, 5.8), u, 2.4, w, RGB(245, 245, 250), nil, {Transparency = 1})
 			stand.TopSurface = Enum.SurfaceType.Studs
 			stand:SetAttribute("Slot", s)
 			PP("StandTop" .. s, V(5.8, 0.5, 0.4), u, 1.6, w - 2.75, glow, M.Neon, NOHIT)
@@ -3030,11 +3035,85 @@ local function buildPlot(i, side, zc)
 		-- THE PHONE stands at the front of the belt, so you can play while you run
 		do
 			local pw = W0 - 1.6
-			PP("PhoneStand", V(7, 1, 3), TU, 0.9, pw, RGB(60, 60, 70)):SetAttribute("Solid", true)
-			PP("PhoneBody", V(9, 15, 1.2), TU, 9, pw, RGB(25, 25, 32)):SetAttribute("Solid", true)
-			local screen = PP("PhoneScreen", V(8, 13, 0.2), TU, 9.2, pw + 0.62, RGB(60, 150, 255), M.Neon, NOHIT)
-			PP("PhoneCamera", V(0.8, 0.8, 0.2), TU, 16, pw + 0.62, RGB(10, 10, 14), nil, NOHIT)
-			signText(screen, Enum.NormalId.Front, "GAMES\nTap to play", 30, 3, 120)
+			local ALONG_W = CFrame.Angles(0, math.rad(90), 0) -- a cylinder lying front-to-back
+			-- chrome stand: a round foot and a short arm
+			local foot = PP("PhoneStand", V(0.8, 6, 6), TU, 0.6, pw - 0.6, RGB(190, 195, 210), M.Metal, nil, CFrame.Angles(0, 0, math.rad(90)))
+			foot.Shape = Enum.PartType.Cylinder
+			foot:SetAttribute("Solid", true)
+			PP("PhoneArm", V(1.6, 2.4, 1), TU, 2.1, pw - 0.6, RGB(170, 175, 190), M.Metal, NOHIT)
+			-- the case (in the base colour) with rounded corners
+			PP("PhoneBody", V(9, 13.4, 1.2), TU, 9.6, pw, col):SetAttribute("Solid", true)
+			PP("PhoneEdge", V(7.4, 15, 1.2), TU, 9.6, pw, col, nil, NOHIT)
+			for _, cx in ipairs({-3.7, 3.7}) do
+				for _, cy in ipairs({2.9, 16.3}) do
+					PP("PhoneCorner", V(1.2, 1.6, 1.6), TU + cx, cy, pw, col, nil, NOHIT, ALONG_W).Shape = Enum.PartType.Cylinder
+				end
+			end
+			-- side buttons
+			PP("PhoneButton", V(0.3, 2, 0.5), TU + 4.6, 13, pw, col:Lerp(RGB(0, 0, 0), 0.25), nil, NOHIT)
+			PP("PhoneButton", V(0.3, 1.2, 0.5), TU - 4.6, 14, pw, col:Lerp(RGB(0, 0, 0), 0.25), nil, NOHIT)
+			-- black bezel, the glowing screen and the camera notch
+			PP("PhoneBezel", V(8.4, 14.4, 0.1), TU, 9.6, pw + 0.62, RGB(15, 15, 20), nil, NOHIT)
+			local screen = PP("PhoneScreen", V(7.8, 13.2, 0.1), TU, 9.5, pw + 0.68, RGB(40, 60, 140), nil, NOHIT)
+			PP("PhoneNotch", V(2.4, 0.6, 0.08), TU, 16.5, pw + 0.72, RGB(5, 5, 8), nil, NOHIT)
+			do
+				local l = Instance.new("PointLight")
+				l.Color = RGB(130, 170, 255)
+				l.Range = 12
+				l.Brightness = 1.2
+				l.Parent = screen
+				-- a little home screen: wallpaper, clock, app icons and a TAP TO PLAY pill
+				local sg = surfaceGui(screen, Enum.NormalId.Front, 40, 140)
+				local bg = Instance.new("Frame")
+				bg.Size = UDim2.fromScale(1, 1)
+				bg.BackgroundColor3 = WHITE
+				bg.Parent = sg
+				local bgg = Instance.new("UIGradient")
+				bgg.Rotation = 120
+				bgg.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, RGB(90, 120, 255)), ColorSequenceKeypoint.new(0.5, RGB(190, 90, 255)), ColorSequenceKeypoint.new(1, RGB(255, 120, 170))})
+				bgg.Parent = bg
+				local clock = textLabel(bg, "12:00", WHITE, 3)
+				clock.Position = UDim2.fromScale(0.1, 0.05)
+				clock.Size = UDim2.fromScale(0.8, 0.12)
+				local APP = {{"🐍", RGB(80, 220, 90)}, {"💥", RGB(255, 140, 40)}, {"🎯", RGB(255, 80, 90)}, {"🧱", RGB(70, 170, 255)},
+					{"🐦", RGB(255, 210, 60)}, {"🔢", RGB(170, 110, 255)}, {"🔨", RGB(255, 110, 190)}, {"🧺", RGB(60, 220, 200)}, {"🎮", RGB(120, 130, 150)}}
+				for k, a in ipairs(APP) do
+					local cx, cy = (k - 1) % 3, math.floor((k - 1) / 3)
+					local icon = Instance.new("Frame")
+					icon.Position = UDim2.fromScale(0.1 + cx * 0.28, 0.22 + cy * 0.18)
+					icon.Size = UDim2.fromScale(0.24, 0.14)
+					icon.BackgroundColor3 = a[2]
+					icon.Parent = bg
+					local ic = Instance.new("UICorner")
+					ic.CornerRadius = UDim.new(0.28, 0)
+					ic.Parent = icon
+					local ist = Instance.new("UIStroke")
+					ist.Thickness = 3
+					ist.Color = RGB(30, 25, 50)
+					ist.Parent = icon
+					local emoji = Instance.new("TextLabel")
+					emoji.BackgroundTransparency = 1
+					emoji.Size = UDim2.fromScale(1, 1)
+					emoji.Text = a[1]
+					emoji.TextScaled = true
+					emoji.Parent = icon
+				end
+				local pill = Instance.new("Frame")
+				pill.Position = UDim2.fromScale(0.12, 0.8)
+				pill.Size = UDim2.fromScale(0.76, 0.11)
+				pill.BackgroundColor3 = RGB(80, 220, 70)
+				pill.Parent = bg
+				local pc = Instance.new("UICorner")
+				pc.CornerRadius = UDim.new(1, 0)
+				pc.Parent = pill
+				local pst = Instance.new("UIStroke")
+				pst.Thickness = 4
+				pst.Color = RGB(30, 25, 50)
+				pst.Parent = pill
+				local tap = textLabel(pill, "TAP TO PLAY", WHITE, 3)
+				tap.Size = UDim2.fromScale(0.9, 0.8)
+				tap.Position = UDim2.fromScale(0.05, 0.1)
+			end
 			-- click (or tap) the screen to play
 			screen.CanQuery = true
 			local click = Instance.new("ClickDetector")
