@@ -2438,17 +2438,19 @@ function Phone.init(ctx)
 		TextColor3 = rgb(255, 235, 140), ZIndex = 3})
 	local bestLabels = {}
 	for i, a in ipairs(APPS) do
-		local col = frame(widget, {Position = S2(0.04 + (i - 1) * 0.32, 0.36), Size = S2(0.3, 0.58), BackgroundColor3 = a.c1, BackgroundTransparency = 0.35, ZIndex = 3})
+		-- (8 games: 4 small chips per row, 2 rows)
+		local col = frame(widget, {Position = S2(0.03 + ((i - 1) % 4) * 0.24, 0.3 + math.floor((i - 1) / 4) * 0.35), Size = S2(0.22, 0.32), BackgroundColor3 = a.c1, BackgroundTransparency = 0.35, ZIndex = 3})
 		round(col, 12)
-		text(col, a.label, {Position = S2(0.06, 0.06), Size = S2(0.88, 0.36), Stroke = 1.5, MaxSize = 16, ZIndex = 4})
-		bestLabels[a.key] = text(col, "0", {Position = S2(0.06, 0.42), Size = S2(0.88, 0.54), Stroke = 2, MaxSize = 30, TextColor3 = rgb(255, 240, 160), ZIndex = 4})
+		text(col, a.label, {Position = S2(0.06, 0.06), Size = S2(0.88, 0.36), Stroke = 1.5, MaxSize = 12, ZIndex = 4})
+		bestLabels[a.key] = text(col, "0", {Position = S2(0.06, 0.42), Size = S2(0.88, 0.54), Stroke = 2, MaxSize = 20, TextColor3 = rgb(255, 240, 160), ZIndex = 4})
 	end
 	local function refreshBests()
 		for k, l in pairs(bestLabels) do l.Text = tostring(bests[k] or 0) end
 	end
 	local icons = {}
 	for i, a in ipairs(APPS) do
-		local slot = frame(home, {AnchorPoint = V2(0.5, 0), Position = S2(0.2 + (i - 1) * 0.3, 0.58), Size = S2(0.27, 0.25), BackgroundTransparency = 1, ZIndex = 2})
+		-- (a 4 x 2 grid of app icons)
+		local slot = frame(home, {AnchorPoint = V2(0.5, 0), Position = S2(0.14 + ((i - 1) % 4) * 0.24, 0.47 + math.floor((i - 1) / 4) * 0.21), Size = S2(0.21, 0.2), BackgroundTransparency = 1, ZIndex = 2})
 		local btn = new("TextButton", {Name = a.key, Text = "", AutoButtonColor = false, AnchorPoint = V2(0.5, 0), Position = S2(0.5, 0), Size = S2(1, 0.74),
 			BackgroundColor3 = WHITE, BorderSizePixel = 0, ZIndex = 3}, slot)
 		square(btn)
