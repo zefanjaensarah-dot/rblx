@@ -74,6 +74,11 @@ local client = script(SPS, "StealABoxClient", "LocalScript", read("src/StealABox
 for _, name in { "UI", "Hud", "Panels", "Windows", "ShopWindow", "Phone", "Tutorial", "WorldFX" } do
 	script(client, name, "ModuleScript", read("src/client/" .. name .. ".luau"))
 end
+-- phone games: one module per game (src/client/PhoneGame_<Name>.luau)
+for _, name in { "PhoneGame_Stack", "PhoneGame_Flappy", "PhoneGame_Merge", "PhoneGame_Whack", "PhoneGame_Catch" } do
+	local ok, src = pcall(read, "src/client/" .. name .. ".luau")
+	if ok and src then script(client, name, "ModuleScript", src) end
+end
 -- the ADMIN PANEL lives in ServerStorage (clients can't see it): the server gives it to admins only
 script(SS, "StealABoxAdmin", "LocalScript", read("src/client/Admin.client.luau"))
 

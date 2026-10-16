@@ -15,7 +15,7 @@ local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 
 local Phone = {}
-local bests = {Snake = 0, BlockBlast = 0, Archery = 0}
+local bests = {Snake = 0, BlockBlast = 0, Archery = 0, Stack = 0, Flappy = 0, Merge = 0, Whack = 0, Catch = 0}
 
 local UI, C, new -- set in Phone.init
 local V2 = Vector2.new
@@ -2330,10 +2330,42 @@ local function drawArcheryIcon(b)
 		frame(arrow, {AnchorPoint = V2(0, 0.5), Position = S2(0.8, 0.5 + s * 1.2), Size = S2(0.22, 1.6), Rotation = s * 25, BackgroundColor3 = rgb(70, 160, 255), ZIndex = 4})
 	end
 end
+-- the newer games live in their own modules (PhoneGame_<Name>): each returns
+-- {build = function(env) -> app, drawIcon = function(btn, kit)}. env.kit has the shared helpers.
+local function gameModule(name)
+	local ok, m = pcall(function() return require(script.Parent:WaitForChild("PhoneGame_" .. name, 5)) end)
+	if ok and type(m) == "table" then return m end
+	return nil
+end
+local function moduleApp(key, label, c0, c1, emoji)
+	return {key = key, label = label, c0 = c0, c1 = c1,
+		draw = function(b)
+			local m = gameModule(key)
+			if m and m.drawIcon then
+				local ok = pcall(m.drawIcon, b, PHONE_KIT)
+				if ok then return end
+			end
+			text(b, emoji, {Size = S2(1, 1), Stroke = 0, MaxSize = 60, ZIndex = 4})
+		end,
+		build = function(env)
+			local m = gameModule(key)
+			if not m or not m.build then
+				local pg = env.page(key, {title = label, color = c1, bg0 = c0, bg1 = c1})
+				text(pg.content, "Coming soon!", {Size = S2(1, 0.2), Position = S2(0, 0.4), MaxSize = 40})
+				return {layout = function() end, enter = function() end, leave = function() end, step = function() end, key = function() end}
+			end
+			return m.build(env)
+		end}
+end
 local APPS = {
 	{key = "Snake", label = "Snake", c0 = rgb(110, 230, 120), c1 = rgb(30, 140, 70), draw = drawSnakeIcon, build = buildSnake},
 	{key = "BlockBlast", label = "Block Blast", c0 = rgb(190, 130, 255), c1 = rgb(90, 40, 200), draw = drawBlastIcon, build = buildBlast},
 	{key = "Archery", label = "Archery", c0 = rgb(255, 190, 80), c1 = rgb(235, 85, 45), draw = drawArcheryIcon, build = buildArchery},
+	moduleApp("Stack", "Stack", rgb(120, 200, 255), rgb(40, 90, 220), "🧱"),
+	moduleApp("Flappy", "Flappy Box", rgb(255, 230, 90), rgb(240, 140, 30), "🐤"),
+	moduleApp("Merge", "Box Merge", rgb(255, 160, 210), rgb(200, 60, 140), "🔢"),
+	moduleApp("Whack", "Whack-a-Thief", rgb(255, 140, 110), rgb(200, 50, 50), "🔨"),
+	moduleApp("Catch", "Box Catcher", rgb(120, 240, 210), rgb(20, 150, 140), "🧺"),
 }
 
 function Phone.init(ctx)
@@ -2366,6 +2398,12 @@ function Phone.init(ctx)
 	round(screen, 26)
 
 	local env = {}
+	-- helpers for the game modules (same look + feel as the built-in games)
+	PHONE_KIT = {UI = UI, C = C, new = new, rgb = rgb, V2 = V2, S2 = S2, WHITE = WHITE, BLACK = BLACK, clamp = clamp, lerp = lerp, lerpV = lerpV,
+		easeOut = easeOut, backOut = backOut, frame = frame, round = round, grad = grad, square = square, text = text, pill = pill, chevron = chevron,
+		makeParticles = makeParticles, makePopups = makePopups, makeShaker = makeShaker, makePanel = makePanel, makeCountdown = makeCountdown,
+		isPress = isPress, isMove = isMove, posOf = posOf, fracIn = fracIn, pointer = pointer, dirKey = dirKey, typing = typing, bests = bests}
+	env.kit = PHONE_KIT
 	local apps, current, layoutWide = {}, "Home", nil
 	local scorePulses = {}
 
