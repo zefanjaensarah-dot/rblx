@@ -261,6 +261,7 @@ local function walkSpeedFor(player, c)
 		local def = Config.Boxes[c.id]
 		speed = speed - Config.Rarities[def.rarity].slow - Config.GetSize(c.size).slow
 	end
+	if BOSS_SLOW and (BOSS_SLOW[player] or 0) > os.clock() then speed = speed * Config.BossSlowMult end -- hit by a boss move
 	return math.max(6, speed)
 end
 
@@ -3024,8 +3025,10 @@ alertGuard = function(area, player)
 			g.laughUntil = nil
 			setAwake(g, true)
 			setChased(player, true)
+			g.nextCast, g.castUntil = nil, nil
 			if not wasAwake then
 				FXEvent:FireAllClients("Wake", g.model:GetPivot().Position, g.scale)
+				FXEvent:FireClient(player, "BossIntro", g.model:GetPivot().Position, area)
 				notify(player, "The " .. Config.Areas[area].guard .. " WOKE UP - RUN!", RED)
 			end
 		end
@@ -3050,6 +3053,107 @@ local function anyoneElseChasing(player, except)
 end
 
 ------------------------------------------------------------------
+-- BOSS ABILITIES (areas 4-15, see Config.BossAbilities): every few seconds of a chase the boss
+-- stops, charges its special move (every client sees a warning where it will land) and fires it.
+-- Anyone caught in it is slowed for a moment; the Tractor Beam / Black Hole also yank you in.
+-- (a global function so the main chunk stays under Luau's 200-local limit)
+------------------------------------------------------------------
+function BOSS_INIT()
+	BOSS_SLOW = {}
+	local B = {}
+	local function hitPlayers(g, ab, from, dir, spots, floorY)
+		local target = spots[1]
+		for _, p in ipairs(Players:GetPlayers()) do
+			local _, phrp = getChar(p)
+			if phrp and not isImmune(p) and not ragdolled[p] and math.abs(phrp.Position.Y - floorY) < 25 then
+				local pp = Vector3.new(phrp.Position.X, floorY, phrp.Position.Z)
+				local hit = false
+				if ab.kind == "zone" then
+					hit = (pp - target).Magnitude <= ab.radius
+				elseif ab.kind == "storm" then
+					for _, sp in ipairs(spots) do if (pp - sp).Magnitude <= ab.radius then hit = true end end
+				else -- a strip from the boss toward where you were standing
+					local rel = pp - from
+					local along = rel:Dot(dir)
+					hit = along > 0 and along < ab.length and (rel - dir * along).Magnitude <= ab.width / 2
+				end
+				if hit then
+					BOSS_SLOW[p] = os.clock() + Config.BossSlowTime
+					applySpeed(p)
+					local function restore() -- back to full speed once the slow is over (a newer hit keeps it going)
+						if not p.Parent then return end
+						if (BOSS_SLOW[p] or 0) > os.clock() then task.delay(0.25, restore) else applySpeed(p) end
+					end
+					task.delay(Config.BossSlowTime + 0.05, restore)
+					local push = Vector3.new(0, 26, 0)
+					local toward = (ab.kind == "pull") and (from - pp) or (ab.pull and (target - pp) or nil)
+					if toward and toward.Magnitude > 1 then push = toward.Unit * ((ab.kind == "pull") and 70 or 45) + Vector3.new(0, 22, 0) end
+					FXEvent:FireClient(p, "BossHitYou", phrp.Position, g.area, push)
+					notify(p, ab.name .. "! The " .. Config.Areas[g.area].guard .. " slowed you down!", RED)
+				end
+			end
+		end
+	end
+	local function cast(g, hrp, ab)
+		local now = os.clock()
+		g.castUntil, g.nextCast = now + ab.windup, now + ab.windup + ab.every
+		local floorY = g.baseY - 3 * g.scale
+		local from = Vector3.new(g.pos.X, floorY, g.pos.Z)
+		local target = Vector3.new(hrp.Position.X, floorY, hrp.Position.Z)
+		local dir = Vector3.new(target.X - from.X, 0, target.Z - from.Z)
+		dir = (dir.Magnitude > 0.1) and dir.Unit or g.facing
+		g.facing = dir
+		local spots = {target}
+		if ab.kind == "storm" then
+			for k = 2, ab.strikes or 4 do spots[k] = target + Vector3.new(math.random(-14, 14), 0, math.random(-14, 14)) end
+		end
+		local info = {dir = dir, spots = spots, windup = ab.windup, scale = g.scale}
+		FXEvent:FireAllClients("BossCast", from, g.area, info)
+		task.delay(ab.windup, function()
+			if g.mode ~= "chase" then return end -- the thief got away while he was charging
+			FXEvent:FireAllClients("BossHit", from, g.area, info)
+			hitPlayers(g, ab, from, dir, spots, floorY)
+		end)
+	end
+	-- called every frame of a chase: true while the boss stands still charging its move
+	function B.tick(g, hrp)
+		local ab = Config.BossAbilities[g.area]
+		if not ab or not hrp then return false end
+		local now = os.clock()
+		if g.castUntil and now < g.castUntil then return true end
+		if not g.nextCast then g.nextCast = now + ab.every * 0.5 end
+		if now >= g.nextCast then
+			local dist = Vector3.new(hrp.Position.X - g.pos.X, 0, hrp.Position.Z - g.pos.Z).Magnitude
+			if dist < (ab.length or ab.radius * 4) + 6 then
+				cast(g, hrp, ab)
+				return true
+			end
+		end
+		return false
+	end
+	-- how each boss moves while it chases: hops, sways, hovers, gallops, flies...
+	function B.style(g, cf)
+		local ab = Config.BossAbilities[g.area]
+		if not ab then return cf end
+		local t, s, st = g.t, g.scale, ab.chase
+		if st == "hop" then return cf * CFrame.new(0, math.abs(math.sin(t * 7)) * 1.4 * s, 0)
+		elseif st == "sway" then return cf * CFrame.Angles(0, 0, math.sin(t * 8) * 0.16)
+		elseif st == "charge" then return cf * CFrame.Angles(math.rad(-12), 0, 0)
+		elseif st == "gallop" then return cf * CFrame.new(0, math.abs(math.sin(t * 9)) * 0.45 * s, 0) * CFrame.Angles(math.rad(-16), 0, 0)
+		elseif st == "skate" then return cf * CFrame.new(0, 0.25 * s, 0) * CFrame.Angles(math.rad(-10), 0, math.sin(t * 1.7) * 0.12)
+		elseif st == "hover" then return cf * CFrame.new(0, (0.7 + math.sin(t * 2.2) * 0.25) * s, 0) * CFrame.Angles(math.rad(-16), 0, math.sin(t * 2.2) * 0.14)
+		elseif st == "float" then return cf * CFrame.new(0, (0.5 + math.sin(t * 3) * 0.2) * s, 0) * CFrame.Angles(math.rad(-14), 0, 0)
+		elseif st == "stomp" then return cf * CFrame.new(0, math.abs(math.sin(t * 6)) * 0.35 * s, 0) * CFrame.Angles(0, 0, math.sin(t * 6) * 0.08)
+		elseif st == "glide" then return cf * CFrame.new(0, (0.45 + math.sin(t * 2) * 0.15) * s, 0) * CFrame.Angles(math.rad(-20), 0, math.sin(t * 2) * 0.1)
+		elseif st == "fly" then return cf * CFrame.new(0, (0.7 + math.sin(t * 2) * 0.2) * s, 0) * CFrame.Angles(math.rad(-20), 0, 0)
+		end
+		return cf
+	end
+	BOSS = B
+end
+BOSS_INIT()
+
+------------------------------------------------------------------
 -- MAIN LOOP
 ------------------------------------------------------------------
 RunService.Heartbeat:Connect(function(dt)
@@ -3070,7 +3174,7 @@ RunService.Heartbeat:Connect(function(dt)
 					flingPlayer(p, g.pos, g.area)
 					g.laughUntil = os.clock() + 2
 					keep = false
-				else
+				elseif not (BOSS and BOSS.tick(g, hrp)) then -- (stands still while charging a special move)
 					stepToward(g, hrp.Position, g.speed, dt)
 				end
 			end
@@ -3096,7 +3200,7 @@ RunService.Heartbeat:Connect(function(dt)
 			-- dozing: head drooped forward, slow sleepy idle
 			cf = CFrame.lookAt(at, at + g.facing) * CFrame.Angles(math.rad(-4 + math.sin(g.t * 0.8) * 2), 0, 0)
 			playAnim(g, "idle", 0.4)
-		elseif g.mode == "chase" and os.clock() < (g.wakeUntil or 0) then
+		elseif g.mode == "chase" and (os.clock() < (g.wakeUntil or 0) or os.clock() < (g.castUntil or 0)) then
 			-- just woke up: points at the thief
 			cf = CFrame.lookAt(at, at + g.facing)
 			playAnim(g, "point", 1.4)
@@ -3108,6 +3212,7 @@ RunService.Heartbeat:Connect(function(dt)
 			-- classic R6 walk, sped up to match how fast he's running
 			local spd = (g.mode == "chase") and g.speed or GUARD_RETURN_SPEED
 			cf = CFrame.lookAt(at, at + g.facing) * CFrame.Angles((g.mode == "chase") and math.rad(-6) or 0, 0, 0)
+			if g.mode == "chase" and BOSS then cf = BOSS.style(g, cf) end
 			playAnim(g, "walk", math.clamp(spd / (14.5 * g.scale), 0.6, 3))
 		end
 		-- move only the root part: the whole (detailed) body follows through its joints and welds

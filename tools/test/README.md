@@ -10,7 +10,7 @@ lune run test_client.luau ../../StealABox_v5.rbxl
 ```
 
 - `test_server.luau` builds the map and runs the server with one player:
-  - steal, carry and place a box (including the anti-teleport check), and the guardian chase and fling
+  - steal, carry and place a box (including the anti-teleport check), the guardian chase and fling, and a boss special move (warning, hit, slow wearing off)
   - unbox, shoppers paying, codes, daily rewards and trails
   - every pass and product (as Studio test purchases), plus real receipts: granted exactly once, unknown products refused
   - Index area rewards (locked until complete, claimed once), saving on leave, rejoining with offline earnings, and the session lock

@@ -71,7 +71,7 @@ script(SSS, "StealABoxErrors", "Script", read("src/StealABoxErrors.server.luau")
 
 -- client: the LocalScript + its modules
 local client = script(SPS, "StealABoxClient", "LocalScript", read("src/StealABoxClient.client.luau"))
-for _, name in { "UI", "Hud", "Panels", "Windows", "ShopWindow", "Phone", "Tutorial", "WorldFX" } do
+for _, name in { "UI", "Hud", "Panels", "Windows", "ShopWindow", "Phone", "Tutorial", "WorldFX", "BossFX" } do
 	script(client, name, "ModuleScript", read("src/client/" .. name .. ".luau"))
 end
 -- phone games: one module per game (src/client/PhoneGame_<Name>.luau)

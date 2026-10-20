@@ -7,7 +7,8 @@
        ShopWindow  the Robux shop
        Phone       the big phone on your base with mini games (Snake, Block Blast, Archery)
        Tutorial    the step-by-step tutorial for new players
-       WorldFX     everything that happens in the 3D world on your screen ]]
+       WorldFX     everything that happens in the 3D world on your screen
+       BossFX      boss title cards, special moves (warning + effect) and chase trails ]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -69,6 +70,7 @@ local ShopWindow = require(script:WaitForChild("ShopWindow"))
 local Phone = require(script:WaitForChild("Phone"))
 local Tutorial = require(script:WaitForChild("Tutorial"))
 local WorldFX = require(script:WaitForChild("WorldFX"))
+local BossFX = require(script:WaitForChild("BossFX"))
 
 ------------------------------------------------------------------
 -- SHARED CONTEXT: everything the parts of the UI need from each other
@@ -200,6 +202,7 @@ task.delay(3, function()
 	end
 end)
 task.spawn(WorldFX.init, ctx) -- waits for the map, so it starts on its own
+task.spawn(BossFX.init, ctx) -- boss title cards, special moves and chase trails
 
 ctx.remotes.Notify.OnClientEvent:Connect(function(text, color)
 	ctx.notify(text, typeof(color) == "Color3" and color or nil)

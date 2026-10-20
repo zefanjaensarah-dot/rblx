@@ -436,6 +436,37 @@ local function has(list, name)
 	return false
 end
 
+-- printed text on some bosses' uniforms: SECURITY / POLICE / SEC-08 across the back, RIOT on the shield
+-- (a global function so makeGuardian stays under Luau's 200-local limit)
+function BOSS_DECALS(areaIndex, model, torso)
+	local back = ({[4] = {"SECURITY", Color3.fromRGB(255, 225, 80)}, [6] = {"POLICE", Color3.fromRGB(255, 255, 255)}, [8] = {"SEC-08", Color3.fromRGB(255, 210, 60)}})[areaIndex]
+	local function stamp(part, face, text, color)
+		local sg = Instance.new("SurfaceGui")
+		sg.Name = "Print"
+		sg.Face = face
+		sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		sg.PixelsPerStud = 40
+		sg.LightInfluence = 1
+		local l = Instance.new("TextLabel")
+		l.BackgroundTransparency = 1
+		l.AnchorPoint = Vector2.new(0.5, 0.5)
+		l.Position = UDim2.fromScale(0.5, 0.42)
+		l.Size = UDim2.fromScale(0.94, 0.34)
+		l.Font = Enum.Font.LuckiestGuy
+		l.TextScaled = true
+		l.Text = text
+		l.TextColor3 = color
+		l.TextStrokeTransparency = 0.3
+		l.Parent = sg
+		sg.Parent = part
+	end
+	if back and torso then stamp(torso, Enum.NormalId.Back, back[1], back[2]) end
+	if areaIndex == 6 then
+		local shield = model:FindFirstChild("Shield", true)
+		if shield then stamp(shield, Enum.NormalId.Left, "RIOT", Color3.fromRGB(255, 255, 255)) end
+	end
+end
+
 local function makeGuardian(areaIndex, pos, accent)
 	local area = Config.Areas[areaIndex]
 	local look = LOOKS[areaIndex] or LOOKS[#LOOKS]
@@ -1206,6 +1237,7 @@ local function makeGuardian(areaIndex, pos, accent)
 		end
 		seat.CanCollide = false
 	end
+	BOSS_DECALS(areaIndex, m, torso)
 
 	------------------------------------------------------------------
 	-- ZZZ (sleeping), ! (awake), boss name plate, red glow + rage particles when chasing

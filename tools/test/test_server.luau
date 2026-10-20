@@ -396,6 +396,40 @@ do
 	check(player:GetAttribute("Carrying") == nil, "Drop puts the box down")
 end
 
+-- boss special move: give the area 1 guard a quick test move, steal again and stand a little away
+do
+	local guard = root:FindFirstChild("Guards"):FindFirstChild("Guardian1")
+	Config.BossAbilities[1] = {name = "Test Slam", kind = "zone", color = roblox.Color3.new(1, 0, 0), every = 0.4, windup = 0.2, radius = 40, chase = "hop"}
+	task.wait(3)
+	local box
+	for _, b in ipairs(root:FindFirstChild("ActiveBoxes"):GetChildren()) do
+		if b:FindFirstChildOfClass("ProximityPrompt") and b.Position.Z > Config.AreaEndZ(1) and b.Position.Z < Config.AreaStartZ(1) then box = b break end
+	end
+	hrp.CFrame = CF(box.Position + V3(0, 0, 3))
+	H.signalFor(box:FindFirstChildOfClass("ProximityPrompt"), "Triggered"):Fire(player)
+	local cast, hitYou = false, false
+	H.onFireClient = function(name, plr, kind)
+		if name == "FX" and kind == "BossCast" then cast = true end
+		if name == "FX" and kind == "BossHitYou" and plr == player then hitYou = true end
+	end
+	local gp = guard:GetPivot().Position
+	local speedBefore = player:GetAttribute("WalkSpeed")
+	for _ = 1, 60 do
+		hrp.CFrame = CF(gp.X, 3, gp.Z + 14)
+		H.step(1, 0.05)
+		task.wait(0.05)
+		if hitYou then break end
+	end
+	check(cast, "the boss charged a special move")
+	check(hitYou, "the special move hit the player")
+	check((player:GetAttribute("WalkSpeed") or 99) < (speedBefore or 0), "a boss move slows you: " .. tostring(speedBefore) .. " -> " .. tostring(player:GetAttribute("WalkSpeed")))
+	H.onFireClient = nil
+	Config.BossAbilities[1] = nil
+	H.signalFor(remotes:FindFirstChild("Drop"), "OnServerEvent"):Fire(player)
+	task.wait(2.5)
+	check((player:GetAttribute("WalkSpeed") or 0) >= (speedBefore or 99) - 0.01, "the slow wears off: " .. tostring(player:GetAttribute("WalkSpeed")) .. " carrying=" .. tostring(player:GetAttribute("Carrying")))
+end
+
 -- leave -> saved (session released)
 local store = S.DataStoreService.stores["StealABox_v5"]
 S.Players.PlayerRemoving:Fire(player)

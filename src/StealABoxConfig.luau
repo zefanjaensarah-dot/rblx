@@ -1246,4 +1246,27 @@ Config.AdminOwnerName = "thisgenerationbruh"
 Config.AdminOwnerId = 5790145019 -- thisgenerationbruh
 Config.AdminUserIds = {} -- extra admins by user id (you can also give admin in the panel)
 
+-- BOSS ABILITIES (areas 4-15): while a boss chases you it stops every few seconds, charges its
+-- special move (a warning shows where it will land) and fires it. Get caught and you're slowed
+-- for a moment - the Tractor Beam and the Black Hole also yank you in.
+--   kind "zone"  = a circle where you were standing      "line" = a strip from the boss toward you
+--   kind "storm" = several lightning strikes around you   "pull" = a beam that pulls you to the boss
+--   chase = how the boss moves while it chases you (hops, hovers, gallops...)
+Config.BossAbilities = {
+	[4] = {name = "Sugar Slam", kind = "zone", color = rgb(255, 95, 180), every = 9, windup = 0.9, radius = 9, chase = "hop"},
+	[5] = {name = "Anchor Wave", kind = "line", color = rgb(95, 214, 240), every = 8.5, windup = 0.9, length = 46, width = 7, chase = "sway"},
+	[6] = {name = "Shield Bash", kind = "line", color = rgb(255, 74, 74), every = 8, windup = 0.8, length = 30, width = 8, chase = "charge"},
+	[7] = {name = "Blizzard Roar", kind = "line", color = rgb(120, 200, 255), every = 8, windup = 0.9, length = 44, width = 12, chase = "gallop"},
+	[8] = {name = "Laser Sweep", kind = "line", color = rgb(255, 60, 60), every = 7.5, windup = 0.85, length = 60, width = 5, chase = "skate"},
+	[9] = {name = "Tractor Beam", kind = "pull", color = rgb(110, 255, 100), every = 9, windup = 0.9, length = 55, width = 9, chase = "hover"},
+	[10] = {name = "Black Hole", kind = "zone", color = rgb(176, 76, 255), every = 8, windup = 1.0, radius = 12, pull = true, chase = "float"},
+	[11] = {name = "Eruption Slam", kind = "zone", color = rgb(255, 122, 26), every = 7.5, windup = 0.85, radius = 12, chase = "stomp"},
+	[12] = {name = "Spectral Slash", kind = "line", color = rgb(140, 255, 220), every = 7, windup = 0.75, length = 50, width = 9, chase = "glide"},
+	[13] = {name = "Prism Quake", kind = "zone", color = rgb(47, 211, 230), every = 7, windup = 0.85, radius = 14, chase = "stomp"},
+	[14] = {name = "Thunder Call", kind = "storm", color = rgb(255, 225, 80), every = 7, windup = 1.0, radius = 7, strikes = 5, chase = "fly"},
+	[15] = {name = "Inferno Breath", kind = "line", color = rgb(255, 90, 30), every = 6.5, windup = 0.9, length = 60, width = 14, chase = "gallop"},
+}
+Config.BossSlowTime = 2.2 -- seconds a boss move slows you
+Config.BossSlowMult = 0.5 -- your speed while slowed
+
 return Config

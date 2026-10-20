@@ -121,6 +121,20 @@ fireClient("FX", "Sale", roblox.Vector3.new(0, 3, -20), 1)
 fireClient("FX", "Ready", roblox.Vector3.new(0, 3, -20), 1)
 fireClient("FX", "LevelUp", roblox.Vector3.new(0, 3, -20), 1)
 fireClient("FX", "Wake", roblox.Vector3.new(0, 3, -20), 1.5)
+-- boss title card, special-move warnings + effects for every boss, and getting hit by one
+do
+	local at = hrp.Position
+	fireClient("FX", "BossIntro", at, 7)
+	fireClient("FX", "BossIntro", at, 2)
+	for area = 4, 15 do
+		local info = {dir = roblox.Vector3.new(0, 0, -1), spots = {at + roblox.Vector3.new(0, 0, -12), at + roblox.Vector3.new(6, 0, -8)}, windup = 0.1, scale = 3}
+		fireClient("FX", "BossCast", at, area, info)
+		fireClient("FX", "BossHit", at, area, info)
+	end
+	fireClient("FX", "BossHitYou", at, 9, roblox.Vector3.new(0, 20, 30))
+	for _ = 1, 10 do H.step(1, 0.05) end
+	task.wait(1.2)
+end
 -- an unboxing box + opening animation + 3D reveal
 local plot = ws.StealABox.Plots:FindFirstChild("Plot1")
 plot:SetAttribute("Owner", 1)

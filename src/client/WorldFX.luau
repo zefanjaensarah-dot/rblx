@@ -293,6 +293,7 @@ function WorldFX.init(ctx)
 	-- CAMERA SHAKE (off when "Screen effects" is off in Settings)
 	------------------------------------------------------------------
 	local shakeUntil, shakePower = 0, 0
+	ctx.shake = function(t, p) shakeUntil, shakePower = os.clock() + t, p end -- (used by BossFX too)
 	RunService:BindToRenderStep("StealABoxShake", Enum.RenderPriority.Camera.Value + 1, function()
 		local cam = workspace.CurrentCamera
 		if cam and os.clock() < shakeUntil and effectsOn() then
