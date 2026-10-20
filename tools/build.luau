@@ -75,7 +75,7 @@ for _, name in { "UI", "Hud", "Panels", "Windows", "ShopWindow", "Phone", "Tutor
 	script(client, name, "ModuleScript", read("src/client/" .. name .. ".luau"))
 end
 -- phone games: one module per game (src/client/PhoneGame_<Name>.luau)
-for _, name in { "PhoneGame_Stack", "PhoneGame_Flappy", "PhoneGame_Merge", "PhoneGame_Whack", "PhoneGame_Catch", "PhoneGame_BoxTok" } do
+for _, name in { "PhoneGame_Stack", "PhoneGame_Flappy", "PhoneGame_Merge", "PhoneGame_Whack", "PhoneGame_Catch", "PhoneGame_Scores" } do
 	local ok, src = pcall(read, "src/client/" .. name .. ".luau")
 	if ok and src then script(client, name, "ModuleScript", src) end
 end

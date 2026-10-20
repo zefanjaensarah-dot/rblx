@@ -162,7 +162,7 @@ local function newProfile()
 		Items = {}, Unboxing = {}, Upgrades = {}, Treadmill = 1, SpeedPoints = Config.StartSpeed, TutorialDone = false,
 		Trails = {}, Trail = nil, Customers = 1, SpeedBoost = 1, Receipts = {}, PayoutLevel = 1, UnboxLevel = 1,
 		IndexClaimed = {}, Daily = {Streak = 0, Last = -1}, Codes = {}, Settings = {}, SaveVersion = 2, ExtraStands = 0,
-		Achievements = {}, Flings = 0}
+		Achievements = {}, Flings = 0, PhoneBest = {}}
 	return p
 end
 
@@ -694,10 +694,6 @@ pickUp = function(player, box)
 	-- wake up the guardian of the area this box belongs to (not the area it was dropped in)
 	local area = (def and def.area) or Config.ZoneAt(hrp.Position)
 	if area and Config.ZoneAt(hrp.Position) then alertGuard(area, player) end
-	-- a big / rare / mutated steal goes on BoxTok
-	if BOXTOK_POST and (def.rarity >= 3 or c.mutation ~= "Normal" or Config.GetSize(c.size).scale >= 1.5) then
-		BOXTOK_POST(player, "steal", {box = c.id, mutation = c.mutation, size = c.size, area = area or 1})
-	end
 end
 
 local boxSpawns = {}
@@ -1171,9 +1167,6 @@ openBox = function(player, slot)
 		refreshPads(player)
 		sync(player)
 		RevealEvent:FireClient(player, item, s ~= nil)
-		if BOXTOK_POST and (tier >= 3 or item.mutation ~= "Normal") then
-			BOXTOK_POST(player, "unbox", {item = {id = item.id, mutation = item.mutation, size = item.size}})
-		end
 		-- the shelf shows the product once the flying model has landed
 		task.delay(Config.RevealTime(tier), function() if player.Parent then refreshStands(player) end end)
 		local def = Config.Items[item.id]
@@ -2883,6 +2876,10 @@ ActionFunc.OnServerInvoke = function(player, action, arg, expectedId)
 		sendHome(player)
 		return {ok = true}
 
+	elseif action == "PhoneScore" then
+		return PHONE_SCORE(player, arg, expectedId)
+	elseif action == "PhoneBoard" then
+		return PHONE_BOARD(player, arg)
 	elseif action == "Warehouse" then
 		if carrying[player] then return {ok = false, msg = "Can't teleport while carrying a box!"} end
 		local entrance = world:FindFirstChild("EntrancePoint", true)
@@ -2967,7 +2964,6 @@ local function flingPlayer(player, guardPos, areaIndex)
 	playSound(hrp, "rbxasset://sounds/collide.wav", 1, 0.7)
 	FlingEvent:FireClient(player, velocity, RAGDOLL_TIME, area.guard)
 	FXEvent:FireAllClients("Bonk", hrp.Position, areaIndex)
-	if BOXTOK_POST then BOXTOK_POST(player, "bonk", {area = areaIndex}) end
 	notify(player, "BONK! The " .. area.guard .. " flung you across the warehouse!", RED)
 
 	task.delay(RAGDOLL_TIME, function()
@@ -4773,58 +4769,97 @@ function FRIENDS_INIT()
 		friendsHere[p] = nil
 	end)
 end
+FRIENDS_INIT()
 
 ------------------------------------------------------------------
--- BOXTOK: the video app on the phone. Big moments in this server (a rare unbox, a big steal,
--- getting bonked by a boss) are posted to everyone's feed; players can like posts.
--- Likes are just for fun: they never give cash, so there's nothing to farm.
+-- PHONE GAME LEADERBOARD: your best score in each phone game is saved (PhoneBest), and the
+-- Leaderboard app on the phone shows the top 10 in this server and of all time (an ordered
+-- data store per game). Scores come from the client, so they're checked: a known game, a whole
+-- number up to that game's cap, and at most one score every 2 seconds per player.
 ------------------------------------------------------------------
-function BOXTOK_INIT()
-	local ev = remotes:FindFirstChild("BoxTok") or Instance.new("RemoteEvent")
-	ev.Name = "BoxTok"
-	ev.Parent = remotes
-	local posts, nextId = {}, 0 -- the newest 30 posts, oldest first
-	local likedBy, lastPost, lastLike = {}, {}, {}
-	function BOXTOK_POST(player, kind, data)
-		if not player or not player.Parent then return end
-		local now = os.clock()
-		local mine = lastPost[player] or {}
-		lastPost[player] = mine
-		if (mine[kind] or 0) > now - 20 then return end -- each kind of post at most once per player every 20 seconds
-		mine[kind] = now
-		nextId = nextId + 1
-		local post = {id = nextId, user = player.DisplayName, userId = player.UserId, kind = kind, likes = 0}
-		for k, v in pairs(data) do post[k] = v end
-		table.insert(posts, post)
-		likedBy[post.id] = {}
-		if #posts > 30 then likedBy[table.remove(posts, 1).id] = nil end
-		ev:FireAllClients("post", post)
+function PHONE_INIT()
+	local lastScore, dirty, globalTop, names = {}, {}, {}, {}
+	local stores = {}
+	for _, g in ipairs(Config.PhoneGames) do
+		pcall(function() stores[g.key] = DataStoreService:GetOrderedDataStore("StealABox_Phone_" .. g.key) end)
+		globalTop[g.key] = {}
 	end
-	ev.OnServerEvent:Connect(function(player, action, id)
-		if action == "feed" then
-			ev:FireClient(player, "feed", posts)
-			return
-		end
-		if action ~= "like" or type(id) ~= "number" then return end
+	local function bestsOf(prof)
+		if type(prof.PhoneBest) ~= "table" then prof.PhoneBest = {} end
+		return prof.PhoneBest
+	end
+	local function nameOf(userId)
+		if names[userId] then return names[userId] end
+		local ok, n = pcall(function() return Players:GetNameFromUserIdAsync(userId) end)
+		names[userId] = ok and n or ("Player " .. userId)
+		return names[userId]
+	end
+	function PHONE_SCORE(player, key, score)
+		local g = Config.PhoneGame(key)
+		local prof = profiles[player]
+		if not g or not prof or type(score) ~= "number" or score ~= score then return {ok = false} end
+		score = math.floor(score)
+		if score <= 0 or score > g.max then return {ok = false} end
 		local now = os.clock()
-		if (lastLike[player] or 0) > now - 0.25 then return end
-		lastLike[player] = now
-		local set = likedBy[id]
-		if not set or set[player.UserId] then return end -- one like per player per post
-		for _, post in ipairs(posts) do
-			if post.id == id then
-				set[player.UserId] = true
-				post.likes = post.likes + 1
-				ev:FireAllClients("likes", id, post.likes)
-				local owner = (post.userId ~= player.UserId) and Players:GetPlayerByUserId(post.userId)
-				if owner then notify(owner, player.DisplayName .. " liked your BoxTok!", Color3.fromRGB(255, 110, 170)) end
-				return
+		if (lastScore[player] or 0) > now - 2 then return {ok = false, msg = "slow down"} end
+		lastScore[player] = now
+		local bests = bestsOf(prof)
+		if score > (tonumber(bests[key]) or 0) then
+			bests[key] = score
+			if not dontSave[player] then -- (queued by user id, so it's saved even if they leave first)
+				dirty[player.UserId] = dirty[player.UserId] or {}
+				dirty[player.UserId][key] = score
 			end
 		end
+		return {ok = true, best = bests[key]}
+	end
+	function PHONE_BOARD(player, key)
+		local g = Config.PhoneGame(key)
+		if not g then return {ok = false} end
+		local hidden = LB_HIDDEN or {}
+		local here = {}
+		for _, p in ipairs(Players:GetPlayers()) do
+			local prof = profiles[p]
+			local v = prof and tonumber(bestsOf(prof)[key]) or 0
+			if v > 0 and not hidden[p.UserId] then table.insert(here, {id = p.UserId, name = p.DisplayName, value = v}) end
+		end
+		table.sort(here, function(a, b) return a.value > b.value end)
+		local rank = nil
+		for i, e in ipairs(here) do if e.id == player.UserId then rank = i end end
+		while #here > 10 do table.remove(here) end
+		local global = {}
+		for _, e in ipairs(globalTop[key]) do if not hidden[e.id] then table.insert(global, e) end end
+		local prof = profiles[player]
+		return {ok = true, server = here, global = global, best = prof and tonumber(bestsOf(prof)[key]) or 0, rank = rank}
+	end
+	-- save new bests to the global boards, and re-read the global top 10 of every game
+	task.spawn(function()
+		task.wait(8)
+		while true do
+			for id, keys in pairs(dirty) do
+				dirty[id] = nil
+				for key, v in pairs(keys) do
+					if stores[key] then pcall(function() stores[key]:SetAsync(tostring(id), v) end) end
+				end
+			end
+			for _, g in ipairs(Config.PhoneGames) do
+				if stores[g.key] then
+					pcall(function()
+						local page = stores[g.key]:GetSortedAsync(false, 10):GetCurrentPage()
+						local list = {}
+						for _, e in ipairs(page) do
+							local id = tonumber(e.key)
+							if id then table.insert(list, {id = id, name = nameOf(id), value = tonumber(e.value) or 0}) end
+						end
+						globalTop[g.key] = list
+					end)
+				end
+			end
+			task.wait(90)
+		end
 	end)
-	Players.PlayerRemoving:Connect(function(p) lastPost[p], lastLike[p] = nil, nil end)
+	Players.PlayerRemoving:Connect(function(p) lastScore[p] = nil end)
 end
-BOXTOK_INIT()
-FRIENDS_INIT()
+PHONE_INIT()
 
 ADMIN_INIT()

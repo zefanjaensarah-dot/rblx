@@ -2368,7 +2368,7 @@ local APPS = {
 	moduleApp("Catch", "Box Catcher", rgb(120, 240, 210), rgb(20, 150, 140), "🧺"),
 }
 -- the dock at the bottom of the home screen (apps that aren't games)
-local DOCK = {moduleApp("BoxTok", "BoxTok", rgb(70, 70, 90), rgb(18, 18, 26), "TV")}
+local DOCK = {moduleApp("Scores", "Leaderboard", rgb(255, 215, 90), rgb(220, 120, 20), "#1")}
 
 function Phone.init(ctx)
 	UI = ctx.UI
@@ -2406,6 +2406,7 @@ function Phone.init(ctx)
 		makeParticles = makeParticles, makePopups = makePopups, makeShaker = makeShaker, makePanel = makePanel, makeCountdown = makeCountdown,
 		isPress = isPress, isMove = isMove, posOf = posOf, fracIn = fracIn, pointer = pointer, dirKey = dirKey, typing = typing, bests = bests}
 	env.kit = PHONE_KIT
+	env.invoke, env.player, env.games = ctx.invoke, ctx.player, APPS
 	local apps, current, layoutWide = {}, "Home", nil
 	local scorePulses = {}
 
@@ -2449,6 +2450,27 @@ function Phone.init(ctx)
 	local function refreshBests()
 		for k, l in pairs(bestLabels) do l.Text = tostring(bests[k] or 0) end
 	end
+	-- your best scores are saved on the server (for the Leaderboard app): load them, send new ones
+	local sentBest = {}
+	ctx.onData(function()
+		local saved = ctx.data and ctx.data.PhoneBest
+		if type(saved) ~= "table" then return end
+		for k, v in pairs(saved) do
+			v = tonumber(v) or 0
+			if bests[k] ~= nil and v > bests[k] then bests[k] = v end
+			sentBest[k] = math.max(sentBest[k] or 0, v)
+		end
+		refreshBests()
+	end)
+	local function sendBests() -- (one at a time: the server takes one score every 2 seconds)
+		for k, v in pairs(bests) do
+			if v > (sentBest[k] or 0) then
+				sentBest[k] = v
+				task.spawn(ctx.invoke, "PhoneScore", k, v)
+				return
+			end
+		end
+	end
 	local icons = {}
 	for i, a in ipairs(APPS) do
 		-- (a 4 x 2 grid of app icons)
@@ -2467,7 +2489,7 @@ function Phone.init(ctx)
 		icons[a.key] = btn
 		btn.Activated:Connect(function() env.openApp(a.key) end)
 	end
-	-- THE DOCK: BoxTok, the video app
+	-- THE DOCK: the phone game leaderboard
 	do
 		local dock = frame(home, {Name = "Dock", AnchorPoint = V2(0.5, 1), Position = UDim2.new(0.5, 0, 1, -18), Size = UDim2.new(0.92, 0, 0.09, 0), BackgroundColor3 = WHITE,
 			BackgroundTransparency = 0.8, ZIndex = 2})
@@ -2484,8 +2506,8 @@ function Phone.init(ctx)
 			UI.pressable(btn)
 			icons[a.key] = btn
 			btn.Activated:Connect(function() env.openApp(a.key) end)
-			text(dock, a.label, {Position = S2(0.22, 0.1), Size = S2(0.74, 0.45), TextXAlignment = Enum.TextXAlignment.Left, Stroke = 2, MaxSize = 22, ZIndex = 3})
-			text(dock, "Watch the best moments in your server", {Position = S2(0.22, 0.55), Size = S2(0.74, 0.34), TextXAlignment = Enum.TextXAlignment.Left, Stroke = 0,
+			text(dock, a.label, {Position = S2(0.2, 0.1), Size = S2(0.76, 0.45), TextXAlignment = Enum.TextXAlignment.Left, Stroke = 2, MaxSize = 22, ZIndex = 3})
+			text(dock, "Top scores in this server + all time", {Position = S2(0.2, 0.55), Size = S2(0.76, 0.34), TextXAlignment = Enum.TextXAlignment.Left, Stroke = 0,
 				MaxSize = 14, TextColor3 = rgb(230, 230, 255), ZIndex = 3})
 		end
 	end
@@ -2658,7 +2680,7 @@ function Phone.init(ctx)
 	screen:GetPropertyChangedSignal("AbsoluteSize"):Connect(relayout)
 
 	-- ONE loop for the whole phone, connected only while the phone is open
-	local loopConn, clockT = nil, 0
+	local loopConn, clockT, sendTick = nil, 0, 0
 	local function frameStep(dt)
 		dt = math.min(dt, 0.1)
 		clockT = clockT - dt
@@ -2666,6 +2688,8 @@ function Phone.init(ctx)
 			clockT = 1
 			battery = math.max(5, battery - 1 / 45)
 			updateClock()
+			sendTick = sendTick + 1
+			if sendTick % 3 == 0 then sendBests() end
 		end
 		for sc in pairs(scorePulses) do
 			sc.Scale = lerp(sc.Scale, 1, clamp(dt * 10, 0, 1))

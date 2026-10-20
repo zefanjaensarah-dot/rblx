@@ -430,26 +430,19 @@ do
 	check((player:GetAttribute("WalkSpeed") or 0) >= (speedBefore or 99) - 0.01, "the slow wears off: " .. tostring(player:GetAttribute("WalkSpeed")) .. " carrying=" .. tostring(player:GetAttribute("Carrying")))
 end
 
--- BoxTok: getting bonked was posted to the feed, and a like only counts once per player
+-- phone game leaderboard: a real score is saved, a silly one is refused, the board shows it
 do
-	local bt = remotes:FindFirstChild("BoxTok")
-	check(bt ~= nil, "BoxTok remote exists")
-	local got, likes
-	H.onFireClient = function(name, plr, action, a, b)
-		if name == "BoxTok" and action == "feed" then got = a end
-		if name == "BoxTok" and action == "likes" then likes = b end
-	end
-	H.signalFor(bt, "OnServerEvent"):Fire(player, "feed")
-	local bonk
-	for _, p in ipairs(got or {}) do if p.kind == "bonk" then bonk = p end end
-	check(bonk ~= nil, "the bonk was posted to BoxTok")
-	local id = bonk and bonk.id
-	H.signalFor(bt, "OnServerEvent"):Fire(player, "like", id)
-	task.wait(0.3)
-	H.signalFor(bt, "OnServerEvent"):Fire(player, "like", id)
-	H.signalFor(bt, "OnServerEvent"):Fire(player, "like", "not a number")
-	check(likes == 1, "a like counts once: " .. tostring(likes))
-	H.onFireClient = nil
+	task.wait(0.2)
+	local r = invoke(player, "PhoneScore", "Snake", 42)
+	check(r.ok and r.best == 42, "phone score saved: " .. tostring(r.best))
+	task.wait(2.1)
+	check(not invoke(player, "PhoneScore", "Snake", 999999999).ok, "an impossible phone score is refused")
+	task.wait(0.2)
+	check(not invoke(player, "PhoneScore", "NotAGame", 5).ok, "an unknown phone game is refused")
+	task.wait(0.2)
+	local b = invoke(player, "PhoneBoard", "Snake")
+	check(b.ok and b.best == 42 and b.server[1] and b.server[1].value == 42 and b.rank == 1, "phone leaderboard shows the score")
+	check(invoke(player, "GetData").data.PhoneBest.Snake == 42, "phone best is in the save")
 end
 
 -- leave -> saved (session released)

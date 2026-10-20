@@ -2,7 +2,7 @@
 
 Steal boxes from a guarded warehouse, unbox them at your base, sell the items in your shop and get faster on your treadmill.
 
-**v63:** BoxTok, a TikTok-style video app on the phone (it sits in the dock under the games). Swipe, scroll or use the arrow keys to flick through clips; every clip is a live 3D scene made from the game's real bosses, boxes and items. Rare unboxes, big steals and boss bonks in your server are posted to everyone's feed (LIVE) and can be liked (double-tap); likes are just for fun and never give cash. Real Roblox videos can be added in `Config.BoxTokVideos`.
+**v64:** a Leaderboard app in the phone's dock: the top 10 scores of every phone game in this server and of all time (Global). Your best phone scores are saved now (they used to reset when you left). Scores come from the client, so the server only takes known games, whole numbers up to each game's cap (`Config.PhoneGames`) and one score every 2 seconds; players removed from the boards in the admin panel are hidden here too. (BoxTok from v63 was removed.)
 
 **v62:** the warehouse looks like a real warehouse: polished concrete with yellow aisle lines, steel columns, cladded walls, roof trusses with skylights and high-bay lamps, orange/blue pallet racking with wrapped stock, pallets, forklifts and a department sign for every area (the party bunting, polka dots and floor clutter are gone). The front is an industrial facade with a canopy, loading docks and flood lights, shadows are on, the boxes have rounded edges, and every friend in your server gives you both +10% cash (up to +50%). `tools/render` draws the built map in a browser for quick looks.
 

@@ -1266,10 +1266,22 @@ Config.BossAbilities = {
 	[14] = {name = "Thunder Call", kind = "storm", color = rgb(255, 225, 80), every = 7, windup = 1.0, radius = 7, strikes = 5, chase = "fly"},
 	[15] = {name = "Inferno Breath", kind = "line", color = rgb(255, 90, 30), every = 6.5, windup = 0.9, length = 60, width = 14, chase = "gallop"},
 }
--- BOXTOK (the video app on the phone): real Roblox videos to mix into the feed. Upload a video
--- (Creator Dashboard, needs an ID-verified account) or use one from the Creator Store, then add it:
---   {id = "rbxassetid://123456789", user = "thisgenerationbruh", caption = "new update!!"}
-Config.BoxTokVideos = {}
+-- PHONE GAME LEADERBOARD: the games on the phone + the highest score the server accepts for each
+-- (anything above is ignored, so a hacked client can't put a silly number on the board)
+Config.PhoneGames = {
+	{key = "Snake", name = "Snake", max = 5000},
+	{key = "BlockBlast", name = "Block Blast", max = 2000000},
+	{key = "Archery", name = "Archery", max = 10000},
+	{key = "Stack", name = "Stack", max = 5000},
+	{key = "Flappy", name = "Flappy Box", max = 5000},
+	{key = "Merge", name = "Box Merge", max = 20000000},
+	{key = "Whack", name = "Whack-a-Thief", max = 20000},
+	{key = "Catch", name = "Box Catcher", max = 50000},
+}
+function Config.PhoneGame(key)
+	for _, g in ipairs(Config.PhoneGames) do if g.key == key then return g end end
+	return nil
+end
 
 -- FRIEND BONUS: every friend (Roblox connection) in the same server gives you both +10% cash, up to +50%
 Config.FriendBonus = {perFriend = 0.1, max = 0.5}
