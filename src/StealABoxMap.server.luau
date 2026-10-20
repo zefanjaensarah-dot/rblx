@@ -115,14 +115,19 @@ local NA = #Config.Areas
 local STORE_END = Config.StoreEndZ()
 local STORE_HW = Config.StoreHalfWidth()
 
--- bright cartoon day, set once. No lamps needed: without shadows the store is lit like outside.
+-- a sunny afternoon with soft shadows; inside the warehouse the skylights and high-bay lamps light it
 do
 	local Lighting = game:GetService("Lighting")
 	Lighting.ClockTime = 14
-	Lighting.Brightness = 3
-	Lighting.Ambient = RGB(175, 175, 185)
-	Lighting.OutdoorAmbient = RGB(175, 175, 185)
-	Lighting.GlobalShadows = false
+	Lighting.Brightness = 2.6
+	Lighting.Ambient = RGB(150, 152, 160)
+	Lighting.OutdoorAmbient = RGB(165, 168, 178)
+	Lighting.GlobalShadows = true
+	pcall(function()
+		Lighting.ShadowSoftness = 0.3
+		Lighting.EnvironmentDiffuseScale = 0.6
+		Lighting.EnvironmentSpecularScale = 0.5
+	end)
 	for _, e in ipairs(Lighting:GetChildren()) do
 		if e.Name == "StealABoxFX" or e:IsA("Atmosphere") or e:IsA("Sky") then e:Destroy() end
 	end
@@ -132,8 +137,8 @@ do
 	end)
 	local cc = Instance.new("ColorCorrectionEffect")
 	cc.Name = "StealABoxFX"
-	cc.Saturation = 0.35
-	cc.Contrast = 0.08
+	cc.Saturation = 0.18
+	cc.Contrast = 0.1
 	cc.TintColor = RGB(255, 252, 245)
 	cc.Parent = Lighting
 	local atm = Instance.new("Atmosphere")
@@ -294,13 +299,55 @@ do
 	local front = folder(root, "WarehouseFront")
 	local FZ, FH, DOOR_HW, DOOR_H = FRONT_Z + 1, WALL_H, 20, 28
 	local side = MAPW + 4 - DOOR_HW
+	local W = MAPW + 4
+	local OZ = FZ + 1 -- the outside face of the wall
+	local CLADF, RIBF, DARK = RGB(206, 212, 220), RGB(184, 190, 199), RGB(66, 70, 78)
+	local ORANGE, YELLOW, BLACK = RGB(242, 114, 24), RGB(255, 196, 0), RGB(32, 32, 36)
 	for _, sx in ipairs({-1, 1}) do
-		P(front, "Wall", V(side, FH, 2), C(sx * (DOOR_HW + side / 2), FH / 2, FZ), RGB(185, 95, 75), M.Brick)
+		P(front, "Wall", V(side, FH, 2), C(sx * (DOOR_HW + side / 2), FH / 2, FZ), CLADF, M.Metal)
+		-- concrete plinth, ribbed cladding, the door frame and striped guard posts by the door
+		P(front, "FrontPlinth", V(side, 8, 0.6), C(sx * (DOOR_HW + side / 2), 4, OZ + 0.3), RGB(150, 152, 156), M.Concrete, NOHIT)
+		for x = DOOR_HW + 3, W - 2, 5 do P(front, "FrontRib", V(0.6, FH - 9, 0.4), C(sx * x, 8 + (FH - 9) / 2, OZ + 0.2), RIBF, M.Metal, NOHIT) end
+		P(front, "DoorFrame", V(2, DOOR_H + 1, 1.2), C(sx * (DOOR_HW + 1), (DOOR_H + 1) / 2, OZ + 0.6), DARK, M.Metal, NOHIT)
+		for k = 0, 5 do P(front, "DoorGuard", V(1.6, 1, 1.6), C(sx * (DOOR_HW + 2.6), 0.5 + k, OZ + 2), (k % 2 == 0) and YELLOW or BLACK, M.SmoothPlastic, NOHIT) end
+		-- tie rods holding up the canopy
+		local ra, rb = V(sx * (DOOR_HW + 2), DOOR_H + 10, OZ), V(sx * (DOOR_HW + 2), DOOR_H + 2.8, OZ + 9.6)
+		P(front, "CanopyRod", V(0.35, 0.35, (rb - ra).Magnitude), CFrame.lookAt((ra + rb) / 2, rb), DARK, M.Metal, NOHIT)
 	end
-	P(front, "Wall", V(DOOR_HW * 2, FH - DOOR_H, 2), C(0, (FH + DOOR_H) / 2, FZ), RGB(185, 95, 75), M.Brick)
-	P(front, "WallCap", V(MAPW * 2 + 8, 1.6, 3), C(0, FH + 0.8, FZ), RGB(235, 225, 210))
-	local sign = P(front, "WarehouseSign", V(56, 9, 0.6), C(0, DOOR_H + 6, FZ + 1.3), RGB(150, 95, 50), M.WoodPlanks, NOHIT)
+	P(front, "Wall", V(DOOR_HW * 2, FH - DOOR_H, 2), C(0, (FH + DOOR_H) / 2, FZ), CLADF, M.Metal)
+	P(front, "FrontBand", V(W * 2, 2.2, 0.5), C(0, FH - 2.6, OZ + 0.45), ORANGE, M.SmoothPlastic, NOHIT)
+	P(front, "WallCap", V(W * 2 + 4, 2.2, 3), C(0, FH + 1.1, FZ + 0.5), DARK, M.Metal)
+	P(front, "DoorHeader", V(DOOR_HW * 2 + 4, 1.6, 1.2), C(0, DOOR_H + 0.8, OZ + 0.6), DARK, M.Metal, NOHIT)
+	-- a steel canopy with lights over the entrance
+	P(front, "Canopy", V(DOOR_HW * 2 + 10, 0.8, 10), C(0, DOOR_H + 2.4, OZ + 5), RGB(60, 64, 72), M.Metal, NOHIT)
+	P(front, "CanopyEdge", V(DOOR_HW * 2 + 10, 1.2, 0.4), C(0, DOOR_H + 2.4, OZ + 10), ORANGE, M.SmoothPlastic, NOHIT)
+	for _, x in ipairs({-13, 0, 13}) do P(front, "CanopyLight", V(6, 0.15, 1.4), C(x, DOOR_H + 1.95, OZ + 6), RGB(255, 246, 228), M.Neon, NOHIT) end
+	-- the sign above the canopy
+	local sign = P(front, "WarehouseSign", V(56, 8, 0.6), C(0, DOOR_H + 8.5, OZ + 0.5), RGB(26, 32, 44), M.SmoothPlastic, NOHIT)
+	P(front, "WarehouseSignFrame", V(57.4, 9.4, 0.4), C(0, DOOR_H + 8.5, OZ + 0.2), ORANGE, M.SmoothPlastic, NOHIT)
 	signText(sign, Enum.NormalId.Back, "WAREHOUSE", 16, 7, 600)
+	-- loading docks: roll-up doors with slats, a hood, rubber bumpers, a number and a dock light
+	local n = 0
+	for _, sx in ipairs({-1, 1}) do
+		for _, x in ipairs({40, 64, 88}) do
+			n = n + 1
+			local cx = sx * x
+			P(front, "DockFrame", V(15, 17.2, 0.5), C(cx, 9.6, OZ + 0.25), DARK, M.Metal, NOHIT)
+			P(front, "DockDoor", V(13.4, 15.6, 0.4), C(cx, 9.8, OZ + 0.55), RGB(198, 204, 212), M.Metal, NOHIT)
+			for k = 1, 9 do P(front, "DockSlat", V(13.4, 0.22, 0.15), C(cx, 2 + k * 1.6, OZ + 0.8), RGB(158, 164, 173), M.Metal, NOHIT) end
+			P(front, "DockHood", V(15.6, 1.3, 1.6), C(cx, 18.6, OZ + 0.8), DARK, M.Metal, NOHIT)
+			for _, o in ipairs({-5.2, 5.2}) do P(front, "DockBumper", V(1.4, 2.4, 1.2), C(cx + o, 3.2, OZ + 1.1), RGB(24, 24, 26), M.Rubber, NOHIT) end
+			local num = P(front, "DockNumber", V(3.2, 2.4, 0.2), C(cx + 9.4, 15, OZ + 0.35), YELLOW, M.SmoothPlastic, NOHIT)
+			local tl = signText(num, Enum.NormalId.Back, tostring(n), 30, 2, 220)
+			tl.TextColor3 = BLACK
+			P(front, "DockLight", V(1.4, 0.9, 0.9), C(cx - 9.4, 16.5, OZ + 0.6), RGB(255, 250, 230), M.Neon, NOHIT)
+		end
+		-- flood lights between the docks
+		for _, x in ipairs({52, 76}) do
+			P(front, "FloodLight", V(2.4, 1.4, 1.6), C(sx * x, 23, OZ + 0.8), DARK, M.Metal, NOHIT)
+			P(front, "FloodLens", V(2.0, 1.0, 0.2), C(sx * x, 23, OZ + 1.65), RGB(255, 248, 232), M.Neon, NOHIT)
+		end
+	end
 	-- the big metal door: open by day, the server closes it at night
 	local door = P(front, "Barrier", V(DOOR_HW * 2, DOOR_H, 1), C(0, DOOR_H / 2, FZ), RGB(120, 125, 135), M.DiamondPlate, {Transparency = 1, CanCollide = false})
 	door:SetAttribute("Door", true)
@@ -327,8 +374,8 @@ local BACKZ = Config.StoreEndZ()
 local wh = folder(root, "Warehouse")
 local spawns = folder(root, "BoxSpawns")
 local guardsFolder = folder(root, "Guards")
--- invisible walls keep you on the lane; you can still see the open zones around it
-P(wh, "BackWall", V(L.halfWidth * 2 + 8, L.wallHeight, 4), C(0, L.wallHeight / 2, BACKZ - 2), RGB(60, 50, 70), M.SmoothPlastic)
+-- the end wall of the warehouse (after the last area)
+P(wh, "BackWall", V(L.halfWidth * 2 + 8, L.wallHeight, 4), C(0, L.wallHeight / 2, BACKZ - 2), RGB(204, 210, 218), M.Metal)
 
 ------------------------------------------------------------------
 -- section helpers. x = sideways (-35..35), d = depth into the area (0..50), y = height
@@ -387,28 +434,6 @@ local function ambience(r, colors, opts)
 end
 local NO_COLLIDE = {CanCollide = false}
 local FX = {CanCollide = false, CanQuery = false, CanTouch = false, CastShadow = false}
-
-------------------------------------------------------------------
--- AREA STYLES (old & dusty -> high-tech -> cosmic)
-------------------------------------------------------------------
-local STYLE = {
-	{floor = RGB(110, 88, 64),  wallA = RGB(130, 112, 92), wallB = RGB(112, 95, 78),  shelf = RGB(105, 80, 55),  shelfMat = M.WoodPlanks, post = RGB(80, 60, 42)},
-	{floor = RGB(190, 150, 90), wallA = RGB(190, 60, 48),  wallB = RGB(165, 50, 40),  shelf = RGB(150, 105, 60), shelfMat = M.WoodPlanks, post = RGB(245, 245, 245)},
-	{floor = RGB(235, 238, 250),wallA = RGB(120, 190, 255),wallB = RGB(255, 210, 90), shelf = RGB(255, 90, 90),  shelfMat = M.SmoothPlastic, post = RGB(90, 170, 255)},
-	{floor = RGB(255, 190, 225),wallA = RGB(255, 235, 245),wallB = RGB(170, 240, 220),shelf = RGB(255, 120, 190),shelfMat = M.SmoothPlastic, post = RGB(255, 255, 255)},
-	{floor = RGB(226, 200, 140),wallA = RGB(40, 110, 190), wallB = RGB(30, 90, 165),  shelf = RGB(130, 92, 55),  shelfMat = M.WoodPlanks, post = RGB(90, 60, 35)},
-	{floor = RGB(232, 226, 214),wallA = RGB(120, 160, 90), wallB = RGB(100, 140, 75), shelf = RGB(180, 150, 110),shelfMat = M.Wood, post = RGB(212, 175, 55)},
-	{floor = RGB(225, 240, 252),wallA = RGB(200, 235, 255),wallB = RGB(170, 215, 245),shelf = RGB(160, 210, 240),shelfMat = M.Ice, post = RGB(235, 245, 255)},
-	{floor = RGB(55, 60, 72),   wallA = RGB(35, 40, 55),   wallB = RGB(28, 32, 45),   shelf = RGB(70, 75, 90),   shelfMat = M.DiamondPlate, post = RGB(60, 170, 255)},
-	{floor = RGB(70, 76, 88),   wallA = RGB(40, 55, 45),   wallB = RGB(30, 45, 36),   shelf = RGB(80, 90, 85),   shelfMat = M.Metal, post = RGB(90, 255, 90)},
-	{floor = RGB(22, 16, 38),   wallA = RGB(30, 20, 55),   wallB = RGB(20, 12, 40),   shelf = RGB(40, 25, 70),   shelfMat = M.SmoothPlastic, post = RGB(255, 80, 200)},
-	-- 11-15 (after the Galaxy Vault): roof = an optional ceiling colour (see buildCeiling)
-	{floor = RGB(48, 38, 36),   wallA = RGB(62, 46, 42),   wallB = RGB(50, 36, 33),   shelf = RGB(58, 56, 64),   shelfMat = M.Metal, post = RGB(255, 110, 40), roof = RGB(30, 22, 22)},
-	{floor = RGB(58, 44, 58),   wallA = RGB(72, 52, 88),   wallB = RGB(58, 40, 72),   shelf = RGB(88, 58, 44),   shelfMat = M.Wood, post = RGB(150, 90, 220), roof = RGB(34, 24, 44)},
-	{floor = RGB(40, 44, 72),   wallA = RGB(52, 56, 98),   wallB = RGB(42, 46, 84),   shelf = RGB(105, 90, 170), shelfMat = M.Slate, post = RGB(90, 230, 255), roof = RGB(28, 28, 52)},
-	{floor = RGB(248, 246, 238),wallA = RGB(250, 246, 236),wallB = RGB(236, 230, 214),shelf = RGB(255, 222, 130),shelfMat = M.Marble, post = RGB(255, 210, 90), roof = RGB(130, 195, 255)},
-	{floor = RGB(70, 30, 30),   wallA = RGB(105, 28, 34),  wallB = RGB(82, 20, 26),   shelf = RGB(92, 56, 36),   shelfMat = M.WoodPlanks, post = RGB(255, 200, 50), roof = RGB(45, 14, 16)},
-}
 
 ------------------------------------------------------------------
 -- GUARDIANS: weak & sleepy in area 1 ... terrifying in area 10
@@ -1360,1525 +1385,316 @@ local function makeGuardian(areaIndex, pos, accent)
 end
 
 ------------------------------------------------------------------
--- THEMES: decorations per area. Free space: back corners (|x| 14..33, d 24..48),
--- front corners (|x| 20..33, d 1..5) and the strip by the walls between shelves.
+-- THE WAREHOUSE BAYS: a real warehouse - polished concrete with painted safety lines, steel
+-- columns, cladded walls, roof trusses with skylights and high-bay lamps, orange/blue pallet
+-- racking (the boxes spawn on it), pallets, a forklift and bollards. Every area is one
+-- department: its colour is on the wall band, the hanging sign and the wall signs.
+-- (one global function, so the map script stays under Luau's 200-local limit)
 ------------------------------------------------------------------
-local THEMES = {}
+function WAREHOUSE_BAYS()
+	local CONCRETE = RGB(164, 166, 169)
+	local JOINT = RGB(136, 138, 142)
+	local YELLOW = RGB(255, 196, 0)
+	local STRIPE = RGB(32, 32, 36)
+	local STEEL = RGB(96, 102, 112)
+	local STEEL_DARK = RGB(64, 68, 76)
+	local CLAD = RGB(204, 210, 218)
+	local CLAD_RIB = RGB(182, 188, 197)
+	local BLOCK = RGB(146, 148, 152)
+	local RACK_BLUE = RGB(30, 88, 170)
+	local RACK_ORANGE = RGB(242, 114, 24)
+	local DECK = RGB(158, 164, 172)
+	local WOOD = RGB(200, 156, 100)
+	local WOOD_DARK = RGB(158, 116, 70)
+	local CARD = RGB(198, 152, 98)
+	local TAPE = RGB(226, 196, 140)
+	local LAMP = RGB(255, 244, 226)
+	local LEVELS = {0.6, 5.6, 10.6}
 
-THEMES[1] = function(r) -- DUSTY STORAGE: old, broken, cobwebs, flickering bulb
-	for i = 1, 7 do
-		local x = (i % 2 == 0) and 24 or -24
-		D(r, "BrokenCrate", V(3, 3, 3), x + (i % 3), F + 1.3, 26 + i * 3, RGB(110, 90, 70), M.WoodPlanks, nil, CFrame.Angles(math.rad(10), math.rad(i * 25), math.rad(-8)))
+	-- a part placed relative to a local frame (base is a CFrame in studs, offsets in design units)
+	local function piece(r, base, name, size, lx, ly, lz, color, mat, shape, rot)
+		local cf = base * CFrame.new(lx * SC, ly * SC, lz * SC)
+		if rot then cf = cf * rot end
+		local p = P(r.folder, name, size * SC, cf, color, mat, FX)
+		if shape == "cyl" then p.Shape = Enum.PartType.Cylinder elseif shape == "ball" then p.Shape = Enum.PartType.Ball end
+		return p
 	end
-	for i = 1, 3 do pillar(r, "RustyBarrel", 3.4, 2.4, -30, F, 25 + i * 3, RGB(120, 70, 40), M.CorrodedMetal) end
-	D(r, "TippedBarrel", V(3.4, 2.4, 2.4), 28, F + 1.2, 46, RGB(110, 65, 40), M.CorrodedMetal, {Shape = Enum.PartType.Cylinder})
-	for _, x in ipairs({-(HW - 1.5), HW - 1.5}) do
-		for _, d in ipairs({2, 48}) do
-			D(r, "Cobweb", V(0.1, 7, 7), x, WH - 4, d, RGB(240, 240, 240), M.SmoothPlastic, {Transparency = 0.5, CanCollide = false, CanQuery = false}, CFrame.Angles(math.rad(45), 0, 0))
+	local SIDEWAYS = CFrame.Angles(0, 0, math.rad(90))
+
+	------------------------------------------------------------------
+	-- floor: polished concrete, saw-cut joints, yellow aisle lines, a dashed forklift lane
+	------------------------------------------------------------------
+	local function floor(r, SLen)
+		D(r, "Floor", V(HW * 2, 0.4, SLen), 0, 0.3, SLen / 2, CONCRETE, M.Concrete)
+		for _, x in ipairs({-28, -14, 14, 28}) do D(r, "FloorJoint", V(0.12, 0.05, SLen), x, F + 0.01, SLen / 2, JOINT, M.SmoothPlastic, FX) end
+		for d = 14, SLen - 1, 14 do D(r, "FloorJoint", V(HW * 2, 0.05, 0.12), 0, F + 0.01, d, JOINT, M.SmoothPlastic, FX) end
+		for _, x in ipairs({-9, 9, -(HW - 7.2), HW - 7.2}) do D(r, "AisleLine", V(0.45, 0.06, SLen - 2.4), x, F + 0.02, SLen / 2 + 1.2, YELLOW, M.SmoothPlastic, FX) end
+		for d = 4, SLen - 4, 7 do D(r, "LaneDash", V(0.35, 0.06, 3.4), 0, F + 0.02, d, RGB(240, 240, 240), M.SmoothPlastic, FX) end
+		-- yellow/black hazard band where the area starts
+		local n = 14
+		local w = HW * 2 / n
+		for k = 0, n - 1 do
+			D(r, "HazardStripe", V(w, 0.06, 1.4), -HW + w * (k + 0.5), F + 0.02, 0.9, (k % 2 == 0) and YELLOW or STRIPE, M.SmoothPlastic, FX)
 		end
 	end
-	for i = 1, 8 do
-		D(r, "Crack", V(5 + i % 4, 0.05, 0.35), -20 + i * 5, F + 0.03, 6 + i * 5, RGB(70, 55, 40), M.Slate, FX, CFrame.Angles(0, math.rad(i * 37), 0))
-	end
-	for i = 1, 5 do
-		D(r, "DustPile", V(3 + i % 2, 0.25, 2.5), -12 + i * 6, F + 0.12, 3 + (i % 2) * 40, RGB(150, 135, 115), M.Sand, FX, CFrame.Angles(0, math.rad(i * 50), 0))
-	end
-	D(r, "LampWire", V(0.15, 8, 0.15), 0, WH - 4, 25, RGB(40, 40, 40), M.SmoothPlastic, FX)
-	local bulb = ball(r, "OldBulb", 1.3, 0, WH - 8.5, 25, RGB(255, 190, 90), M.Neon, FX)
-	bulb:SetAttribute("Flicker", true)
-	light(bulb, RGB(255, 170, 80), 40, 1.5)
-	ambience(r, {RGB(220, 200, 170)}, {rate = 18, speed = 0.3, size = 0.18, accel = Vector3.new(0, -0.2, 0), life = 8})
-end
 
-THEMES[2] = function(r) -- FARM BARN: hay, fences, scarecrow, trough, lantern
-	for i = 0, 3 do
-		for j = 0, 1 do
-			D(r, "HayBale", V(4, 2.4, 3), 27, F + 1.2 + j * 2.4, 27 + i * 4 + j, RGB(230, 195, 90), M.Fabric)
+	------------------------------------------------------------------
+	-- walls: concrete block at the bottom, ribbed cladding above, a department colour band
+	------------------------------------------------------------------
+	local function walls(r, SLen, acc)
+		for _, side in ipairs({-1, 1}) do
+			D(r, "Wall", V(2, WH, SLen), side * (HW + 1), WH / 2, SLen / 2, CLAD, M.Metal)
+			D(r, "BlockBase", V(0.6, 6, SLen), side * (HW - 0.2), F + 3, SLen / 2, BLOCK, M.Concrete, FX)
+			for _, y in ipairs({2, 4, 6}) do D(r, "Mortar", V(0.64, 0.1, SLen), side * (HW - 0.2), F + y, SLen / 2, RGB(122, 124, 128), M.SmoothPlastic, FX) end
+			for d = 3, SLen - 1, 6 do D(r, "CladRib", V(0.3, WH - 7.5, 0.6), side * (HW - 0.1), F + 6.5 + (WH - 7.5) / 2, d, CLAD_RIB, M.Metal, FX) end
+			D(r, "DeptBand", V(0.4, 1.6, SLen), side * (HW - 0.3), F + 7.6, SLen / 2, acc, M.SmoothPlastic, FX)
+			D(r, "DeptTrim", V(0.42, 0.24, SLen), side * (HW - 0.3), F + 8.55, SLen / 2, RGB(245, 245, 245), M.SmoothPlastic, FX)
 		end
 	end
-	for _, x in ipairs({-20, 20}) do
-		D(r, "FenceRail", V(0.3, 0.4, 20), x, F + 1.2, 36, RGB(250, 250, 250), M.WoodPlanks)
-		D(r, "FenceRail", V(0.3, 0.4, 20), x, F + 2.6, 36, RGB(250, 250, 250), M.WoodPlanks)
-		for d = 26, 46, 4 do D(r, "FencePost", V(0.4, 3.4, 0.4), x, F + 1.7, d, RGB(250, 250, 250), M.WoodPlanks) end
-	end
-	D(r, "Trough", V(2.2, 1.4, 6), -27, F + 0.7, 30, RGB(130, 90, 55), M.WoodPlanks)
-	D(r, "Water", V(1.6, 0.2, 5.4), -27, F + 1.35, 30, RGB(80, 170, 240), M.SmoothPlastic, FX)
-	D(r, "ScarecrowPole", V(0.4, 7, 0.4), -27, F + 3.5, 42, RGB(120, 85, 50), M.Wood)
-	D(r, "ScarecrowArms", V(5, 0.4, 0.4), -27, F + 5.5, 42, RGB(120, 85, 50), M.Wood)
-	D(r, "ScarecrowShirt", V(2.2, 2, 1.2), -27, F + 5, 42, RGB(80, 120, 200), M.Fabric)
-	ball(r, "ScarecrowHead", 1.6, -27, F + 6.8, 42, RGB(235, 200, 120), M.Fabric)
-	D(r, "StrawHat", V(2.6, 0.3, 2.6), -27, F + 7.6, 42, RGB(220, 180, 80), M.Fabric)
-	for i = 1, 12 do
-		D(r, "LooseHay", V(2.5, 0.1, 1.2), -25 + (i * 7) % 50, F + 0.05, (i * 11) % 48 + 1, RGB(235, 205, 110), M.Fabric, FX, CFrame.Angles(0, math.rad(i * 50), 0))
-	end
-	for _, x in ipairs({-15, 15}) do
-		D(r, "LanternHook", V(0.15, 5, 0.15), x, WH - 2.5, 25, RGB(40, 40, 40), M.Metal, FX)
-		light(D(r, "Lantern", V(0.9, 1.3, 0.9), x, WH - 5.6, 25, RGB(255, 200, 100), M.Neon, FX), RGB(255, 190, 90), 28, 1.4)
-	end
-	ambience(r, {RGB(240, 210, 120), RGB(200, 160, 80)}, {rate = 12, speed = 0.6, size = 0.25, accel = Vector3.new(0.5, -1, 0), life = 7})
-end
 
-THEMES[3] = function(r) -- TOY FACTORY: conveyor, giant blocks, ball, rocket, confetti
-	local cols = {RGB(255, 80, 80), RGB(80, 160, 255), RGB(255, 210, 40), RGB(90, 220, 110), RGB(200, 110, 255)}
-	D(r, "Conveyor", V(4, 1.2, 22), 28, F + 0.6, 36, RGB(50, 50, 60), M.SmoothPlastic)
-	for d = 26, 46, 2 do D(r, "Roller", V(4.2, 0.2, 0.4), 28, F + 1.25, d, RGB(255, 210, 40), M.SmoothPlastic) end
-	for i = 1, 4 do D(r, "ToyBlock", V(2.6, 2.6, 2.6), 28, F + 2.5, 26 + i * 5, cols[i], M.SmoothPlastic) end
-	for i = 0, 2 do
-		for j = 0, 2 - i do
-			D(r, "GiantBlock", V(3.5, 3.5, 3.5), -28 + j * 3.6 + i * 1.8, F + 1.75 + i * 3.5, 46, cols[(i + j) % 5 + 1], M.SmoothPlastic)
+	-- a steel I-beam column with a yellow guard at its foot (+ a fire extinguisher on some)
+	local function column(r, side, d, extinguisher)
+		local x = side * (HW - 1.3)
+		D(r, "Column", V(1.2, WH, 0.3), x, WH / 2, d, STEEL, M.Metal, FX)
+		for _, o in ipairs({-0.55, 0.55}) do D(r, "ColumnFlange", V(0.3, WH, 1.4), x + o, WH / 2, d, STEEL, M.Metal, FX) end
+		D(r, "ColumnGuard", V(2.3, 3, 2.3), x, F + 1.5, d, YELLOW, M.SmoothPlastic, FX)
+		D(r, "ColumnGuardBand", V(2.36, 0.45, 2.36), x, F + 2.3, d, STRIPE, M.SmoothPlastic, FX)
+		D(r, "BasePlate", V(2.8, 0.15, 2.8), x, F + 0.08, d, STEEL_DARK, M.Metal, FX)
+		if extinguisher then
+			local ex = x - side * 1.05
+			pillar(r, "Extinguisher", 1.7, 0.6, ex, F + 3.4, d - 0.9, RGB(205, 30, 30), M.SmoothPlastic, FX)
+			D(r, "ExtinguisherHead", V(0.35, 0.35, 0.5), ex, F + 5.25, d - 0.9, RGB(30, 30, 30), M.Metal, FX)
+			local sign = D(r, "FireSign", V(0.12, 1.3, 1.3), ex + side * 0.4, F + 7, d - 0.9, RGB(205, 30, 30), M.SmoothPlastic, FX)
+			surfaceText(sign, (side < 0) and Enum.NormalId.Right or Enum.NormalId.Left, "FIRE", WHITE)
 		end
 	end
-	ball(r, "GiantBall", 6, -25, F + 3, 31, RGB(255, 80, 80), M.SmoothPlastic)
-	disc(r, "BallStripe", 1.2, 6.1, -25, F + 3, 31, RGB(255, 255, 255), M.SmoothPlastic, nil, CFrame.Angles(0, math.rad(90), 0))
-	pillar(r, "ToyRocket", 7, 2.4, 28, F, 3, RGB(240, 240, 250), M.SmoothPlastic)
-	ball(r, "RocketNose", 2.4, 28, F + 7.4, 3, RGB(255, 80, 80), M.SmoothPlastic)
-	for _, ox in ipairs({-1.6, 1.6}) do D(r, "RocketFin", V(0.3, 2.2, 1.6), 28 + ox, F + 1.1, 3, RGB(80, 160, 255), M.SmoothPlastic) end
-	for i = 0, 4 do
-		D(r, "WallStripe", V(0.2, 1.5, SL), -HW + 0.3, F + 3 + i * 3.5, SL / 2, cols[i + 1], M.Neon, FX)
-		D(r, "WallStripe", V(0.2, 1.5, SL), HW - 0.3, F + 3 + i * 3.5, SL / 2, cols[5 - i], M.Neon, FX)
-	end
-	ambience(r, cols, {rate = 20, speed = 1, size = 0.35, accel = Vector3.new(0, -2, 0), life = 6})
-end
 
-THEMES[4] = function(r) -- CANDY SHOP: lollipops, candy canes, gumdrops, sprinkles
-	local cols = {RGB(255, 90, 160), RGB(110, 220, 255), RGB(255, 220, 60), RGB(150, 255, 140)}
-	for i, d in ipairs({27, 33, 39, 45}) do
-		local x = (i % 2 == 0) and 27 or -27
-		pillar(r, "LollipopStick", 8, 0.6, x, F, d, RGB(250, 250, 250), M.SmoothPlastic)
-		disc(r, "Lollipop", 1, 6, x, F + 10.5, d, cols[i], M.SmoothPlastic, nil, CFrame.Angles(0, math.rad(90), 0))
-		disc(r, "Swirl", 1.1, 3, x, F + 10.5, d, RGB(255, 255, 255), M.SmoothPlastic, nil, CFrame.Angles(0, math.rad(90), 0))
-	end
-	for _, xd in ipairs({{-31, 2}, {31, 2}, {-18, 47}, {18, 47}}) do
-		for k = 0, 9 do
-			pillar(r, "CandyCane", 1.2, 1.6, xd[1], F + k * 1.2, xd[2], (k % 2 == 0) and RGB(230, 40, 50) or RGB(255, 255, 255), M.SmoothPlastic)
+	------------------------------------------------------------------
+	-- roof: deck, purlins, skylight strips, steel trusses and hanging high-bay lamps
+	------------------------------------------------------------------
+	local function truss(r, d)
+		local yb, yt = WH - 5.5, WH - 0.9
+		D(r, "TrussChord", V(HW * 2, 0.6, 0.6), 0, yb, d, STEEL, M.Metal, FX)
+		D(r, "TrussChord", V(HW * 2, 0.6, 0.6), 0, yt, d, STEEL, M.Metal, FX)
+		local panels = 6
+		local pw = HW * 2 / panels
+		local h = yt - yb
+		for k = 0, panels do
+			local x = -HW + k * pw
+			D(r, "TrussPost", V(0.35, h, 0.35), x, (yb + yt) / 2, d, STEEL, M.Metal, FX)
+			if k < panels then
+				local sgn = (k < panels / 2) and 1 or -1
+				D(r, "TrussWeb", V(math.sqrt(pw * pw + h * h), 0.3, 0.3), x + pw / 2, (yb + yt) / 2, d, STEEL, M.Metal, FX, CFrame.Angles(0, 0, sgn * math.atan2(h, pw)))
+			end
 		end
-		ball(r, "CaneTop", 1.6, xd[1], F + 12.2, xd[2], RGB(230, 40, 50), M.SmoothPlastic)
 	end
-	for i = 1, 10 do
-		ball(r, "Gumdrop", 2.4, -24 + (i * 9) % 48, F + 0.4, 21.5 + (i % 3), cols[i % 4 + 1], M.SmoothPlastic, {Reflectance = 0.15})
-	end
-	D(r, "Counter", V(14, 3, 3), -24, F + 1.5, 46, RGB(255, 200, 225), M.SmoothPlastic)
-	D(r, "CounterTop", V(14.4, 0.4, 3.4), -24, F + 3.2, 46, RGB(130, 70, 40), M.SmoothPlastic)
-	for i = 1, 4 do ball(r, "Cupcake", 1.6, -29 + i * 3, F + 4, 46, cols[i], M.SmoothPlastic) end
-	ambience(r, {RGB(255, 255, 255), RGB(255, 150, 220), RGB(150, 230, 255)}, {rate = 25, speed = 0.8, size = 0.2, glow = 0.6, accel = Vector3.new(0, -1.5, 0), life = 6})
-end
-
-THEMES[5] = function(r) -- PIRATE COVE: water, ship, palm, treasure, bubbles
-	D(r, "Water", V(14, 0.3, 26), 26, F + 0.1, 36, RGB(40, 140, 220), M.SmoothPlastic, {Transparency = 0.15, CanCollide = false})
-	D(r, "Hull", V(5, 3.5, 16), 26, F + 1.6, 36, RGB(110, 70, 40), M.WoodPlanks)
-	D(r, "Deck", V(5.4, 0.4, 16.4), 26, F + 3.4, 36, RGB(150, 105, 60), M.WoodPlanks)
-	D(r, "Bow", V(3.6, 3.5, 3.6), 26, F + 1.6, 26.5, RGB(110, 70, 40), M.WoodPlanks, nil, CFrame.Angles(0, math.rad(45), 0))
-	pillar(r, "Mast", 13, 0.7, 26, F + 3.4, 37, RGB(90, 60, 35), M.Wood)
-	D(r, "Sail", V(8, 7, 0.2), 26, F + 10, 37, RGB(245, 240, 225), M.Fabric)
-	D(r, "SailSkull", V(2, 2, 0.25), 26, F + 10, 37, RGB(30, 30, 30), M.SmoothPlastic)
-	D(r, "Flag", V(2.4, 1.6, 0.1), 27.2, F + 16, 37, RGB(20, 20, 20), M.Fabric)
-	pillar(r, "PalmTrunk", 11, 1.3, -29, F, 30, RGB(150, 110, 70), M.Wood)
-	for k = 0, 4 do
-		D(r, "PalmLeaf", V(7, 0.2, 1.8), -29, F + 11, 30, RGB(60, 175, 60), M.SmoothPlastic, NO_COLLIDE, CFrame.Angles(0, math.rad(k * 72), math.rad(-22)))
-	end
-	for i = 1, 3 do ball(r, "Coconut", 0.9, -29 + (i - 2) * 0.8, F + 10.4, 30.6, RGB(110, 70, 40), M.SmoothPlastic) end
-	for i = 1, 10 do
-		ball(r, "GoldCoins", 1 + (i % 3) * 0.5, -26 + (i % 4), F + 0.3, 42 + (i % 5), RGB(255, 200, 40), M.SmoothPlastic, {Reflectance = 0.25})
-	end
-	D(r, "Chest", V(3, 2, 2), -27, F + 1, 46, RGB(150, 95, 45), M.Wood)
-	light(D(r, "ChestGlow", V(2.6, 0.3, 1.6), -27, F + 2.1, 46, RGB(255, 210, 60), M.Neon, FX), RGB(255, 200, 60), 14, 2)
-	for i = 1, 2 do pillar(r, "Barrel", 3, 2.2, -31, F, 1.6 + (i - 1) * 2.4, RGB(140, 95, 55), M.WoodPlanks) end
-	for i = 1, 6 do
-		D(r, "Coral", V(0.5, 2 + i % 3, 0.5), -HW + 0.6, F + 6 + i * 2, 22 + i * 4, (i % 2 == 0) and RGB(255, 80, 200) or RGB(255, 140, 60), M.SmoothPlastic, FX, CFrame.Angles(math.rad(15 * (i % 3 - 1)), 0, 0))
-	end
-	ambience(r, {RGB(200, 240, 255), RGB(120, 200, 255)}, {rate = 18, speed = 2, size = 0.4, glow = 0.3, accel = Vector3.new(0, 2, 0), dir = Enum.NormalId.Top, y = F + 1, life = 5})
-end
-
-THEMES[6] = function(r) -- DINO MUSEUM: T-Rex skeleton, ropes, ferns, spotlights
-	local bone = RGB(242, 236, 215)
-	D(r, "Platform", V(10, 1, 24), 25, F + 0.5, 36, RGB(120, 100, 80), M.Marble)
-	local b = F + 1
-	for _, dz in ipairs({-2, 2}) do
-		D(r, "Leg", V(1, 5, 1), 25 + dz * 0.4, b + 2.5, 38 + dz, bone, M.SmoothPlastic)
-		D(r, "Foot", V(1.4, 0.5, 2.2), 25 + dz * 0.4, b + 0.25, 37 + dz, bone, M.SmoothPlastic)
-	end
-	D(r, "Pelvis", V(2.4, 2, 3), 25, b + 5.5, 38, bone, M.SmoothPlastic)
-	for i = 1, 6 do
-		D(r, "Spine", V(1, 1, 1.4), 25, b + 5.8 + i * 0.5, 38 - i * 1.3, bone, M.SmoothPlastic)
-		D(r, "Rib", V(3.2, 0.3, 0.3), 25, b + 4.6 + i * 0.4, 38 - i * 1.3, bone, M.SmoothPlastic)
-	end
-	D(r, "Neck", V(1, 1, 2.4), 25, b + 9.2, 29, bone, M.SmoothPlastic, nil, CFrame.Angles(math.rad(30), 0, 0))
-	D(r, "Skull", V(2.4, 2.2, 4), 25, b + 10.2, 26.5, bone, M.SmoothPlastic)
-	D(r, "Jaw", V(2, 0.6, 3.4), 25, b + 8.8, 26.2, bone, M.SmoothPlastic, nil, CFrame.Angles(math.rad(12), 0, 0))
-	for _, ox in ipairs({-0.8, 0.8}) do D(r, "EyeSocket", V(0.6, 0.6, 0.2), 25 + ox, b + 10.6, 24.45, RGB(30, 30, 30), M.SmoothPlastic) end
-	for i = 1, 4 do D(r, "Tooth", V(0.2, 0.4, 0.2), 24.3 + i * 0.35, b + 9.3, 24.8, RGB(255, 255, 255), M.SmoothPlastic) end
-	for i = 1, 7 do
-		local sz = 1.1 - i * 0.1
-		D(r, "Tail", V(sz, sz, 1.6), 25, b + 5.5 - i * 0.45, 40 + i * 1.4, bone, M.SmoothPlastic)
-	end
-	for _, x in ipairs({19, 31}) do
-		for _, d in ipairs({24, 48}) do pillar(r, "RopePost", 3, 0.5, x, F, d, RGB(212, 175, 55), M.Metal) end
-		D(r, "Rope", V(0.25, 0.25, 24), x, F + 2.6, 36, RGB(180, 30, 40), M.Fabric, NO_COLLIDE)
-	end
-	for _, d in ipairs({28, 44}) do
-		local spot = D(r, "Spotlight", V(1, 1, 1.4), 25, WH - 1, d, RGB(30, 30, 30), M.Metal, FX)
+	local function lamp(r, x, d)
+		local y = WH - 7.5
+		local cable = D(r, "LampCable", V(0.1, 7, 0.1), x, WH - 3.5, d, RGB(40, 40, 44), M.Metal, FX)
+		pillar(r, "LampHousing", 1.1, 2.0, x, y, d, RGB(72, 76, 84), M.Metal, FX)
+		pillar(r, "LampReflector", 0.7, 3.4, x, y - 0.6, d, RGB(150, 156, 166), M.Metal, FX)
+		disc(r, "LampLens", 0.15, 3.0, x, y - 0.65, d, LAMP, M.Neon, FX)
 		local sl = Instance.new("SpotLight")
 		sl.Face = Enum.NormalId.Bottom
-		sl.Angle = 50
-		sl.Range = 30
-		sl.Brightness = 4
-		sl.Color = RGB(255, 245, 220)
-		sl.Parent = spot
+		sl.Color = LAMP
+		sl.Range = 60
+		sl.Angle = 110
+		sl.Brightness = 1.6
+		sl.Parent = cable
 	end
-	for i = 1, 8 do
-		ball(r, "Fern", 2.4 + (i % 3) * 0.6, -31 + (i % 2) * 3, F + 0.6, 24 + i * 3, RGB(60, 150 + i * 10, 60), M.Grass)
-	end
-	local sign = D(r, "InfoSign", V(5, 2.6, 0.3), 25, F + 1.6, 23, RGB(40, 40, 50), M.SmoothPlastic)
-	surfaceText(sign, Enum.NormalId.Back, "T-REX", RGB(255, 230, 150))
-	ambience(r, {RGB(180, 255, 140), RGB(255, 255, 200)}, {rate = 10, speed = 0.4, size = 0.25, glow = 1, accel = Vector3.new(0, 0.2, 0), y = 6, life = 8})
-end
-
-THEMES[7] = function(r) -- FROZEN LAB: ice crystals, snow piles, frozen mammoth, snowfall
-	for i = 1, 6 do
-		local x = (i % 2 == 0) and 30 or -30
-		for k = 0, 2 do
-			D(r, "IceCrystal", V(1.6, 5 + k * 2, 1.6), x + (k - 1) * 1.2, F + 2.5 + k, 3 + i * 0.5 + (i > 3 and 42 or 0), RGB(150, 220, 255), M.Glass, {Transparency = 0.25}, CFrame.Angles(0, 0, math.rad((k - 1) * 18)))
+	local function roof(r, SLen, frames)
+		D(r, "Ceiling", V(HW * 2 + 4, 1.2, SLen + 0.2), 0, WH + 0.6, SLen / 2, RGB(92, 96, 104), M.Metal)
+		for _, x in ipairs({-31.5, -10.5, 10.5, 31.5}) do D(r, "Purlin", V(0.5, 0.8, SLen), x, WH - 0.4, SLen / 2, STEEL, M.Metal, FX) end
+		for _, x in ipairs({-21, 21}) do
+			local sky = D(r, "Skylight", V(7, 0.2, SLen - 8), x, WH - 0.05, SLen / 2, RGB(232, 244, 255), M.Neon, FX)
+			sky.Transparency = 0.2
+			for _, o in ipairs({-3.7, 3.7}) do D(r, "SkylightFrame", V(0.4, 0.5, SLen - 8), x + o, WH - 0.25, SLen / 2, STEEL_DARK, M.Metal, FX) end
+		end
+		for _, d in ipairs(frames) do truss(r, d) end
+		for d = 12, SLen - 6, 24 do
+			for _, x in ipairs({-17, 17}) do lamp(r, x, d) end
 		end
 	end
-	for i = 1, 10 do
-		ball(r, "SnowPile", 3 + (i % 3), -26 + (i * 13) % 52, F - 0.7, 22 + (i % 2) * 26, RGB(250, 252, 255), M.Snow)
-	end
-	D(r, "IceBlock", V(14, 9, 10), 25, F + 4.5, 37, RGB(170, 220, 255), M.Glass, {Transparency = 0.4})
-	D(r, "FrozenMammoth", V(8, 4.5, 4.5), 25, F + 3.2, 37, RGB(110, 75, 55), M.Fabric)
-	ball(r, "MammothHead", 3.8, 20.5, F + 4.4, 37, RGB(110, 75, 55), M.Fabric)
-	for _, dz in ipairs({-1.2, 1.2}) do
-		D(r, "Tusk", V(3, 0.45, 0.45), 18.6, F + 2.6, 37 + dz, RGB(250, 245, 230), M.SmoothPlastic, nil, CFrame.Angles(0, 0, math.rad(-25)))
-	end
-	light(D(r, "ColdLight", V(2, 0.4, 2), 0, WH - 1, 25, RGB(180, 230, 255), M.Neon, FX), RGB(160, 220, 255), 45, 1.5)
-	ambience(r, {RGB(255, 255, 255)}, {rate = 45, speed = 2, size = 0.35, accel = Vector3.new(0.6, -3, 0), life = 7})
-end
 
-THEMES[8] = function(r) -- TECH LAB: server racks, neon, monitors, hologram, data sparks
-	local neon = RGB(60, 170, 255)
-	for _, y in ipairs({F + 0.2, WH - 1, 12}) do
-		D(r, "NeonStrip", V(0.3, 0.3, SL), -HW + 0.3, y, SL / 2, neon, M.Neon, FX)
-		D(r, "NeonStrip", V(0.3, 0.3, SL), HW - 0.3, y, SL / 2, neon, M.Neon, FX)
+	------------------------------------------------------------------
+	-- pallets, wrapped stock and pallet racking
+	------------------------------------------------------------------
+	local function pallet(r, x, y, d, size)
+		local s = size or 1
+		for _, k in ipairs({-1, 0, 1}) do D(r, "PalletRunner", V(6 * s, 0.35, 0.8), x, y + 0.18, d + k * 2.4 * s, WOOD_DARK, M.WoodPlanks, FX) end
+		for k = -2, 2 do D(r, "PalletSlat", V(1, 0.25, 6 * s), x + k * 1.25 * s, y + 0.48, d, WOOD, M.WoodPlanks, FX) end
 	end
-	for i = 0, 3 do
-		local d = 26 + i * 6
-		D(r, "ServerRack", V(4, 10, 3), 29, F + 5, d, RGB(25, 25, 30), M.SmoothPlastic)
-		for k = 0, 6 do
-			D(r, "Led", V(0.3, 0.3, 0.1), 27.8 + (k % 3) * 0.6, F + 1.5 + k * 1.2, d - 1.55, (k % 3 == 0) and RGB(80, 255, 120) or neon, M.Neon, FX)
+	-- a pallet of cardboard boxes, stretch-wrapped (+ tape lines and a shipping label)
+	local function load(r, x, y, d, w, h, tint)
+		local col = tint and CARD:Lerp(tint, 0.25) or CARD
+		D(r, "StockPallet", V(w + 0.2, 0.45, w + 0.2), x, y + 0.23, d, WOOD_DARK, M.WoodPlanks, FX)
+		D(r, "Stock", V(w, h, w), x, y + 0.45 + h / 2, d, col, M.SmoothPlastic, FX)
+		D(r, "StockTape", V(0.4, h + 0.04, w + 0.04), x, y + 0.45 + h / 2, d, TAPE, M.SmoothPlastic, FX)
+		local wrap = D(r, "StretchWrap", V(w + 0.15, h * 0.85, w + 0.15), x, y + 0.45 + h * 0.48, d, RGB(235, 240, 245), M.Glass, FX)
+		wrap.Transparency = 0.7
+	end
+	-- orange beams, blue upright frames with zig-zag bracing, steel decks; boxes spawn on levels 1-2
+	local function rack(r, side, d1, d2, spots, tint)
+		local x = side * (HW - 3)
+		local len = d2 - d1
+		local dMid = (d1 + d2) / 2
+		local xf, xb = x - side * 2.1, x + side * 2.1
+		for _, d in ipairs({d1, dMid, d2}) do
+			for _, px in ipairs({xf, xb}) do D(r, "RackPost", V(0.45, 13.6, 0.45), px, F + 6.8, d, RACK_BLUE, M.Metal, FX) end
+		end
+		for _, d in ipairs({d1, d2}) do -- the end frames are braced
+			for _, y in ipairs({1.0, 13.2}) do D(r, "RackBrace", V(4.2, 0.18, 0.18), x, F + y, d, RACK_BLUE, M.Metal, FX) end
+			for k = 0, 2 do
+				local h = 4.07
+				D(r, "RackBrace", V(math.sqrt(4.2 * 4.2 + h * h), 0.16, 0.16), x, F + 1.0 + h * (k + 0.5), d, RACK_BLUE, M.Metal, FX,
+					CFrame.Angles(0, 0, ((k % 2 == 0) and 1 or -1) * math.atan2(h, 4.2)))
+			end
+		end
+		for li, y in ipairs(LEVELS) do
+			for _, px in ipairs({xf, xb}) do D(r, "RackBeam", V(0.35, 0.7, len), px, F + y - 0.2, dMid, RACK_ORANGE, M.Metal, FX) end
+			D(r, "ShelfBoard", V(4.4, 0.25, len), x, F + y + 0.07, dMid, DECK, M.DiamondPlate, FX)
+			if li == 1 then D(r, "RackLabel", V(0.06, 0.42, 1.4), xf - side * 0.2, F + y - 0.2, d1 + 1.6, RGB(250, 250, 250), M.SmoothPlastic, FX) end
+			if li == #LEVELS then -- the top level holds wrapped stock (boxes only spawn on the lower two)
+				for _, f in ipairs({0.27, 0.73}) do load(r, x, F + y + 0.2, d1 + len * f, 3.6, 2.4, tint) end
+			end
+		end
+		for _, sp in ipairs(spots) do
+			local p = D(r, "Spawn", V(2, 0.2, 2), x, F + LEVELS[sp[1]] + 0.2, sp[2], RGB(255, 255, 0), nil, GHOST)
+			p:SetAttribute("Area", r.index)
+			p:SetAttribute("Shelf", true)
+			p.Parent = spawns
 		end
 	end
-	for _, d in ipairs({30, 40}) do
-		D(r, "Desk", V(8, 0.4, 3), -26, F + 3, d, RGB(220, 225, 235), M.SmoothPlastic)
-		D(r, "DeskLegs", V(7.6, 2.8, 0.4), -26, F + 1.4, d, RGB(120, 125, 135), M.Metal)
-		for _, x in ipairs({-29, -23}) do
-			D(r, "Monitor", V(2.4, 1.6, 0.2), x, F + 4.2, d + 0.9, RGB(30, 30, 35), M.SmoothPlastic)
-			D(r, "Screen", V(2.1, 1.3, 0.05), x, F + 4.2, d + 0.78, neon, M.Neon, FX)
+
+	------------------------------------------------------------------
+	-- a parked forklift: body, counterweight, overhead guard, mast, forks, wheels, beacon
+	------------------------------------------------------------------
+	local function forklift(r, x, d, yaw)
+		local base = SCF(r, x, F, d) * CFrame.Angles(0, yaw, 0)
+		local Y, G2, BK = RGB(250, 186, 22), RGB(58, 60, 66), RGB(26, 26, 30)
+		piece(r, base, "ForkliftBody", V(3.2, 1.3, 4.6), 0, 1.25, 0.2, Y, M.SmoothPlastic)
+		piece(r, base, "ForkliftHood", V(2.7, 0.9, 1.9), 0, 2.3, 1.2, Y, M.SmoothPlastic)
+		piece(r, base, "ForkliftWeight", V(3.3, 1.9, 1.2), 0, 1.6, 2.6, G2, M.Metal)
+		for k = 0, 2 do piece(r, base, "ForkliftChevron", V(0.5, 1.5, 0.08), -1.1 + k * 1.1, 1.6, 3.22, (k % 2 == 0) and Y or BK, M.SmoothPlastic) end
+		piece(r, base, "ForkliftSeat", V(1.3, 0.45, 1.1), 0, 2.95, 0.1, BK, M.Fabric)
+		piece(r, base, "ForkliftSeatBack", V(1.3, 1.1, 0.3), 0, 3.6, 0.65, BK, M.Fabric)
+		piece(r, base, "ForkliftColumn", V(0.25, 1.4, 0.25), 0, 2.6, -1.0, G2, M.Metal, nil, CFrame.Angles(math.rad(-20), 0, 0))
+		piece(r, base, "ForkliftWheel", V(0.15, 0.9, 0.9), 0, 3.3, -0.85, BK, M.SmoothPlastic, "cyl", CFrame.Angles(math.rad(-70), 0, math.rad(90)))
+		for _, px in ipairs({-1.45, 1.45}) do
+			for _, pz in ipairs({-1.0, 1.7}) do piece(r, base, "GuardPost", V(0.2, 3.4, 0.2), px, 3.5, pz, G2, M.Metal) end
+			piece(r, base, "Headlight", V(0.35, 0.35, 0.15), px, 4.8, -1.12, RGB(255, 250, 225), M.Neon)
+		end
+		piece(r, base, "GuardRoof", V(3.1, 0.2, 2.9), 0, 5.25, 0.35, G2, M.Metal)
+		for k = -1, 1 do piece(r, base, "GuardSlat", V(0.12, 0.12, 2.9), k * 0.9, 5.4, 0.35, BK, M.Metal) end
+		piece(r, base, "Beacon", V(0.45, 0.4, 0.45), 0, 5.6, 1.4, RGB(255, 140, 20), M.Neon)
+		for _, px in ipairs({-0.95, 0.95}) do piece(r, base, "MastRail", V(0.3, 5.4, 0.45), px, 2.9, -2.35, G2, M.Metal) end
+		piece(r, base, "MastTop", V(2.2, 0.3, 0.45), 0, 5.5, -2.35, G2, M.Metal)
+		piece(r, base, "Carriage", V(2.5, 1.1, 0.25), 0, 1.0, -2.7, BK, M.Metal)
+		for _, px in ipairs({-0.65, 0.65}) do
+			piece(r, base, "ForkUpright", V(0.35, 1.1, 0.15), px, 0.85, -2.9, BK, M.Metal)
+			piece(r, base, "Fork", V(0.35, 0.15, 3.3), px, 0.38, -4.5, BK, M.Metal)
+		end
+		for _, w in ipairs({{-1.5, 0.75, -1.4, 1.5}, {1.5, 0.75, -1.4, 1.5}, {-1.45, 0.6, 1.9, 1.2}, {1.45, 0.6, 1.9, 1.2}}) do
+			piece(r, base, "Tyre", V(0.65, w[4], w[4]), w[1], w[2], w[3], BK, M.SmoothPlastic, "cyl")
+			piece(r, base, "Hub", V(0.68, w[4] * 0.5, w[4] * 0.5), w[1], w[2], w[3], RGB(200, 200, 205), M.Metal, "cyl")
 		end
 	end
-	pillar(r, "HoloBase", 1, 4, -26, F, 46, RGB(40, 45, 55), M.Metal)
-	light(ball(r, "Hologram", 3.4, -26, F + 4.5, 46, neon, M.Neon, {Transparency = 0.45, CanCollide = false}), neon, 20, 2)
-	disc(r, "HoloRing", 0.2, 5.5, -26, F + 4.5, 46, neon, M.Neon, {Transparency = 0.3, CanCollide = false}, CFrame.Angles(0, 0, math.rad(70)))
-	ambience(r, {RGB(60, 170, 255), RGB(140, 255, 255)}, {rate = 25, speed = 3, size = 0.2, glow = 1, accel = Vector3.new(0, 3, 0), dir = Enum.NormalId.Top, y = F + 1, life = 4})
-end
-
-THEMES[9] = function(r) -- ALIEN HANGAR: landed UFO with tractor beam, slime, spores
-	local green = RGB(90, 255, 90)
-	for _, y in ipairs({F + 0.2, WH - 1}) do
-		D(r, "NeonStrip", V(0.3, 0.3, SL), -HW + 0.3, y, SL / 2, green, M.Neon, FX)
-		D(r, "NeonStrip", V(0.3, 0.3, SL), HW - 0.3, y, SL / 2, green, M.Neon, FX)
+	local function bollard(r, x, d)
+		pillar(r, "Bollard", 3.2, 0.9, x, F, d, YELLOW, M.SmoothPlastic, FX)
+		for _, y in ipairs({1.1, 2.3}) do disc(r, "BollardBand", 0.35, 0.95, x, F + y, d, STRIPE, M.SmoothPlastic, FX) end
+		disc(r, "BollardCap", 0.2, 0.7, x, F + 3.25, d, STRIPE, M.SmoothPlastic, FX)
 	end
-	local ux, ud = 24, 36
-	disc(r, "UFOHull", 2, 18, ux, F + 6, ud, RGB(180, 190, 205), M.Metal)
-	disc(r, "UFORim", 0.6, 19, ux, F + 6, ud, RGB(110, 120, 135), M.Metal)
-	disc(r, "UFOBelly", 1.6, 11, ux, F + 4.6, ud, RGB(120, 130, 145), M.Metal)
-	ball(r, "UFODome", 8, ux, F + 7.6, ud, RGB(120, 255, 160), M.Glass, {Transparency = 0.35})
-	ball(r, "AlienPilot", 2.2, ux, F + 8.2, ud, RGB(110, 230, 110), M.SmoothPlastic)
-	for k = 0, 11 do
-		local a = math.rad(k * 30)
-		local bulb = ball(r, "UFOLight", 0.9, ux + math.cos(a) * 9, F + 6, ud + math.sin(a) * 9, (k % 2 == 0) and green or RGB(255, 240, 80), M.Neon, FX)
-		bulb:SetAttribute("Blink", k % 2)
-	end
-	for k = 0, 2 do
-		local a = math.rad(k * 120 + 30)
-		D(r, "UFOLeg", V(0.5, 4.5, 0.5), ux + math.cos(a) * 6, F + 2.2, ud + math.sin(a) * 6, RGB(90, 95, 105), M.Metal)
-	end
-	local beam = pillar(r, "TractorBeam", 4, 9, ux, F, ud, green, M.Neon, {Transparency = 0.75, CanCollide = false, CanQuery = false})
-	light(beam, green, 30, 2)
-	for i = 1, 5 do
-		disc(r, "Slime", 0.15, 3 + i, -26 + (i % 2) * 6, F + 0.08, 22 + i * 5, green, M.Neon, {Transparency = 0.2, CanCollide = false})
-	end
-	for i = 0, 2 do
-		D(r, "AlienCrate", V(3, 3, 3), -30, F + 1.5 + i * 3, 46, RGB(70, 80, 70), M.DiamondPlate)
-		D(r, "CrateGlow", V(3.1, 0.3, 3.1), -30, F + 1.5 + i * 3, 46, green, M.Neon, FX)
-	end
-	ambience(r, {RGB(150, 255, 120), RGB(60, 255, 200)}, {rate = 20, speed = 1, size = 0.35, glow = 1, accel = Vector3.new(0, 1.5, 0), dir = Enum.NormalId.Top, y = F + 1, life = 7})
-end
-
-THEMES[10] = function(r) -- GALAXY VAULT: neon grid, black hole, planets, crystals, stars
-	local purple, pink = RGB(180, 90, 255), RGB(255, 80, 200)
-	for x = -32, 32, 8 do D(r, "GridLine", V(0.2, 0.05, SL), x, F + 0.03, SL / 2, purple, M.Neon, FX) end
-	for d = 4, 48, 8 do D(r, "GridLine", V(HW * 2, 0.05, 0.2), 0, F + 0.03, d, purple, M.Neon, FX) end
-	for _, y in ipairs({F + 0.2, WH - 1, 12}) do
-		D(r, "NeonStrip", V(0.3, 0.3, SL), -HW + 0.3, y, SL / 2, pink, M.Neon, FX)
-		D(r, "NeonStrip", V(0.3, 0.3, SL), HW - 0.3, y, SL / 2, pink, M.Neon, FX)
-	end
-	ball(r, "BlackHole", 10, 0, 15, 47, RGB(5, 0, 10), M.SmoothPlastic, FX)
-	local ring = disc(r, "BlackHoleRing", 0.3, 17, 0, 15, 47, purple, M.Neon, {Transparency = 0.25, CanCollide = false}, CFrame.Angles(math.rad(75), 0, math.rad(90)))
-	light(ring, purple, 50, 3)
-	emitter(ring, {Color = ColorSequence.new(purple, pink), LightEmission = 1, Rate = 30, Lifetime = NumberRange.new(1, 2),
-		Speed = NumberRange.new(4, 8), Size = NumberSequence.new(0.6, 0), SpreadAngle = Vector2.new(180, 180)})
-	local planet = ball(r, "Planet", 6, -24, 15, 30, RGB(255, 140, 60), M.SmoothPlastic, FX)
-	light(planet, RGB(255, 160, 80), 16, 1)
-	disc(r, "PlanetRing", 0.2, 11, -24, 15, 30, RGB(255, 220, 160), M.Neon, {Transparency = 0.4, CanCollide = false}, CFrame.Angles(math.rad(20), 0, math.rad(75)))
-	ball(r, "Planet2", 4, 25, 16, 26, RGB(80, 170, 255), M.SmoothPlastic, FX)
-	ball(r, "Moon", 1.5, 28, 18, 24, RGB(220, 220, 230), M.SmoothPlastic, FX)
-	for i = 1, 6 do
-		local x = (i % 2 == 0) and 29 or -29
-		pillar(r, "CrystalPillar", 4 + i, 1.4, x, F, 26 + i * 3, (i % 3 == 0) and purple or pink, M.Neon, {Transparency = 0.15})
-	end
-	ambience(r, {RGB(255, 255, 255), RGB(220, 170, 255)}, {rate = 40, speed = 0.3, size = 0.2, glow = 1, accel = Vector3.new(0, 0, 0), y = 12, life = 6})
-end
-
-THEMES[11] = function(r) -- LAVA FORGE: lava rivers, a forge furnace, anvils, chains, embers
-	local lava, ember = RGB(255, 90, 20), RGB(255, 170, 40)
-	for _, x in ipairs({-29, 29}) do
-		D(r, "LavaRiver", V(5, 0.3, 44), x, F + 0.1, 26, lava, M.CrackedLava, FX)
-		D(r, "LavaGlow", V(4, 0.2, 42), x, F + 0.3, 26, ember, M.Neon, FX)
-	end
-	D(r, "Furnace", V(12, 10, 7), -24, F + 5, 44, RGB(60, 50, 50), M.Brick)
-	local mouth = D(r, "FurnaceFire", V(7, 4, 0.4), -24, F + 3.5, 40.4, ember, M.Neon, FX)
-	light(mouth, lava, 40, 2.5)
-	emitter(mouth, {Color = ColorSequence.new(ember, lava), LightEmission = 1, Rate = 12, Lifetime = NumberRange.new(1, 2),
-		Speed = NumberRange.new(2, 4), Size = NumberSequence.new(0.8, 0), SpreadAngle = Vector2.new(30, 30), Acceleration = Vector3.new(0, 4, 0)})
-	pillar(r, "Chimney", 14, 3, -24, F + 10, 46, RGB(50, 42, 42), M.Brick)
-	for i = 1, 3 do
-		local x, d = 22, 12 + i * 10
-		D(r, "AnvilBase", V(2, 2, 2), x, F + 1, d, RGB(70, 70, 80), M.Metal)
-		D(r, "AnvilTop", V(4.5, 1.2, 2), x, F + 2.6, d, RGB(90, 90, 100), M.Metal)
-	end
-	for k = 1, 4 do
-		D(r, "Chain", V(0.5, 14, 0.5), -12 + k * 6, WH - 7, 30, RGB(60, 60, 66), M.Metal, FX)
-		ball(r, "ChainHook", 1.4, -12 + k * 6, WH - 14.5, 30, RGB(255, 120, 40), M.Neon, FX)
-	end
-	ambience(r, {ember, lava}, {rate = 30, speed = 1.5, size = 0.25, glow = 1, accel = Vector3.new(0, 2, 0), y = 2, dir = Enum.NormalId.Top, life = 5})
-end
-
-THEMES[12] = function(r) -- HAUNTED MANOR: gravestones, crooked lamps, floating candles, portraits, fog
-	local ghostly, purple = RGB(160, 255, 200), RGB(150, 90, 220)
-	for i = 1, 8 do
-		local x = (i % 2 == 0) and 30 or -30
-		local d = 6 + i * 5
-		D(r, "Gravestone", V(3, 4, 0.8), x, F + 2, d, RGB(120, 120, 135), M.Slate, nil, CFrame.Angles(0, 0, math.rad((i % 3 - 1) * 8)))
-	end
-	for _, x in ipairs({-26, 26}) do
-		D(r, "LampPost", V(0.6, 12, 0.6), x, F + 6, 40, RGB(30, 28, 36), M.Metal, nil, CFrame.Angles(0, 0, math.rad(x > 0 and 6 or -6)))
-		local bulb = ball(r, "GhostLamp", 1.8, x + (x > 0 and 0.6 or -0.6), F + 12.2, 40, ghostly, M.Neon, FX)
-		light(bulb, ghostly, 30, 1.8)
-	end
-	for k = 1, 6 do
-		local c = D(r, "FloatCandle", V(0.6, 1.6, 0.6), -15 + k * 5, 14 + (k % 2) * 2, 20 + (k % 3) * 9, RGB(240, 235, 215), M.SmoothPlastic, FX)
-		ball(r, "CandleFlame", 0.6, -15 + k * 5, 15.2 + (k % 2) * 2, 20 + (k % 3) * 9, RGB(255, 200, 90), M.Neon, FX)
-	end
-	for _, x in ipairs({-33, 33}) do
-		for k = 0, 1 do
-			D(r, "Portrait", V(0.3, 6, 4.5), x, F + 9, 18 + k * 16, RGB(110, 70, 40), M.Wood)
-			D(r, "PortraitArt", V(0.35, 4.8, 3.4), x + (x > 0 and -0.05 or 0.05), F + 9, 18 + k * 16, purple, M.SmoothPlastic, FX)
+	local function palletStack(r, x, d, n)
+		for k = 0, n - 1 do
+			D(r, "StackedPallet", V(6, 0.32, 6), x, F + 0.16 + k * 0.62, d, (k % 2 == 0) and WOOD or WOOD_DARK, M.WoodPlanks, FX)
+			D(r, "StackedPalletGap", V(5.6, 0.3, 5.6), x, F + 0.47 + k * 0.62, d, WOOD_DARK:Lerp(RGB(0, 0, 0), 0.3), M.WoodPlanks, FX)
 		end
 	end
-	ambience(r, {RGB(200, 190, 255), RGB(150, 255, 210)}, {rate = 18, speed = 0.4, size = 1.2, accel = Vector3.new(0.3, 0, 0), y = 3, life = 8})
-end
 
-THEMES[13] = function(r) -- CRYSTAL CAVERNS: crystal clusters, glowing mushrooms, stalactites, sparkles
-	local cols = {RGB(90, 230, 255), RGB(255, 110, 210), RGB(170, 90, 255)}
-	for i = 1, 6 do
-		local x = (i % 2 == 0) and 29 or -29
-		local col = cols[(i % 3) + 1]
-		for k = 0, 2 do
-			D(r, "Crystal", V(1.8, 6 + k * 2.5, 1.8), x + (k - 1) * 1.4, F + 3 + k, 4 + i * 7, col, M.Glass, {Transparency = 0.2}, CFrame.Angles(0, math.rad(45), math.rad((k - 1) * 20)))
+	------------------------------------------------------------------
+	-- department signs: one hanging over the entrance, one on each wall
+	------------------------------------------------------------------
+	local function deptSign(part, face, areaIndex, area, acc)
+		local sg = surfaceGui(part, face, 14, 260)
+		local band = Instance.new("Frame")
+		band.BorderSizePixel = 0
+		band.BackgroundColor3 = acc
+		band.Size = UDim2.fromScale(1, 0.14)
+		band.Position = UDim2.fromScale(0, 0.86)
+		band.Parent = sg
+		local num = textLabel(sg, "AREA " .. areaIndex, acc, 3)
+		num.Size = UDim2.fromScale(0.9, 0.28)
+		num.Position = UDim2.fromScale(0.05, 0.06)
+		local name = textLabel(sg, string.upper(area.name), WHITE, 4)
+		name.Size = UDim2.fromScale(0.94, 0.48)
+		name.Position = UDim2.fromScale(0.03, 0.34)
+	end
+
+	for areaIndex, area in ipairs(Config.Areas) do
+		SL = Config.AreaLen(areaIndex) / SC -- (this area's length: harder areas are longer)
+		local SLen = SL
+		local r = {index = areaIndex, z0 = Config.AreaStartZ(areaIndex), folder = Instance.new("Model")}
+		r.folder.Name = "Area" .. areaIndex .. "_" .. area.name:gsub(" ", "")
+		r.folder.Parent = wh
+		local acc = area.accent
+
+		floor(r, SLen)
+		walls(r, SLen, acc)
+		-- rack layout (the box spawn spots are the same as before)
+		local racks = {{6, 20, {{1, 9}, {1, 17}, {2, 13}}}, {30, 42, {{1, 33}, {1, 39}}}}
+		for d0 = 54, SLen - 16, 26 do table.insert(racks, {d0, d0 + 12, {{1, d0 + 3}, {2, d0 + 9}}}) end
+		for _, rk in ipairs(racks) do
+			for _, side in ipairs({-1, 1}) do rack(r, side, rk[1], rk[2], rk[3], acc) end
 		end
-		local tip = D(r, "CrystalTip", V(0.8, 2.5, 0.8), x, F + 10, 4 + i * 7, col, M.Neon, FX)
-		if i % 2 == 0 then light(tip, col, 24, 1.4) end
-	end
-	for i = 1, 6 do
-		local x = (i % 2 == 0) and 22 or -22
-		pillar(r, "MushroomStem", 2.5, 0.8, x, F, 10 + i * 6, RGB(235, 230, 255), M.SmoothPlastic)
-		D(r, "MushroomCap", V(3.2, 1.2, 3.2), x, F + 3, 10 + i * 6, cols[(i % 3) + 1], M.Neon, FX)
-	end
-	for k = 1, 8 do
-		D(r, "Stalactite", V(1.5, 5 + (k % 3) * 2, 1.5), -28 + k * 7, WH - 3, 8 + (k * 13) % 40, RGB(120, 110, 150), M.Slate, FX, CFrame.Angles(0, math.rad(45), 0))
-	end
-	ambience(r, {RGB(255, 255, 255), RGB(140, 240, 255), RGB(255, 150, 230)}, {rate = 35, speed = 0.3, size = 0.2, glow = 1, accel = Vector3.new(0, 0, 0), y = 10, life = 6})
-end
-
-THEMES[14] = function(r) -- SKY KINGDOM: marble columns, clouds, a golden gate, a rainbow arch
-	local gold, marble = RGB(255, 210, 80), RGB(245, 242, 235)
-	for i = 0, 4 do
-		for _, x in ipairs({-30, 30}) do
-			pillar(r, "MarbleColumn", 16, 2.6, x, F, 6 + i * 10, marble, M.Marble)
-			D(r, "ColumnCap", V(3.6, 1, 3.6), x, F + 16.5, 6 + i * 10, gold, M.SmoothPlastic)
+		-- columns + roof frames sit in the gaps between the racks
+		local frames = {1.2}
+		for i = 1, #racks - 1 do table.insert(frames, (racks[i][2] + racks[i + 1][1]) / 2) end
+		if SLen - racks[#racks][2] > 6 then table.insert(frames, (racks[#racks][2] + SLen) / 2) end
+		for i, d in ipairs(frames) do
+			for _, side in ipairs({-1, 1}) do column(r, side, d, i % 2 == 0) end
 		end
-	end
-	for i = 1, 8 do
-		ball(r, "Cloud", 5 + (i % 3) * 2, -26 + (i * 17) % 52, WH - 6 - (i % 2) * 3, 6 + i * 5, RGB(255, 255, 255), M.SmoothPlastic, FX)
-	end
-	for _, x in ipairs({-20, 20}) do D(r, "GatePost", V(2, 14, 2), x, F + 7, 46, gold, M.SmoothPlastic) end
-	D(r, "GateTop", V(42, 2, 2), 0, F + 14.5, 46, gold, M.SmoothPlastic)
-	local rainbow = {RGB(255, 80, 80), RGB(255, 170, 60), RGB(255, 230, 70), RGB(90, 220, 110), RGB(80, 160, 255), RGB(180, 110, 255)}
-	for k, c in ipairs(rainbow) do
-		disc(r, "RainbowBand", 0.6, 34 - k * 2.2, 0, F + 2, 47.5 - k * 0.1, c, M.Neon, {Transparency = 0.15, CanCollide = false, CanQuery = false}, CFrame.Angles(0, math.rad(90), 0))
-	end
-	ambience(r, {RGB(255, 250, 220), RGB(255, 255, 255)}, {rate = 20, speed = 0.5, size = 0.3, glow = 1, accel = Vector3.new(0, -0.3, 0), life = 7})
-end
+		roof(r, SLen, frames)
+		bollard(r, -(HW - 6.8), 4.6)
+		bollard(r, HW - 6.8, 4.6)
 
-THEMES[15] = function(r) -- DRAGON'S HOARD: gold mountains, treasure chests, a sleeping dragon, braziers, banners
-	local gold, red = RGB(255, 200, 50), RGB(200, 30, 50)
-	for i = 1, 6 do
-		local x = (i % 2 == 0) and 27 or -27
-		ball(r, "GoldPile", 9 + (i % 3) * 2, x, F - 2.5, 6 + i * 6.5, gold, M.Foil)
-		ball(r, "GoldShine", 2, x + (x > 0 and -2 or 2), F + 2, 6 + i * 6.5, RGB(255, 240, 150), M.Neon, FX)
-	end
-	for i = 1, 4 do
-		local x = (i % 2 == 0) and 19 or -19
-		D(r, "TreasureChest", V(4, 2.6, 2.8), x, F + 1.3, 12 + i * 8, RGB(130, 70, 30), M.Wood)
-		D(r, "ChestBand", V(4.1, 0.5, 2.9), x, F + 2, 12 + i * 8, gold, M.SmoothPlastic, FX)
-	end
-	-- the sleeping dragon curled up at the back
-	ball(r, "DragonBody", 14, 0, F + 5, 48, red, M.SmoothPlastic)
-	ball(r, "DragonHead", 7, 9, F + 3.5, 42, red, M.SmoothPlastic)
-	for _, dz in ipairs({-1.4, 1.4}) do
-		D(r, "DragonHorn", V(0.8, 3.5, 0.8), 9 + dz, F + 7.5, 43, RGB(250, 235, 200), M.SmoothPlastic, FX, CFrame.Angles(math.rad(-25), 0, 0))
-	end
-	for _, side in ipairs({-1, 1}) do
-		D(r, "DragonWing", V(14, 0.6, 8), side * 7, F + 10, 50, RGB(150, 20, 40), M.SmoothPlastic, FX, CFrame.Angles(0, 0, math.rad(side * 30)))
-	end
-	for _, x in ipairs({-32, 32}) do
-		for k = 0, 1 do
-			D(r, "Banner", V(0.3, 9, 4), x, WH - 8, 14 + k * 20, red, M.Fabric, FX)
-			D(r, "BannerTrim", V(0.35, 0.8, 4.2), x, WH - 12, 14 + k * 20, gold, M.SmoothPlastic, FX)
-		end
-		pillar(r, "Brazier", 4, 2.4, x * 0.75, F, 4, RGB(70, 60, 55), M.Metal)
-		local fire = ball(r, "BrazierFire", 2.2, x * 0.75, F + 4.8, 4, RGB(255, 140, 40), M.Neon, FX)
-		light(fire, RGB(255, 140, 50), 30, 2)
-		emitter(fire, {Color = ColorSequence.new(RGB(255, 200, 60), RGB(255, 60, 20)), LightEmission = 1, Rate = 10, Lifetime = NumberRange.new(0.6, 1.2),
-			Speed = NumberRange.new(3, 5), Size = NumberSequence.new(1, 0), SpreadAngle = Vector2.new(15, 15)})
-	end
-	ambience(r, {RGB(255, 220, 90), RGB(255, 140, 40)}, {rate = 25, speed = 0.4, size = 0.25, glow = 1, accel = Vector3.new(0, 0.5, 0), y = 3, dir = Enum.NormalId.Top, life = 6})
-end
-
-------------------------------------------------------------------
--- OPEN-AIR BIOMES (v18): every area is an open zone on a floating island
--- under the night sky. The lane itself stays the same (invisible walls keep
--- you in), but around it: crystals, palms, blocky trees, tombstones...
-------------------------------------------------------------------
-local BW = 30 -- width of the decorated strip on each side of the lane (design units)
-local WEDGE_TIP = CFrame.Angles(0, math.rad(45), 0)
-local function shard(r, x, y, d, w, h, color, tilt, yaw, mat)
-	-- a crystal shard: a tall block with a pointy (rotated) tip
-	local rot = CFrame.Angles(0, math.rad(yaw), 0) * CFrame.Angles(math.rad(tilt), 0, math.rad(tilt * 0.6))
-	local base = D(r, "Crystal", V(w, h, w), x, y + h / 2, d, color, mat or M.Glass, {Transparency = (mat == M.Neon) and 0.1 or 0.05, Reflectance = 0.1}, rot)
-	local tip = D(r, "CrystalTip", V(w * 0.72, w * 0.72, w * 0.72), x, y + h, d, color:Lerp(RGB(255, 255, 255), 0.25), mat or M.Glass, {Transparency = 0.05, CanCollide = false},
-		rot * CFrame.Angles(math.rad(45), 0, math.rad(45)))
-	return base, tip
-end
-local PROPS = {}
-PROPS.crystal = function(r, x, d, b)
-	local s = 0.8 + math.random() * 0.8
-	local c = b.crystal[math.random(1, #b.crystal)]
-	shard(r, x, F, d, 2.2 * s, 7 * s, c, 0, math.random(0, 90))
-	shard(r, x + 1.6 * s, F, d + 0.8 * s, 1.5 * s, 4.5 * s, c, 22, math.random(0, 90))
-	shard(r, x - 1.4 * s, F, d - 0.6 * s, 1.3 * s, 3.6 * s, c:Lerp(RGB(255, 255, 255), 0.2), -24, math.random(0, 90))
-	if math.random() < 0.35 then
-		local glow = D(r, "CrystalGlow", V(1, 1, 1), x, F + 2, d, c, M.Neon, GHOST)
-		light(glow, c, 18, 1.2)
-	end
-end
-PROPS.bigcrystal = function(r, x, d, b)
-	local c = b.crystal[math.random(1, #b.crystal)]
-	shard(r, x, F, d, 4.2, 15, c, 6, math.random(0, 90))
-	shard(r, x + 3, F, d + 1, 2.6, 9, c, 25, math.random(0, 90))
-	shard(r, x - 2.6, F, d - 1.4, 2.2, 7, c, -28, math.random(0, 90))
-	local glow = D(r, "CrystalGlow", V(1, 1, 1), x, F + 4, d, c, M.Neon, GHOST)
-	light(glow, c, 26, 1.5)
-end
-local function voxelCanopy(r, x, y, d, size, colors, n)
-	for k = 1, n do
-		local a = k * 2.4
-		local s = size * (0.55 + math.random() * 0.45)
-		local rr = size * 0.45
-		D(r, "Leaves", V(s, s * 0.8, s), x + math.cos(a) * rr * math.random(), y + (math.random() - 0.3) * size * 0.4, d + math.sin(a) * rr * math.random(),
-			colors[(k - 1) % #colors + 1], M.SmoothPlastic, NO_COLLIDE, CFrame.Angles(0, math.rad(math.random(0, 60)), 0))
-	end
-end
-PROPS.tree = function(r, x, d, b) -- blocky tree (blossom / willow / jungle)
-	local h = 7 + math.random() * 4
-	D(r, "Trunk", V(1.3, h, 1.3), x, F + h / 2, d, b.trunk, M.Wood)
-	D(r, "Branch", V(0.7, 3, 0.7), x + 1, F + h * 0.75, d, b.trunk, M.Wood, nil, CFrame.Angles(0, 0, math.rad(-35)))
-	voxelCanopy(r, x, F + h + 1, d, 6.5, b.leaves, 6)
-	if b.hanging then -- glowing light strings hanging down (like willow lights)
-		for k = 1, 5 do
-			local a = k * 1.25
-			D(r, "HangLight", V(0.25, 4.5, 0.25), x + math.cos(a) * 3.2, F + h - 2.2, d + math.sin(a) * 3.2, b.hanging, M.Neon, FX)
-		end
-	end
-end
-PROPS.palm = function(r, x, d, b)
-	local h = 9 + math.random() * 4
-	local lean = math.random(-12, 12)
-	for k = 0, 3 do
-		D(r, "PalmTrunk", V(1.4 - k * 0.1, h / 4 + 0.3, 1.4 - k * 0.1), x + k * lean * 0.03, F + h / 8 + k * h / 4, d, (k % 2 == 0) and RGB(150, 105, 65) or RGB(125, 85, 50), M.Wood, nil, CFrame.Angles(0, 0, math.rad(lean * 0.4)))
-	end
-	local top = x + 3 * lean * 0.03
-	for k = 0, 5 do
-		D(r, "PalmLeaf", V(7.5, 0.3, 2), top, F + h + 0.2, d, (k % 2 == 0) and RGB(50, 200, 60) or RGB(30, 160, 50), M.SmoothPlastic, NO_COLLIDE,
-			CFrame.Angles(0, math.rad(k * 60 + math.random(0, 20)), 0) * CFrame.new(3.2, 0, 0) * CFrame.Angles(0, 0, math.rad(-25)))
-	end
-	for i = 1, 2 do ball(r, "Coconut", 0.9, top + (i - 1.5) * 0.9, F + h - 0.6, d + 0.5, RGB(110, 70, 40), M.SmoothPlastic, NO_COLLIDE) end
-end
-PROPS.deadtree = function(r, x, d, b)
-	local h = 8 + math.random() * 4
-	D(r, "DeadTrunk", V(1.3, h, 1.3), x, F + h / 2, d, RGB(70, 40, 35), M.Wood)
-	for k = 1, 4 do
-		local side = (k % 2 == 0) and 1 or -1
-		D(r, "DeadBranch", V(0.5, 3.5 + k * 0.4, 0.5), x + side * 1.3, F + h * (0.45 + k * 0.12), d + (k - 2.5) * 0.4, RGB(70, 40, 35), M.Wood, nil,
-			CFrame.Angles(math.rad((k - 2.5) * 12), 0, math.rad(-side * 45)))
-	end
-end
-PROPS.tombstone = function(r, x, d, b)
-	local c = b.stone or RGB(120, 110, 160)
-	local yaw = CFrame.Angles(0, math.rad(math.random(-15, 15)), math.rad(math.random(-8, 8)))
-	if math.random() < 0.3 then
-		D(r, "GraveCross", V(0.6, 3.6, 0.6), x, F + 1.8, d, c, M.Slate, nil, yaw)
-		D(r, "GraveCrossArm", V(2.2, 0.6, 0.6), x, F + 2.6, d, c, M.Slate, nil, yaw)
-	else
-		D(r, "Tombstone", V(2.2, 2.4, 0.7), x, F + 1.2, d, c, M.Slate, nil, yaw)
-		disc(r, "TombTop", 0.7, 2.2, x, F + 2.4, d, c, M.Slate, nil, yaw * CFrame.Angles(0, math.rad(90), 0))
-	end
-	D(r, "GraveDirt", V(2.4, 0.3, 3.6), x, F + 0.15, d + 2, RGB(70, 40, 45), M.Ground, FX)
-end
-PROPS.rock = function(r, x, d, b)
-	local s = 1.5 + math.random() * 2.5
-	D(r, "Rock", V(s * 1.4, s, s * 1.2), x, F + s * 0.35, d, b.rock or RGB(90, 95, 120), M.Slate, nil, CFrame.Angles(math.rad(math.random(-20, 20)), math.rad(math.random(0, 90)), math.rad(math.random(-20, 20))))
-end
-PROPS.lantern = function(r, x, d, b)
-	D(r, "LanternPost", V(0.6, 8, 0.6), x, F + 4, d, RGB(40, 40, 50), M.Metal)
-	D(r, "LanternCap", V(1.8, 0.4, 1.8), x, F + 9.4, d, RGB(40, 40, 50), M.Metal)
-	local head = D(r, "LanternLight", V(1.3, 1.4, 1.3), x, F + 8.5, d, b.lamp, M.Neon, NO_COLLIDE)
-	light(head, b.lamp, 30, 1.6)
-end
-PROPS.mushroom = function(r, x, d, b)
-	local h = 2 + math.random() * 4
-	local c = b.crystal[math.random(1, #b.crystal)]
-	pillar(r, "ShroomStem", h, 1, x, F, d, RGB(235, 230, 220), M.SmoothPlastic)
-	local cap = ball(r, "ShroomCap", 3 + h * 0.4, x, F + h, d, c, M.Neon, {Transparency = 0.1})
-	if math.random() < 0.4 then light(cap, c, 16, 1) end
-end
-PROPS.haybale = function(r, x, d, b)
-	D(r, "HayBale", V(4, 2.4, 3), x, F + 1.2, d, RGB(230, 195, 90), M.Fabric, nil, CFrame.Angles(0, math.rad(math.random(0, 90)), 0))
-	if math.random() < 0.5 then D(r, "HayBale", V(4, 2.4, 3), x, F + 3.6, d, RGB(220, 185, 80), M.Fabric, nil, CFrame.Angles(0, math.rad(math.random(0, 90)), 0)) end
-end
-PROPS.pumpkin = function(r, x, d, b)
-	local s = 1.6 + math.random() * 1.4
-	ball(r, "Pumpkin", s, x, F + s * 0.4, d, RGB(255, 130, 30), M.SmoothPlastic)
-	D(r, "PumpkinStem", V(0.3, 0.6, 0.3), x, F + s * 0.9, d, RGB(70, 120, 40), M.Wood)
-end
-PROPS.toyblock = function(r, x, d, b)
-	local cols = {RGB(255, 80, 80), RGB(80, 160, 255), RGB(255, 210, 40), RGB(90, 220, 110), RGB(200, 110, 255)}
-	for k = 0, math.random(0, 2) do
-		local s = 2.6 + math.random()
-		D(r, "ToyBlock", V(s, s, s), x + (math.random() - 0.5), F + s / 2 + k * s, d, cols[math.random(1, #cols)], M.SmoothPlastic, nil, CFrame.Angles(0, math.rad(math.random(0, 90)), 0))
-	end
-end
-PROPS.lollipop = function(r, x, d, b)
-	local h = 5 + math.random() * 4
-	local c = b.crystal[math.random(1, #b.crystal)]
-	pillar(r, "LollipopStick", h, 0.5, x, F, d, RGB(250, 250, 250), M.SmoothPlastic)
-	disc(r, "Lollipop", 0.9, 4.5, x, F + h + 1.8, d, c, M.SmoothPlastic, nil, CFrame.Angles(0, math.rad(math.random(0, 180)), 0) * CFrame.Angles(0, math.rad(90), 0))
-	disc(r, "Swirl", 1, 2.2, x, F + h + 1.8, d, RGB(255, 255, 255), M.SmoothPlastic, NO_COLLIDE, CFrame.Angles(0, math.rad(math.random(0, 180)), 0) * CFrame.Angles(0, math.rad(90), 0))
-end
-PROPS.gumdrop = function(r, x, d, b)
-	local c = b.crystal[math.random(1, #b.crystal)]
-	ball(r, "Gumdrop", 2.6 + math.random() * 1.5, x, F + 0.6, d, c, M.SmoothPlastic, {Reflectance = 0.15})
-end
-PROPS.fern = function(r, x, d, b)
-	for k = 0, 4 do
-		D(r, "FernLeaf", V(4, 0.2, 1.2), x, F + 1, d, RGB(50, 160 + k * 12, 60), M.Grass, NO_COLLIDE,
-			CFrame.Angles(0, math.rad(k * 72), 0) * CFrame.new(1.6, 0, 0) * CFrame.Angles(0, 0, math.rad(30)))
-	end
-end
-PROPS.volcano = function(r, x, d, b)
-	D(r, "Volcano", V(12, 7, 12), x, F + 2, d, RGB(80, 55, 45), M.Slate, nil, CFrame.Angles(0, math.rad(45), 0))
-	D(r, "VolcanoTop", V(8, 4, 8), x, F + 6.5, d, RGB(70, 48, 40), M.Slate, nil, CFrame.Angles(0, math.rad(20), 0))
-	local lava = D(r, "Lava", V(4.5, 0.5, 4.5), x, F + 8.6, d, RGB(255, 100, 20), M.Neon, NO_COLLIDE)
-	light(lava, RGB(255, 120, 40), 30, 2)
-	emitter(lava, {Color = ColorSequence.new(RGB(255, 160, 60), RGB(120, 40, 20)), LightEmission = 0.6, Rate = 6, Lifetime = NumberRange.new(2, 3),
-		Speed = NumberRange.new(3, 6), Size = NumberSequence.new(1.2, 3), Transparency = NumberSequence.new(0.2, 1), SpreadAngle = Vector2.new(15, 15)})
-end
-PROPS.neonpillar = function(r, x, d, b)
-	local h = 6 + math.random() * 10
-	local c = b.crystal[math.random(1, #b.crystal)]
-	D(r, "TechPillar", V(2, h, 2), x, F + h / 2, d, RGB(30, 34, 46), M.Metal)
-	for k = 1, math.floor(h / 3) do
-		D(r, "TechStripe", V(2.1, 0.3, 2.1), x, F + k * 3, d, c, M.Neon, FX)
-	end
-	if math.random() < 0.4 then light(D(r, "TechGlow", V(1, 1, 1), x, F + h, d, c, M.Neon, GHOST), c, 20, 1.2) end
-end
-PROPS.floatrock = function(r, x, d, b)
-	local s = 2 + math.random() * 3
-	local y = 10 + math.random() * 14
-	D(r, "FloatRock", V(s * 1.3, s, s), x, y, d, RGB(60, 45, 90), M.Slate, NO_COLLIDE, CFrame.Angles(math.rad(math.random(0, 40)), math.rad(math.random(0, 90)), 0))
-	local c = b.crystal[math.random(1, #b.crystal)]
-	shard(r, x, y + s * 0.4, d, s * 0.4, s * 1.1, c, 10, math.random(0, 90), M.Neon)
-end
-PROPS.snowpile = function(r, x, d, b)
-	ball(r, "SnowPile", 3 + math.random() * 3, x, F - 0.8, d, RGB(250, 252, 255), M.Snow)
-end
-PROPS.crate = function(r, x, d, b)
-	D(r, "OldCrate", V(3, 3, 3), x, F + 1.4, d, RGB(120, 95, 70), M.WoodPlanks, nil, CFrame.Angles(math.rad(math.random(-8, 8)), math.rad(math.random(0, 90)), 0))
-end
-PROPS.fence = function(r, x, d, b)
-	D(r, "FenceRail", V(0.3, 0.4, 7), x, F + 1.3, d, RGB(250, 250, 250), M.WoodPlanks)
-	D(r, "FenceRail", V(0.3, 0.4, 7), x, F + 2.6, d, RGB(250, 250, 250), M.WoodPlanks)
-	for k = -1, 1 do D(r, "FencePost", V(0.45, 3.4, 0.45), x, F + 1.7, d + k * 3.2, RGB(250, 250, 250), M.WoodPlanks) end
-end
-
--- what grows in each area: ground colour + weighted prop list
-local BIOMES = {
-	{ -- 1 Dusty Storage -> spooky graveyard yard
-		ground = RGB(115, 50, 60), lane = RGB(140, 70, 78), cliff = RGB(55, 30, 45), stone = RGB(130, 115, 170), trunk = RGB(70, 40, 35),
-		leaves = {RGB(150, 90, 200)}, crystal = {RGB(170, 110, 255), RGB(110, 140, 255)}, lamp = RGB(255, 140, 60), rock = RGB(90, 70, 100),
-		props = {{"tombstone", 6}, {"deadtree", 3}, {"crystal", 2}, {"lantern", 1}, {"pumpkin", 1}, {"crate", 1}},
-		fog = {RGB(200, 140, 255)},
-	},
-	{ -- 2 Farm Barn -> moonlit farm
-		ground = RGB(80, 160, 70), lane = RGB(170, 135, 85), cliff = RGB(80, 55, 40), trunk = RGB(110, 75, 45),
-		leaves = {RGB(70, 190, 70), RGB(50, 160, 60)}, crystal = {RGB(255, 200, 80)}, lamp = RGB(255, 200, 110), rock = RGB(120, 115, 105),
-		props = {{"tree", 4}, {"haybale", 3}, {"pumpkin", 3}, {"fence", 2}, {"lantern", 1}, {"rock", 1}},
-	},
-	{ -- 3 Toy Factory -> toy land
-		ground = RGB(120, 200, 255), lane = RGB(225, 232, 250), cliff = RGB(70, 90, 170), trunk = RGB(250, 250, 250),
-		leaves = {RGB(255, 120, 120), RGB(255, 220, 80), RGB(120, 220, 120)}, crystal = {RGB(255, 90, 90), RGB(90, 170, 255), RGB(255, 220, 60)}, lamp = RGB(255, 255, 220),
-		props = {{"toyblock", 5}, {"tree", 2}, {"lollipop", 2}, {"crystal", 2}, {"lantern", 1}},
-	},
-	{ -- 4 Candy Shop -> blossom candy land
-		ground = RGB(255, 175, 215), lane = RGB(255, 210, 230), cliff = RGB(160, 80, 130), trunk = RGB(130, 75, 70),
-		leaves = {RGB(255, 170, 215), RGB(255, 205, 230), RGB(240, 140, 200)}, crystal = {RGB(255, 90, 160), RGB(110, 220, 255), RGB(255, 220, 60), RGB(150, 255, 140)}, lamp = RGB(255, 190, 230),
-		props = {{"tree", 5}, {"lollipop", 3}, {"gumdrop", 3}, {"crystal", 1}, {"lantern", 1}},
-	},
-	{ -- 5 Pirate Cove -> tropical beach
-		ground = RGB(240, 205, 140), lane = RGB(235, 210, 160), cliff = RGB(150, 110, 70), trunk = RGB(150, 105, 65),
-		leaves = {RGB(60, 190, 70)}, crystal = {RGB(120, 220, 255)}, lamp = RGB(255, 170, 70), rock = RGB(130, 120, 110),
-		props = {{"palm", 6}, {"rock", 2}, {"crate", 1}, {"lantern", 2}},
-		sea = true,
-	},
-	{ -- 6 Dino Museum -> jungle with a volcano
-		ground = RGB(70, 140, 60), lane = RGB(205, 185, 140), cliff = RGB(70, 55, 40), trunk = RGB(100, 70, 45),
-		leaves = {RGB(40, 150, 50), RGB(80, 190, 60), RGB(30, 120, 45)}, crystal = {RGB(255, 140, 40)}, lamp = RGB(255, 180, 90), rock = RGB(105, 100, 90),
-		props = {{"tree", 4}, {"fern", 4}, {"palm", 2}, {"rock", 2}, {"lantern", 1}},
-		landmark = "volcano",
-	},
-	{ -- 7 Frozen Lab -> ice crystal field (like the video)
-		ground = RGB(225, 238, 255), lane = RGB(205, 225, 250), cliff = RGB(110, 140, 200), trunk = RGB(150, 120, 190),
-		leaves = {RGB(160, 150, 255), RGB(190, 180, 255), RGB(140, 170, 255)}, hanging = RGB(150, 220, 255),
-		crystal = {RGB(120, 200, 255), RGB(80, 160, 255), RGB(170, 230, 255)}, lamp = RGB(170, 230, 255), rock = RGB(170, 190, 220),
-		props = {{"crystal", 5}, {"tree", 3}, {"snowpile", 2}, {"lantern", 1}},
-		landmark = "bigcrystal",
-	},
-	{ -- 8 Tech Lab -> neon cyber city
-		ground = RGB(40, 46, 66), lane = RGB(60, 66, 84), cliff = RGB(25, 28, 40), trunk = RGB(40, 40, 50),
-		leaves = {RGB(60, 170, 255)}, crystal = {RGB(60, 170, 255), RGB(140, 255, 255), RGB(255, 80, 200)}, lamp = RGB(120, 220, 255),
-		props = {{"neonpillar", 6}, {"crystal", 2}, {"rock", 1}},
-		grid = RGB(60, 170, 255),
-	},
-	{ -- 9 Alien Hangar -> alien planet
-		ground = RGB(70, 50, 100), lane = RGB(85, 80, 105), cliff = RGB(40, 25, 60), trunk = RGB(60, 40, 80),
-		leaves = {RGB(110, 255, 140)}, crystal = {RGB(90, 255, 120), RGB(60, 255, 210), RGB(200, 255, 80)}, lamp = RGB(140, 255, 140), rock = RGB(90, 70, 120),
-		props = {{"mushroom", 5}, {"crystal", 3}, {"rock", 2}},
-	},
-	{ -- 10 Galaxy Vault -> space island
-		ground = RGB(35, 25, 65), lane = RGB(30, 22, 52), cliff = RGB(20, 12, 40), trunk = RGB(60, 40, 90),
-		leaves = {RGB(200, 120, 255)}, crystal = {RGB(200, 100, 255), RGB(255, 90, 210), RGB(110, 140, 255)}, lamp = RGB(220, 150, 255), rock = RGB(70, 55, 110),
-		props = {{"crystal", 4}, {"floatrock", 3}, {"mushroom", 1}, {"rock", 1}},
-		landmark = "bigcrystal",
-	},
-	{ -- 11 Lava Forge -> basalt fields + a volcano
-		ground = RGB(58, 44, 40), lane = RGB(66, 50, 46), cliff = RGB(36, 26, 24), trunk = RGB(50, 34, 30),
-		leaves = {RGB(255, 120, 40)}, crystal = {RGB(255, 110, 40), RGB(255, 170, 60), RGB(255, 70, 30)}, lamp = RGB(255, 140, 60), rock = RGB(55, 44, 42),
-		props = {{"rock", 5}, {"crystal", 2}, {"deadtree", 2}, {"lantern", 1}},
-		landmark = "volcano",
-	},
-	{ -- 12 Haunted Manor -> misty graveyard
-		ground = RGB(58, 48, 72), lane = RGB(74, 60, 84), cliff = RGB(34, 24, 44), stone = RGB(130, 120, 155), trunk = RGB(55, 40, 45),
-		leaves = {RGB(120, 80, 160)}, crystal = {RGB(170, 110, 255), RGB(120, 255, 190)}, lamp = RGB(190, 140, 255), rock = RGB(80, 70, 95),
-		props = {{"tombstone", 6}, {"deadtree", 4}, {"pumpkin", 1}, {"lantern", 1}},
-		fog = {RGB(170, 120, 255)},
-	},
-	{ -- 13 Crystal Caverns -> glowing crystal field
-		ground = RGB(44, 48, 84), lane = RGB(58, 62, 100), cliff = RGB(28, 28, 58), trunk = RGB(80, 70, 120),
-		leaves = {RGB(120, 230, 255)}, crystal = {RGB(90, 230, 255), RGB(255, 120, 220), RGB(170, 110, 255)}, lamp = RGB(140, 240, 255), rock = RGB(70, 70, 110),
-		props = {{"crystal", 6}, {"mushroom", 3}, {"rock", 2}},
-		landmark = "bigcrystal",
-	},
-	{ -- 14 Sky Kingdom -> cloud gardens
-		ground = RGB(238, 243, 255), lane = RGB(236, 230, 214), cliff = RGB(200, 212, 238), trunk = RGB(250, 250, 250),
-		leaves = {RGB(255, 255, 255), RGB(238, 244, 255)}, crystal = {RGB(255, 220, 110), RGB(255, 255, 255)}, lamp = RGB(255, 235, 170), rock = RGB(230, 230, 240),
-		props = {{"tree", 4}, {"crystal", 2}, {"lantern", 2}, {"rock", 1}},
-	},
-	{ -- 15 Dragon's Hoard -> scorched dragon mountain
-		ground = RGB(92, 40, 34), lane = RGB(98, 46, 36), cliff = RGB(50, 20, 20), trunk = RGB(70, 35, 25),
-		leaves = {RGB(200, 40, 60)}, crystal = {RGB(255, 200, 50), RGB(255, 60, 80)}, lamp = RGB(255, 170, 70), rock = RGB(80, 45, 40),
-		props = {{"rock", 4}, {"crystal", 3}, {"lantern", 2}, {"deadtree", 1}},
-		landmark = "volcano",
-	},
-}
-
-local function pickProp(list)
-	local total = 0
-	for _, e in ipairs(list) do total = total + e[2] end
-	local roll = math.random() * total
-	for _, e in ipairs(list) do
-		roll = roll - e[2]
-		if roll <= 0 then return e[1] end
-	end
-	return list[1][1]
-end
-
-local function buildBiome(r, b)
-	-- ground strips on both sides of the lane + a rocky cliff underneath (floating island look)
-	for _, side in ipairs({-1, 1}) do
-		local g = D(r, "Ground", V(BW, 0.4, SL), side * (HW + BW / 2), 0.3, SL / 2, b.ground, M.SmoothPlastic)
-		g.TopSurface = Enum.SurfaceType.Studs
-		D(r, "GroundEdge", V(0.6, 0.5, SL), side * (HW + BW - 0.3), 0.5, SL / 2, b.ground:Lerp(RGB(255, 255, 255), 0.35), M.SmoothPlastic, FX)
-	end
-	D(r, "Cliff", V((HW + BW) * 2, 10, SL), 0, -5.2, SL / 2, b.cliff, M.Slate)
-	D(r, "CliffLow", V((HW + BW) * 2 - 14, 10, SL - 6), 0, -14, SL / 2, b.cliff:Lerp(RGB(0, 0, 0), 0.35), M.Slate)
-	if b.sea then
+		-- the hanging department sign over the entrance + a sign on each wall
+		local sign = D(r, "DeptSign", V(30, 6, 0.5), 0, WH - 9.5, 3, RGB(28, 32, 40), M.SmoothPlastic, FX)
+		D(r, "DeptSignFrame", V(30.8, 6.8, 0.3), 0, WH - 9.5, 3.1, acc, M.SmoothPlastic, FX)
+		for _, x in ipairs({-12, 12}) do D(r, "SignCable", V(0.1, 6, 0.1), x, WH - 3.5, 3, RGB(40, 40, 44), M.Metal, FX) end
+		deptSign(sign, Enum.NormalId.Back, areaIndex, area, acc)
+		deptSign(sign, Enum.NormalId.Front, areaIndex, area, acc)
 		for _, side in ipairs({-1, 1}) do
-			D(r, "Sea", V(60, 0.6, SL), side * (HW + BW + 28), -0.4, SL / 2, RGB(40, 150, 230), M.SmoothPlastic, {Transparency = 0.15, Reflectance = 0.15, CanCollide = false})
-			D(r, "Foam", V(1.2, 0.65, SL), side * (HW + BW - 0.5), -0.35, SL / 2, RGB(240, 250, 255), M.SmoothPlastic, FX)
+			local ws = D(r, "WallSign", V(0.3, 5, 20), side * (HW - 0.45), F + 18, SLen * 0.5, RGB(28, 32, 40), M.SmoothPlastic, FX)
+			deptSign(ws, (side < 0) and Enum.NormalId.Right or Enum.NormalId.Left, areaIndex, area, acc)
 		end
-	end
-	if b.grid then
-		for _, side in ipairs({-1, 1}) do
-			for k = 1, 3 do D(r, "GridLine", V(0.2, 0.06, SL), side * (HW + k * BW / 4), F + 0.04, SL / 2, b.grid, M.Neon, FX) end
-			for d = 5, SL - 5, 10 do D(r, "GridLine", V(BW, 0.06, 0.2), side * (HW + BW / 2), F + 0.04, d, b.grid, M.Neon, FX) end
-		end
-	end
-	-- scatter props on a jittered grid (never inside the lane)
-	for _, side in ipairs({-1, 1}) do
-		for row = 0, 5 do
-			for col = 0, 2 do
-				local x = side * (HW + 5 + col * 9 + (math.random() - 0.5) * 4)
-				local d = 4 + row * 8.4 + (math.random() - 0.5) * 4
-				local kind = pickProp(b.props)
-				PROPS[kind](r, x, d, b)
+
+		-- the recommended speed for this area, on a safety sign by the entrance
+		local rec = D(r, "SpeedSign", V(7, 3.2, 0.3), -26, F + 4.6, 1.6, RGB(255, 196, 0), M.SmoothPlastic, FX)
+		D(r, "SpeedSignBorder", V(7.4, 3.6, 0.2), -26, F + 4.6, 1.75, STRIPE, M.SmoothPlastic, FX)
+		for _, x in ipairs({-28.6, -23.4}) do D(r, "SpeedSignPost", V(0.3, 3.2, 0.3), x, F + 1.6, 1.75, STEEL, M.Metal, FX) end
+		surfaceText(rec, Enum.NormalId.Back, (areaIndex > 1) and (Config.FormatNum(Config.RecommendedPoints(areaIndex)) .. " SPEED\nrecommended") or "START HERE!", RGB(30, 30, 34))
+
+		-- the 2 pallets in the open aisle for the big ones (Huge / Giant boxes only spawn here)
+		for _, x in ipairs({-12, 12}) do
+			pallet(r, x, F, 30)
+			for _, e in ipairs({{0, 4.4, 8.8, 0.35}, {0, -4.4, 8.8, 0.35}, {4.4, 0, 0.35, 8.8}, {-4.4, 0, 0.35, 8.8}}) do
+				D(r, "PalletZone", V(e[3], 0.06, e[4]), x + e[1], F + 0.02, 30 + e[2], YELLOW, M.SmoothPlastic, FX)
 			end
+			local p = D(r, "Spawn", V(2, 0.2, 2), x, F + 0.62, 30, RGB(255, 255, 0), nil, GHOST)
+			p:SetAttribute("Area", areaIndex)
+			p.Parent = spawns
 		end
-	end
-	if b.landmark then PROPS[b.landmark](r, (r.index % 2 == 0) and (HW + BW * 0.55) or -(HW + BW * 0.55), SL * 0.5, b) end
-	-- soft coloured mist over the zone
-	if b.fog then ambience(r, b.fog, {rate = 8, speed = 0.3, size = 2.5, glow = 0.3, accel = Vector3.new(0.2, 0, 0), y = F + 1.5, life = 9}) end
-end
 
--- the floating zone title (text on an invisible board: stays in the world, never piles up on screen)
-local function zoneTitle(r, area, acc)
-	local board = D(r, "ZoneTitle", V(44, 9, 0.2), 0, 21, 0, RGB(0, 0, 0), nil, GHOST)
-	for _, face in ipairs({Enum.NormalId.Back, Enum.NormalId.Front}) do
-		local sg = Instance.new("SurfaceGui")
-		sg.Name = "Title"
-		sg.Face = face
-		sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		sg.PixelsPerStud = 20
-		sg.LightInfluence = 0
-		sg.Parent = board
-		local small = Instance.new("TextLabel")
-		small.BackgroundTransparency = 1
-		small.Size = UDim2.fromScale(1, 0.28)
-		small.FontFace = Config.Font
-		small.TextScaled = true
-		small.TextColor3 = acc
-		small.Text = "AREA " .. r.index
-		small.Parent = sg
-		local s1 = Instance.new("UIStroke")
-		s1.Thickness = 4
-		s1.Color = RGB(20, 15, 40)
-		s1.Parent = small
-		local big = Instance.new("TextLabel")
-		big.BackgroundTransparency = 1
-		big.Position = UDim2.fromScale(0, 0.28)
-		big.Size = UDim2.fromScale(1, 0.72)
-		big.FontFace = Config.Font
-		big.TextScaled = true
-		big.TextColor3 = RGB(255, 255, 255)
-		big.Text = string.upper(area.name)
-		big.Parent = sg
-		local s2 = Instance.new("UIStroke")
-		s2.Thickness = 6
-		s2.Color = RGB(20, 15, 40)
-		s2.Parent = big
-	end
-end
+		-- a parked forklift and a stack of empty pallets at the back
+		local fs = (areaIndex % 2 == 0) and 1 or -1
+		forklift(r, fs * 24, SLen - 9, math.rad(fs * 90))
+		palletStack(r, -fs * 24, SLen - 8, 4 + areaIndex % 3)
 
-------------------------------------------------------------------
--- LIVING AREAS: critters that walk / fly around and set pieces that spin, bob and sway.
--- Everything here is moved by the CLIENTS (smooth, and free for the server):
--- tag "Animated" + attribute Anim = spin / bob / hover / bounce / sway / orbit / leap / pulse / wander / fly.
--- Parts inside a moving model can flap (wings), spin (rotors) or step (legs).
-------------------------------------------------------------------
-local CSS = game:GetService("CollectionService")
-local function animate(inst, kind, attrs)
-	inst:SetAttribute("Anim", kind)
-	for k, v in pairs(attrs or {}) do inst:SetAttribute(k, v) end
-	CSS:AddTag(inst, "Animated")
-	return inst
-end
--- one part of a moving thing: rc = the thing's root CFrame (world), off = offset in studs
-local function CP(mdl, name, size, rc, off, color, mat, shape, rot)
-	local p = P(mdl, name, size, rc * CFrame.new(off) * (rot or CFrame.new()), color, mat or M.SmoothPlastic, FX)
-	if shape == "ball" then
-		p.Shape = Enum.PartType.Ball
-	elseif shape == "cyl" then
-		p.Shape = Enum.PartType.Cylinder
-	elseif shape == "ell" then
-		local mesh = Instance.new("SpecialMesh")
-		mesh.MeshType = Enum.MeshType.Sphere
-		mesh.Parent = p
-	end
-	return p
-end
-local function newThing(r, name)
-	local mdl = Instance.new("Model")
-	mdl.Name = name
-	mdl.Parent = r.folder
-	return mdl
-end
-local function finish(mdl, rc, kind, attrs)
-	mdl.WorldPivot = rc
-	return animate(mdl, kind, attrs)
-end
-local GROUND_Y = L.floorY
--- the walk-around box of a side strip (world coords)
-local function stripBox(r, side, y0, y1)
-	local x1, x2 = side * (HW + 6) * SC, side * (HW + BW - 6) * SC
-	local z1, z2 = r.z0 - 5 * SC, r.z0 - (SL - 5) * SC
-	return Vector3.new(math.min(x1, x2), y0, math.min(z1, z2)), Vector3.new(math.max(x1, x2), y1, math.max(z1, z2))
-end
--- a box over the lane (for flyers)
-local function laneBox(r, y0, y1)
-	local z1, z2 = r.z0 - 6 * SC, r.z0 - (SL - 6) * SC
-	return Vector3.new(-HW * SC * 0.8, y0, math.min(z1, z2)), Vector3.new(HW * SC * 0.8, y1, math.max(z1, z2))
-end
-local function randIn(mn, mx)
-	return Vector3.new(mn.X + math.random() * (mx.X - mn.X), mn.Y + math.random() * (mx.Y - mn.Y), mn.Z + math.random() * (mx.Z - mn.Z))
-end
-
-------------------------------------------------------------------
--- critters (built facing -Z, feet at the root)
-------------------------------------------------------------------
-local CRITTER = {}
-CRITTER.chicken = function(r, rc)
-	local m = newThing(r, "Chicken")
-	CP(m, "Body", V(1.3, 1.1, 1.6), rc, V(0, 1.2, 0), RGB(250, 250, 245), nil, "ell")
-	CP(m, "Head", V(0.75, 0.75, 0.75), rc, V(0, 2.0, -0.7), RGB(250, 250, 245), nil, "ball")
-	CP(m, "Beak", V(0.22, 0.18, 0.35), rc, V(0, 1.95, -1.15), RGB(255, 180, 40))
-	CP(m, "Comb", V(0.12, 0.35, 0.5), rc, V(0, 2.45, -0.7), RGB(230, 40, 40))
-	CP(m, "Wattle", V(0.12, 0.25, 0.15), rc, V(0, 1.72, -1.0), RGB(230, 40, 40))
-	for _, sx in ipairs({-1, 1}) do
-		CP(m, "Eye", V(0.1, 0.12, 0.08), rc, V(sx * 0.3, 2.1, -0.95), RGB(20, 20, 20))
-		local w = CP(m, "Wing", V(0.5, 0.15, 0.9), rc, V(sx * 0.8, 1.35, 0.05), RGB(235, 235, 230), nil, "ell")
-		w:SetAttribute("Flap", sx)
-		local leg = CP(m, "Leg", V(0.12, 0.7, 0.12), rc, V(sx * 0.3, 0.35, 0), RGB(255, 180, 40))
-		leg:SetAttribute("Step", sx)
-	end
-	CP(m, "Tail", V(0.6, 0.7, 0.3), rc, V(0, 1.6, 0.85), RGB(240, 240, 235), nil, nil, CFrame.Angles(math.rad(25), 0, 0))
-	return m
-end
-CRITTER.cow = function(r, rc)
-	local m = newThing(r, "Cow")
-	CP(m, "Body", V(2.2, 1.9, 3.6), rc, V(0, 2.4, 0), RGB(250, 250, 250))
-	for _, sp in ipairs({{0.6, 2.6, -0.8, 1.1}, {-0.5, 2.2, 0.6, 1.3}, {0.3, 2.9, 1.1, 0.8}}) do
-		CP(m, "Spot", V(2.25, sp[4], sp[4]), rc, V(0, sp[2], sp[3]), RGB(30, 30, 30))
-	end
-	CP(m, "Head", V(1.4, 1.3, 1.4), rc, V(0, 3.0, -2.3), RGB(250, 250, 250))
-	CP(m, "Snout", V(1.2, 0.7, 0.5), rc, V(0, 2.6, -3.1), RGB(255, 180, 190))
-	for _, sx in ipairs({-1, 1}) do
-		CP(m, "Eye", V(0.14, 0.2, 0.08), rc, V(sx * 0.4, 3.25, -3.0), RGB(20, 20, 20))
-		CP(m, "Horn", V(0.18, 0.5, 0.18), rc, V(sx * 0.5, 3.85, -2.2), RGB(240, 230, 200))
-		CP(m, "Ear", V(0.5, 0.2, 0.3), rc, V(sx * 0.9, 3.4, -2.2), RGB(250, 250, 250))
-		for _, dz in ipairs({-1.2, 1.2}) do
-			local leg = CP(m, "Leg", V(0.5, 1.5, 0.5), rc, V(sx * 0.7, 0.75, dz), RGB(250, 250, 250))
-			leg:SetAttribute("Step", sx * (dz > 0 and -1 or 1))
-		end
-	end
-	CP(m, "Udder", V(0.8, 0.4, 0.8), rc, V(0, 1.35, 0.7), RGB(255, 170, 185))
-	CP(m, "Tail", V(0.15, 1.3, 0.15), rc, V(0, 2.4, 1.85), RGB(240, 240, 240), nil, nil, CFrame.Angles(math.rad(-20), 0, 0))
-	return m
-end
-CRITTER.bat = function(r, rc)
-	local m = newThing(r, "Bat")
-	CP(m, "Body", V(0.7, 0.8, 0.9), rc, V(0, 0, 0), RGB(35, 25, 45), nil, "ell")
-	CP(m, "Head", V(0.55, 0.55, 0.55), rc, V(0, 0.35, -0.45), RGB(35, 25, 45), nil, "ball")
-	for _, sx in ipairs({-1, 1}) do
-		CP(m, "Ear", V(0.15, 0.35, 0.12), rc, V(sx * 0.18, 0.75, -0.45), RGB(35, 25, 45))
-		CP(m, "Eye", V(0.1, 0.1, 0.05), rc, V(sx * 0.13, 0.42, -0.72), RGB(255, 60, 60), M.Neon)
-		local w = CP(m, "Wing", V(1.5, 0.08, 0.8), rc, V(sx * 1.05, 0.1, 0), RGB(60, 40, 75))
-		w:SetAttribute("Flap", sx)
-	end
-	return m
-end
-CRITTER.butterfly = function(r, rc, color)
-	local m = newThing(r, "Butterfly")
-	CP(m, "Body", V(0.12, 0.12, 0.6), rc, V(0, 0, 0), RGB(40, 30, 30))
-	for _, sx in ipairs({-1, 1}) do
-		local w = CP(m, "Wing", V(0.6, 0.04, 0.7), rc, V(sx * 0.35, 0, -0.05), color, M.Neon, nil)
-		w.Transparency = 0.1
-		w:SetAttribute("Flap", sx)
-	end
-	return m
-end
-CRITTER.seagull = function(r, rc)
-	local m = newThing(r, "Seagull")
-	CP(m, "Body", V(0.7, 0.6, 1.4), rc, V(0, 0, 0), RGB(250, 250, 250), nil, "ell")
-	CP(m, "Head", V(0.5, 0.5, 0.5), rc, V(0, 0.25, -0.7), RGB(250, 250, 250), nil, "ball")
-	CP(m, "Beak", V(0.14, 0.12, 0.4), rc, V(0, 0.2, -1.05), RGB(255, 200, 40))
-	CP(m, "Tail", V(0.5, 0.08, 0.5), rc, V(0, 0.05, 0.85), RGB(200, 200, 205))
-	for _, sx in ipairs({-1, 1}) do
-		local w = CP(m, "Wing", V(1.7, 0.08, 0.6), rc, V(sx * 1.15, 0.1, 0), RGB(235, 235, 240))
-		w:SetAttribute("Flap", sx)
-	end
-	return m
-end
-CRITTER.fish = function(r, rc, color)
-	local m = newThing(r, "Fish")
-	CP(m, "Body", V(0.5, 0.8, 1.6), rc, V(0, 0, 0), color, nil, "ell")
-	CP(m, "Tail", V(0.08, 0.7, 0.6), rc, V(0, 0, 0.95), color:Lerp(RGB(0, 0, 0), 0.15))
-	CP(m, "Fin", V(0.08, 0.35, 0.5), rc, V(0, 0.45, 0), color:Lerp(RGB(255, 255, 255), 0.2))
-	for _, sx in ipairs({-1, 1}) do CP(m, "Eye", V(0.08, 0.14, 0.14), rc, V(sx * 0.22, 0.12, -0.5), RGB(20, 20, 20)) end
-	return m
-end
-CRITTER.ptero = function(r, rc)
-	local m = newThing(r, "Pterodactyl")
-	CP(m, "Body", V(1.0, 0.9, 2.2), rc, V(0, 0, 0), RGB(170, 110, 70), nil, "ell")
-	CP(m, "Head", V(0.7, 0.7, 1.3), rc, V(0, 0.4, -1.4), RGB(170, 110, 70), nil, "ell")
-	CP(m, "Beak", V(0.25, 0.25, 1.2), rc, V(0, 0.3, -2.4), RGB(230, 200, 140))
-	CP(m, "Crest", V(0.12, 0.5, 1.1), rc, V(0, 0.75, -0.9), RGB(200, 60, 40), nil, nil, CFrame.Angles(math.rad(-25), 0, 0))
-	for _, sx in ipairs({-1, 1}) do
-		local w = CP(m, "Wing", V(3.4, 0.1, 1.4), rc, V(sx * 2.1, 0.2, 0), RGB(200, 140, 90))
-		w:SetAttribute("Flap", sx)
-		CP(m, "Eye", V(0.08, 0.14, 0.14), rc, V(sx * 0.3, 0.55, -1.6), RGB(255, 220, 40), M.Neon)
-	end
-	return m
-end
-CRITTER.dino = function(r, rc)
-	local m = newThing(r, "BabyDino")
-	local g = RGB(110, 200, 90)
-	CP(m, "Body", V(1.4, 1.3, 2.2), rc, V(0, 1.4, 0), g, nil, "ell")
-	CP(m, "Neck", V(0.6, 1.2, 0.6), rc, V(0, 2.3, -0.9), g, nil, nil, CFrame.Angles(math.rad(-25), 0, 0))
-	CP(m, "Head", V(0.9, 0.8, 1.2), rc, V(0, 2.95, -1.4), g, nil, "ell")
-	CP(m, "Tail", V(0.5, 0.5, 1.6), rc, V(0, 1.3, 1.6), g, nil, nil, CFrame.Angles(math.rad(10), 0, 0))
-	CP(m, "Belly", V(1.0, 0.9, 1.6), rc, V(0, 1.2, -0.1), RGB(240, 230, 150), nil, "ell")
-	for k = 0, 3 do CP(m, "Plate", V(0.12, 0.45, 0.45), rc, V(0, 2.1 - k * 0.12, -0.3 + k * 0.55), RGB(255, 150, 50), nil, nil, CFrame.Angles(math.rad(45), 0, 0)) end
-	for _, sx in ipairs({-1, 1}) do
-		CP(m, "Eye", V(0.08, 0.18, 0.18), rc, V(sx * 0.4, 3.1, -1.6), RGB(20, 20, 20))
-		local leg = CP(m, "Leg", V(0.45, 0.9, 0.5), rc, V(sx * 0.45, 0.45, 0.2), g:Lerp(RGB(0, 0, 0), 0.1))
-		leg:SetAttribute("Step", sx)
-	end
-	return m
-end
-CRITTER.penguin = function(r, rc)
-	local m = newThing(r, "Penguin")
-	CP(m, "Body", V(1.1, 1.7, 1.0), rc, V(0, 1.1, 0), RGB(30, 30, 40), nil, "ell")
-	CP(m, "Belly", V(0.85, 1.3, 0.6), rc, V(0, 1.0, -0.25), RGB(250, 250, 250), nil, "ell")
-	CP(m, "Head", V(0.85, 0.8, 0.8), rc, V(0, 2.1, -0.05), RGB(30, 30, 40), nil, "ball")
-	CP(m, "Beak", V(0.25, 0.15, 0.4), rc, V(0, 2.05, -0.5), RGB(255, 150, 40))
-	for _, sx in ipairs({-1, 1}) do
-		CP(m, "EyeWhite", V(0.2, 0.22, 0.08), rc, V(sx * 0.18, 2.25, -0.38), RGB(255, 255, 255))
-		CP(m, "Eye", V(0.1, 0.12, 0.05), rc, V(sx * 0.18, 2.25, -0.42), RGB(20, 20, 20))
-		local f = CP(m, "Flipper", V(0.18, 0.9, 0.5), rc, V(sx * 0.6, 1.25, 0), RGB(30, 30, 40))
-		f:SetAttribute("Flap", sx)
-		CP(m, "Foot", V(0.4, 0.12, 0.5), rc, V(sx * 0.25, 0.06, -0.25), RGB(255, 150, 40))
-	end
-	return m
-end
-CRITTER.drone = function(r, rc)
-	local m = newThing(r, "Drone")
-	CP(m, "Body", V(1.4, 0.45, 1.4), rc, V(0, 0, 0), RGB(50, 55, 70), M.Metal)
-	local eye = CP(m, "Lens", V(0.4, 0.3, 0.1), rc, V(0, -0.05, -0.72), RGB(60, 170, 255), M.Neon)
-	eye:SetAttribute("Blink", 0)
-	for _, c in ipairs({{-1, -1}, {1, -1}, {-1, 1}, {1, 1}}) do
-		CP(m, "Arm", V(0.12, 0.12, 0.9), rc, V(c[1] * 0.75, 0.1, c[2] * 0.75), RGB(80, 85, 100), M.Metal, nil, CFrame.Angles(0, math.rad(45 * c[1] * c[2]), 0))
-		local rotor = CP(m, "Rotor", V(1.1, 0.05, 0.14), rc, V(c[1] * 1.05, 0.28, c[2] * 1.05), RGB(200, 210, 220))
-		rotor:SetAttribute("SubSpin", 30 * c[1])
-	end
-	CP(m, "Light", V(0.2, 0.2, 0.2), rc, V(0, -0.3, 0), RGB(255, 60, 60), M.Neon, "ball"):SetAttribute("Blink", 1)
-	return m
-end
-CRITTER.ufo = function(r, rc)
-	local m = newThing(r, "MiniUFO")
-	CP(m, "Hull", V(0.5, 3.2, 3.2), rc, V(0, 0, 0), RGB(180, 190, 205), M.Metal, "cyl", CFrame.Angles(0, 0, math.rad(90)))
-	CP(m, "Dome", V(1.6, 1.3, 1.6), rc, V(0, 0.45, 0), RGB(120, 255, 160), M.Glass, "ell").Transparency = 0.3
-	for k = 0, 5 do
-		local a = k * math.pi / 3
-		CP(m, "Light", V(0.3, 0.3, 0.3), rc, V(math.cos(a) * 1.45, -0.05, math.sin(a) * 1.45), (k % 2 == 0) and RGB(90, 255, 90) or RGB(255, 240, 80), M.Neon, "ball"):SetAttribute("Blink", k % 2)
-	end
-	local beam = CP(m, "Beam", V(4, 1.2, 1.2), rc, V(0, -2.2, 0), RGB(120, 255, 140), M.Neon, "cyl", CFrame.Angles(0, 0, math.rad(90)))
-	beam.Transparency = 0.8
-	return m
-end
-CRITTER.blob = function(r, rc)
-	local m = newThing(r, "AlienBlob")
-	CP(m, "Body", V(1.6, 1.3, 1.6), rc, V(0, 0.65, 0), RGB(120, 255, 140), M.SmoothPlastic, "ell").Reflectance = 0.15
-	for _, sx in ipairs({-1, 1}) do
-		CP(m, "Stalk", V(0.1, 0.7, 0.1), rc, V(sx * 0.3, 1.55, -0.2), RGB(100, 220, 120))
-		CP(m, "Eye", V(0.32, 0.32, 0.32), rc, V(sx * 0.3, 1.95, -0.2), RGB(255, 255, 255), nil, "ball")
-		CP(m, "Pupil", V(0.14, 0.14, 0.08), rc, V(sx * 0.3, 1.95, -0.36), RGB(20, 20, 20))
-	end
-	return m
-end
-CRITTER.ghost = function(r, rc)
-	local m = newThing(r, "Ghost")
-	local body = CP(m, "Body", V(1.8, 2.4, 1.8), rc, V(0, 0, 0), RGB(235, 240, 255), M.SmoothPlastic, "ell")
-	body.Transparency = 0.35
-	local tail = CP(m, "Tail", V(1.2, 1.4, 1.2), rc, V(0, -1.3, 0.2), RGB(235, 240, 255), M.SmoothPlastic, "ell")
-	tail.Transparency = 0.55
-	for _, sx in ipairs({-1, 1}) do CP(m, "Eye", V(0.3, 0.45, 0.1), rc, V(sx * 0.35, 0.3, -0.85), RGB(30, 20, 50)) end
-	CP(m, "Mouth", V(0.4, 0.3, 0.1), rc, V(0, -0.2, -0.86), RGB(30, 20, 50), nil, "ell")
-	local glow = Instance.new("PointLight")
-	glow.Color = RGB(180, 200, 255)
-	glow.Range = 14
-	glow.Brightness = 1.2
-	glow.Parent = body
-	return m
-end
-
--- place a critter at a random spot of a strip and let it wander there
-local function walker(r, kind, side, speed, extra)
-	local mn, mx = stripBox(r, side, GROUND_Y, GROUND_Y)
-	local p = randIn(mn, mx)
-	local rc = CFrame.new(p) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
-	local m = CRITTER[kind](r, rc)
-	local attrs = {Min = mn, Max = mx, Speed = speed, Amp = 0.25}
-	for k, v in pairs(extra or {}) do attrs[k] = v end
-	return finish(m, rc, "wander", attrs)
-end
-local function flyer(r, kind, mn, mx, speed, color)
-	local p = randIn(mn, mx)
-	local rc = CFrame.new(p)
-	local m = CRITTER[kind](r, rc, color)
-	return finish(m, rc, "fly", {Min = mn, Max = mx, Speed = speed, FlapSpeed = (kind == "ptero") and 4 or ((kind == "butterfly") and 22 or 12)})
-end
-local function orbiter(r, kind, center, radius, height, speed, phase, color)
-	local rc = CFrame.new(center + Vector3.new(radius, height, 0))
-	local m = CRITTER[kind](r, rc, color)
-	return finish(m, rc, "orbit", {Center = CFrame.new(center + Vector3.new(0, height, 0)), Radius = radius, Speed = speed, Phase = phase or 0, Amp = 1.2, FlapSpeed = 5})
-end
-
-------------------------------------------------------------------
--- moving set pieces
-------------------------------------------------------------------
-local function windmill(r, x, d)
-	local base = SCF(r, x, F, d).Position
-	local tower = newThing(r, "Windmill")
-	for k = 0, 4 do
-		P(tower, "Tower", V(5 - k * 0.6, 3, 5 - k * 0.6) * SC, CFrame.new(base + V(0, (1.5 + k * 3) * SC, 0)), (k % 2 == 0) and RGB(200, 70, 60) or RGB(240, 235, 225), M.WoodPlanks)
-	end
-	P(tower, "Roof", V(3.6, 3.6, 3.6) * SC, CFrame.new(base + V(0, 16.5 * SC, 0)) * CFrame.Angles(0, math.rad(45), 0) * CFrame.Angles(math.rad(45), 0, math.rad(45)), RGB(90, 60, 45), M.WoodPlanks)
-	-- the blades spin around the axis pointing at the lane
-	local face = -math.sign(x)
-	local hub = CFrame.lookAt(base + V(face * 2.4 * SC, 14 * SC, 0), base + V(face * 10 * SC, 14 * SC, 0))
-	local blades = newThing(r, "WindmillBlades")
-	CP(blades, "Hub", V(1.2, 1.2, 1.2) * SC, hub, V(0, 0, 0), RGB(90, 60, 45), M.Wood, "ball")
-	for k = 0, 3 do
-		local rot = CFrame.Angles(0, 0, k * math.pi / 2)
-		CP(blades, "Blade", V(1.6, 7, 0.2) * SC, hub, V(0, 0, 0), RGB(245, 240, 230), M.Fabric, nil, rot * CFrame.new(0, 4 * SC, -0.3 * SC))
-		CP(blades, "BladeBar", V(0.3, 8, 0.3) * SC, hub, V(0, 0, 0), RGB(110, 75, 50), M.Wood, nil, rot * CFrame.new(0, 4 * SC, -0.15 * SC))
-	end
-	finish(blades, hub, "spin", {Axis = Vector3.new(0, 0, 1), Speed = 0.9})
-end
-
-local function pinwheel(r, x, d, h)
-	local stickBase = SCF(r, x, F, d).Position
-	P(r.folder, "PinwheelStick", V(0.3, h, 0.3) * SC, CFrame.new(stickBase + V(0, h * SC / 2, 0)), RGB(250, 250, 250), M.SmoothPlastic, FX)
-	local hub = CFrame.new(stickBase + V(0, h * SC, -0.3 * SC))
-	local wheel = newThing(r, "Pinwheel")
-	local cols = {RGB(255, 80, 80), RGB(255, 210, 40), RGB(80, 170, 255), RGB(90, 220, 110)}
-	for k = 0, 3 do
-		CP(wheel, "Vane", V(1.6, 1.6, 0.1) * SC, hub, V(0, 0, 0), cols[k + 1], M.SmoothPlastic, nil, CFrame.Angles(0, 0, k * math.pi / 2) * CFrame.new(0.8 * SC, 0.8 * SC, 0) * CFrame.Angles(0, 0, math.rad(45)))
-	end
-	CP(wheel, "Pin", V(0.5, 0.5, 0.5) * SC, hub, V(0, 0, -0.1 * SC), RGB(255, 255, 255), nil, "ball")
-	finish(wheel, hub, "spin", {Axis = Vector3.new(0, 0, 1), Speed = 3 + math.random() * 2})
-end
-
-local function balloon(r, x, d, color)
-	local p = SCF(r, x, F + 8 + math.random() * 6, d).Position
-	local m = newThing(r, "Balloon")
-	local rc = CFrame.new(p)
-	CP(m, "Balloon", V(2.4, 3, 2.4) * SC, rc, V(0, 0, 0), color, nil, "ell").Reflectance = 0.15
-	CP(m, "Knot", V(0.4, 0.4, 0.4) * SC, rc, V(0, -1.6 * SC, 0), color, nil, "ball")
-	CP(m, "String", V(0.06, 4, 0.06) * SC, rc, V(0, -3.6 * SC, 0), RGB(255, 255, 255))
-	finish(m, rc, "bob", {Speed = 1 + math.random(), Amp = 1.2, Phase = math.random() * 6})
-end
-
-local function bigLollipop(r, x, d, color)
-	local base = SCF(r, x, F, d).Position
-	P(r.folder, "LolliStick", V(0.5, 9, 0.5) * SC, CFrame.new(base + V(0, 4.5 * SC, 0)), RGB(250, 250, 250), M.SmoothPlastic, FX)
-	local face = -math.sign(x)
-	local hub = CFrame.lookAt(base + V(0, 11 * SC, 0), base + V(face * 10, 11 * SC, 0))
-	local m = newThing(r, "SpinningLollipop")
-	CP(m, "Candy", V(0.9, 6, 6) * SC, hub, V(0, 0, 0), color, nil, "cyl", CFrame.Angles(0, math.rad(90), 0))
-	for k = 0, 3 do
-		CP(m, "Swirl", V(0.6, 5.8, 0.95) * SC, hub, V(0, 0, -0.05 * SC), RGB(255, 255, 255), nil, nil, CFrame.Angles(0, 0, k * math.pi / 4))
-	end
-	finish(m, hub, "spin", {Axis = Vector3.new(0, 0, 1), Speed = 1.2})
-end
-
-local function bouncyBall(r, x, d, color, size)
-	local rc = SCF(r, x, F + size / 2, d)
-	local m = newThing(r, "BouncyBall")
-	CP(m, "Ball", V(size, size, size) * SC, rc, V(0, 0, 0), color, nil, "ball")
-	CP(m, "Stripe", V(size * 0.25, size * 1.01, size * 1.01) * SC, rc, V(0, 0, 0), RGB(255, 255, 255), nil, "cyl")
-	finish(m, rc, "bounce", {Speed = 3, Amp = 6, Phase = math.random() * 3})
-end
-
-local function trainLoop(r, x, d)
-	local center = SCF(r, x, F, d).Position
-	local radius = 7 * SC
-	-- the track: a ring of sleepers
-	for k = 0, 23 do
-		local a = k / 24 * math.pi * 2
-		local p = center + V(math.cos(a) * radius, 0.15, math.sin(a) * radius)
-		P(r.folder, "Sleeper", V(0.5, 0.2, 2.2) * SC, CFrame.lookAt(p, center) , RGB(130, 90, 60), M.WoodPlanks, FX)
-	end
-	local cols = {RGB(230, 50, 50), RGB(60, 140, 255), RGB(255, 200, 40)}
-	for car = 0, 2 do
-		local rc = CFrame.new(center + V(radius, 0, 0))
-		local m = newThing(r, (car == 0) and "TrainEngine" or "TrainCar")
-		local col = cols[car + 1]
-		CP(m, "Body", V(1.8, 1.6, 2.6) * SC, rc, V(0, 1.4 * SC, 0), col)
-		CP(m, "Roof", V(2, 0.3, 2.8) * SC, rc, V(0, 2.35 * SC, 0), RGB(40, 40, 50))
-		if car == 0 then
-			CP(m, "Chimney", V(0.7, 1.4, 0.7) * SC, rc, V(0, 3.0 * SC, -0.8 * SC), RGB(40, 40, 50), nil, "cyl", CFrame.Angles(0, 0, math.rad(90)))
-			CP(m, "Lamp", V(0.5, 0.5, 0.2) * SC, rc, V(0, 1.6 * SC, -1.35 * SC), RGB(255, 240, 160), M.Neon)
-		end
-		for _, sx in ipairs({-1, 1}) do
-			for _, dz in ipairs({-0.8, 0.8}) do
-				CP(m, "Wheel", V(0.3, 0.9, 0.9) * SC, rc, V(sx * 0.95 * SC, 0.5 * SC, dz * SC), RGB(30, 30, 35), nil, "cyl")
-			end
-		end
-		finish(m, rc, "orbit", {Center = CFrame.new(center), Radius = radius, Speed = -0.7, Phase = car * 0.42, Amp = 0})
+		-- the guardian sleeps in the middle, facing the entrance
+		makeGuardian(areaIndex, SCF(r, 0, 0, SLen * 0.45).Position, acc)
 	end
 end
-
-local function radarTower(r, x, d)
-	local base = SCF(r, x, F, d).Position
-	P(r.folder, "RadarTower", V(1.4, 12, 1.4) * SC, CFrame.new(base + V(0, 6 * SC, 0)), RGB(60, 65, 80), M.Metal, FX)
-	local hub = CFrame.new(base + V(0, 12.4 * SC, 0))
-	local m = newThing(r, "RadarDish")
-	CP(m, "Dish", V(0.4, 5, 5) * SC, hub, V(0, 0.8 * SC, 0), RGB(220, 225, 235), M.Metal, "cyl", CFrame.Angles(0, 0, math.rad(60)))
-	CP(m, "Feed", V(0.2, 0.2, 2) * SC, hub, V(0.8 * SC, 1.6 * SC, 0), RGB(80, 85, 100), M.Metal, nil, CFrame.Angles(0, math.rad(90), 0))
-	CP(m, "Tip", V(0.5, 0.5, 0.5) * SC, hub, V(1.6 * SC, 2.1 * SC, 0), RGB(255, 60, 60), M.Neon, "ball"):SetAttribute("Blink", 0)
-	finish(m, hub, "spin", {Axis = Vector3.new(0, 1, 0), Speed = 1.1})
-end
-
-local function iceCrystal(r, x, d, color)
-	local rc = SCF(r, x, F + 4 + math.random() * 3, d)
-	local m = newThing(r, "FloatingCrystal")
-	CP(m, "Crystal", V(1.6, 4, 1.6) * SC, rc, V(0, 0, 0), color, M.Glass, nil, CFrame.Angles(0, math.rad(45), 0)).Transparency = 0.1
-	CP(m, "Core", V(0.7, 2.4, 0.7) * SC, rc, V(0, 0, 0), color:Lerp(RGB(255, 255, 255), 0.4), M.Neon, nil, CFrame.Angles(0, math.rad(45), 0))
-	CP(m, "TipTop", V(1.1, 1.1, 1.1) * SC, rc, V(0, 2.2 * SC, 0), color, M.Glass, nil, CFrame.Angles(math.rad(45), 0, math.rad(45)))
-	CP(m, "TipBottom", V(1.1, 1.1, 1.1) * SC, rc, V(0, -2.2 * SC, 0), color, M.Glass, nil, CFrame.Angles(math.rad(45), 0, math.rad(45)))
-	local l = Instance.new("PointLight")
-	l.Color = color
-	l.Range = 16
-	l.Brightness = 1.4
-	l.Parent = m.PrimaryPart or m:FindFirstChild("Core")
-	finish(m, rc, "hover", {Speed = 1.2 + math.random() * 0.6, Amp = 1.2, Phase = math.random() * 6})
-end
-
-local function planetOrbit(r, center, radius, size, color, speed, phase, ringed)
-	local rc = CFrame.new(center + V(radius, 0, 0))
-	local m = newThing(r, "OrbitPlanet")
-	CP(m, "Planet", V(size, size, size), rc, V(0, 0, 0), color, nil, "ball")
-	CP(m, "Band", V(size * 0.2, size * 1.01, size * 1.01), rc, V(0, size * 0.15, 0), color:Lerp(RGB(255, 255, 255), 0.3), nil, "cyl", CFrame.Angles(0, 0, math.rad(90)))
-	if ringed then
-		local ring = CP(m, "Ring", V(0.15, size * 1.9, size * 1.9), rc, V(0, 0, 0), RGB(255, 220, 160), M.Neon, "cyl", CFrame.Angles(math.rad(20), 0, math.rad(75)))
-		ring.Transparency = 0.4
-	end
-	finish(m, rc, "orbit", {Center = CFrame.new(center), Radius = radius, Speed = speed, Phase = phase, Amp = 1.5})
-end
-
-local function hangingLantern(r, x, d, color)
-	local top = SCF(r, x, F + 13, d).Position
-	P(r.folder, "LanternPost", V(0.5, 13, 0.5) * SC, CFrame.new(top - V(0, 6.5 * SC, 0) + V(1.6 * SC, 0, 0)), RGB(40, 40, 50), M.Metal, FX)
-	P(r.folder, "LanternArm", V(2, 0.4, 0.4) * SC, CFrame.new(top + V(0.8 * SC, 0, 0)), RGB(40, 40, 50), M.Metal, FX)
-	local pivot = CFrame.new(top)
-	local m = newThing(r, "SwingLantern")
-	CP(m, "Chain", V(0.1, 2, 0.1) * SC, pivot, V(0, -1 * SC, 0), RGB(60, 60, 70), M.Metal)
-	CP(m, "Cap", V(1.2, 0.3, 1.2) * SC, pivot, V(0, -2.1 * SC, 0), RGB(40, 40, 50), M.Metal)
-	local glass = CP(m, "Glass", V(1, 1.3, 1) * SC, pivot, V(0, -2.9 * SC, 0), color, M.Neon)
-	glass.Transparency = 0.15
-	local l = Instance.new("PointLight")
-	l.Color = color
-	l.Range = 26
-	l.Brightness = 1.6
-	l.Parent = glass
-	finish(m, pivot, "sway", {Axis = Vector3.new(0, 0, 1), Speed = 1.4, Amp = 0.25, Phase = math.random() * 6})
-end
-
-local function fishJumps(r, x, d, color, phase)
-	local base = SCF(r, x, F - 0.5, d)
-	local rc = base * CFrame.Angles(0, math.random() * math.pi * 2, 0)
-	local m = CRITTER.fish(r, rc, color)
-	finish(m, rc, "leap", {Speed = 1.1, Amp = 6, Length = 9, Phase = phase})
-end
-
-------------------------------------------------------------------
--- what moves in each area
-------------------------------------------------------------------
-local ALIVE = {}
-ALIVE[1] = function(r) -- graveyard: bats, a floating ghost, swinging lanterns
-	for i = 1, 3 do flyer(r, "bat", Vector3.new(-HW * SC, 14, r.z0 - SL * SC + 8), Vector3.new(HW * SC, 24, r.z0 - 8), 11) end
-	for _, side in ipairs({-1, 1}) do
-		local mn, mx = stripBox(r, side, 10, 18)
-		flyer(r, "bat", mn, mx, 9)
-		orbiter(r, "ghost", SCF(r, side * (HW + 16), F, 25).Position, 8, 5, 0.5 * side, math.random() * 6)
-		hangingLantern(r, side * (HW + 5), 10, RGB(255, 150, 60))
-	end
-end
-ALIVE[2] = function(r) -- farm: a windmill, chickens, a cow, butterflies
-	windmill(r, (r.index % 2 == 0) and (HW + 18) or -(HW + 18), 38)
-	for _, side in ipairs({-1, 1}) do
-		for i = 1, 3 do walker(r, "chicken", side, 4 + math.random() * 2, {Amp = 0.35}) end
-		local mn, mx = stripBox(r, side, 3, 7)
-		flyer(r, "butterfly", mn, mx, 5, ({RGB(255, 170, 60), RGB(120, 200, 255), RGB(255, 120, 200)})[math.random(1, 3)])
-	end
-	walker(r, "cow", (r.index % 2 == 0) and -1 or 1, 2.5, {Amp = 0.1})
-end
-ALIVE[3] = function(r) -- toy land: a toy train, pinwheels, bouncy balls, balloons
-	trainLoop(r, -(HW + 16), 30)
-	for k, d in ipairs({8, 20, 44}) do pinwheel(r, (k % 2 == 0) and (HW + 6) or -(HW + 6), d, 8 + k) end
-	bouncyBall(r, HW + 18, 18, RGB(255, 80, 80), 4)
-	bouncyBall(r, HW + 24, 40, RGB(80, 170, 255), 3)
-	for i = 1, 3 do balloon(r, (i % 2 == 0) and (HW + 10 + i * 4) or -(HW + 10 + i * 4), 10 + i * 10, ({RGB(255, 90, 90), RGB(255, 220, 60), RGB(90, 200, 255)})[i]) end
-end
-ALIVE[4] = function(r) -- candy land: giant spinning lollipops, balloons, hopping gumdrop blobs
-	bigLollipop(r, HW + 10, 12, RGB(255, 90, 160))
-	bigLollipop(r, -(HW + 10), 30, RGB(110, 220, 255))
-	bigLollipop(r, HW + 14, 44, RGB(255, 220, 60))
-	for i = 1, 5 do balloon(r, ((i % 2 == 0) and 1 or -1) * (HW + 8 + i * 3), 6 + i * 8, ({RGB(255, 150, 200), RGB(150, 230, 255), RGB(255, 230, 120), RGB(180, 255, 160), RGB(220, 170, 255)})[i]) end
-	for _, side in ipairs({-1, 1}) do
-		for i = 1, 2 do walker(r, "blob", side, 4, {Amp = 0.9}) end
-	end
-end
-ALIVE[5] = function(r) -- beach: seagulls, jumping fish, floating barrels
-	for _, side in ipairs({-1, 1}) do
-		local mn, mx = stripBox(r, side, 16, 26)
-		flyer(r, "seagull", mn, mx, 13)
-	end
-	flyer(r, "seagull", Vector3.new(-HW * SC, 20, r.z0 - SL * SC + 8), Vector3.new(HW * SC, 30, r.z0 - 8), 14)
-	-- fish jumping out of the lagoon in the lane
-	for k = 1, 3 do fishJumps(r, 22 + k * 2, 28 + k * 6, ({RGB(255, 140, 40), RGB(80, 200, 255), RGB(255, 220, 60)})[k], k * 2.1) end
-	for _, side in ipairs({-1, 1}) do
-		for k = 1, 2 do
-			local rc = SCF(r, side * (HW + BW + 8 + k * 6), F - 0.6, 12 + k * 18)
-			local m = newThing(r, "FloatingBarrel")
-			CP(m, "Barrel", V(2.4, 1.8, 1.8) * SC, rc, V(0, 0, 0), RGB(140, 95, 55), M.WoodPlanks, "cyl")
-			for _, bx in ipairs({-0.7, 0.7}) do CP(m, "Hoop", V(0.2, 1.9, 1.9) * SC, rc, V(bx * SC, 0, 0), RGB(60, 60, 70), M.Metal, "cyl") end
-			finish(m, rc, "sway", {Axis = Vector3.new(1, 0, 0.3).Unit, Speed = 1.3, Amp = 0.25, Phase = k * 1.7})
-		end
-	end
-end
-ALIVE[6] = function(r) -- jungle: pterodactyls circling, baby dinos
-	local mid = SCF(r, 0, F, SL / 2).Position
-	orbiter(r, "ptero", mid, 34, 26, 0.35, 0)
-	orbiter(r, "ptero", mid, 46, 32, -0.28, 2.5)
-	for _, side in ipairs({-1, 1}) do
-		walker(r, "dino", side, 3.5, {Amp = 0.15})
-		local mn, mx = stripBox(r, side, 4, 8)
-		flyer(r, "butterfly", mn, mx, 5, RGB(120, 255, 120))
-	end
-end
-ALIVE[7] = function(r) -- ice field: waddling penguins, floating crystals
-	for _, side in ipairs({-1, 1}) do
-		for i = 1, 3 do walker(r, "penguin", side, 2.5, {Amp = 0.12, Waddle = 0.22}) end
-		iceCrystal(r, side * (HW + 12), 14, RGB(140, 210, 255))
-		iceCrystal(r, side * (HW + 20), 36, RGB(180, 160, 255))
-	end
-end
-ALIVE[8] = function(r) -- cyber city: security drones, a rotating radar
-	for i = 1, 3 do flyer(r, "drone", Vector3.new(-HW * SC * 0.8, 12, r.z0 - SL * SC + 8), Vector3.new(HW * SC * 0.8, 20, r.z0 - 8), 10) end
-	for _, side in ipairs({-1, 1}) do
-		local mn, mx = stripBox(r, side, 10, 20)
-		flyer(r, "drone", mn, mx, 8)
-	end
-	radarTower(r, (r.index % 2 == 0) and -(HW + 14) or (HW + 14), 40)
-end
-ALIVE[9] = function(r) -- alien planet: little UFOs and alien blobs
-	for i = 1, 2 do flyer(r, "ufo", Vector3.new(-HW * SC * 0.7, 20, r.z0 - SL * SC + 10), Vector3.new(HW * SC * 0.7, 30, r.z0 - 10), 9) end
-	for _, side in ipairs({-1, 1}) do
-		local mn, mx = stripBox(r, side, 16, 26)
-		flyer(r, "ufo", mn, mx, 7)
-		for i = 1, 2 do walker(r, "blob", side, 3.5, {Amp = 0.8}) end
-	end
-end
-ALIVE[10] = function(r) -- space: planets orbiting, floating crystals
-	local center = SCF(r, 0, 15, 47).Position -- the black hole (see THEMES[10])
-	planetOrbit(r, center, 22, 4, RGB(255, 140, 60), 0.35, 0, true)
-	planetOrbit(r, center, 30, 3, RGB(80, 170, 255), -0.25, 2, false)
-	planetOrbit(r, center, 38, 2.4, RGB(150, 255, 160), 0.18, 4, false)
-	for _, side in ipairs({-1, 1}) do
-		iceCrystal(r, side * (HW + 10), 12, RGB(200, 110, 255))
-		iceCrystal(r, side * (HW + 22), 30, RGB(255, 90, 210))
-	end
-end
-
--- things that already exist in an area but should move too
-local function bringToLife(r)
-	for _, p in ipairs(r.folder:GetChildren()) do
-		if p:IsA("BasePart") then
-			if p.Name == "ZoneTitle" then animate(p, "bob", {Speed = 1.1, Amp = 0.8})
-			elseif p.Name == "HoloRing" or p.Name == "BlackHoleRing" or p.Name == "PlanetRing" then animate(p, "spin", {Axis = Vector3.new(0, 1, 0), Speed = 0.8})
-			elseif p.Name == "Hologram" then animate(p, "pulse", {Speed = 3, Amp = 0.3})
-			elseif p.Name == "TractorBeam" then animate(p, "pulse", {Speed = 2, Amp = 0.18})
-			elseif p.Name == "GateBand" or p.Name == "LaneCurbGlow" then animate(p, "pulse", {Speed = 2.5, Amp = 0.35, Phase = r.index})
-			elseif p.Name == "CrystalTip" and math.random() < 0.5 then animate(p, "pulse", {Speed = 1.5 + math.random(), Amp = 0.3, Phase = math.random() * 6})
-			elseif p.Name == "FloatRock" then animate(p, "hover", {Speed = 0.6 + math.random() * 0.4, Amp = 1.4, Phase = math.random() * 6})
-			elseif p.Name == "Planet" or p.Name == "Planet2" or p.Name == "Moon" then animate(p, "bob", {Speed = 0.7, Amp = 1.2, Phase = math.random() * 6})
-			end
-		end
-	end
-	-- the pirate ship rocks on the waves (it doesn't block you while it moves)
-	if r.index == 5 then
-		local ship = newThing(r, "PirateShip")
-		local pivot = nil
-		for _, p in ipairs(r.folder:GetChildren()) do
-			if p:IsA("BasePart") and (p.Name == "Hull" or p.Name == "Deck" or p.Name == "Bow" or p.Name == "Mast" or p.Name == "Sail" or p.Name == "SailSkull" or p.Name == "Flag") then
-				p.CanCollide = false
-				p.Parent = ship
-				if p.Name == "Hull" then pivot = p.CFrame - Vector3.new(0, p.Size.Y / 2, 0) end
-			end
-		end
-		if pivot then finish(ship, pivot, "sway", {Axis = Vector3.new(0, 0, 1), Speed = 0.9, Amp = 0.07}) end
-	end
-end
-
-------------------------------------------------------------------
--- BUILD THE 10 AREAS
-------------------------------------------------------------------
-local SHELF_D = {6, 20}    -- shelves run from d=6 to d=20 on both walls
-local LEVELS = {0.6, 5.6, 10.6}
-
--- a string of little flags across the lane, sagging in the middle
-local FLAG_COLS = {RGB(255, 85, 85), RGB(255, 205, 50), RGB(80, 190, 255), RGB(120, 220, 90), RGB(200, 120, 255)}
-local function laneBunting(r, d)
-	local a, b = SCF(r, -HW + 1, WH - 3, d).Position, SCF(r, HW - 1, WH - 3, d).Position
-	local n, sag = 14, 3 * SC
-	for k = 1, n do
-		local t = (k - 0.5) / n
-		local pos = a:Lerp(b, t) - V(0, sag * (1 - math.abs(2 * t - 1)), 0)
-		P(r.folder, "Flag", V(0.2, 2.6, 2.6), CFrame.lookAt(pos, pos + (b - a)) * CFrame.new(0, -1.84, 0) * CFrame.Angles(math.rad(45), 0, 0), FLAG_COLS[(k - 1) % #FLAG_COLS + 1], nil, FX)
-	end
-	local mid = a:Lerp(b, 0.5) - V(0, sag, 0)
-	for _, seg in ipairs({{a, mid}, {mid, b}}) do
-		P(r.folder, "FlagString", V(0.25, 0.25, (seg[2] - seg[1]).Magnitude), CFrame.lookAt((seg[1] + seg[2]) / 2, seg[2]), RGB(255, 255, 255), nil, FX)
-	end
-end
-
-local function buildShelf(r, side, st, d1, d2, spots)
-	local x = side * (HW - 3)
-	local len = d2 - d1
-	local dMid = (d1 + d2) / 2
-	local SHELF_D = {d1, d2}
-	D(r, "ShelfBack", V(0.4, 12, len), side * (HW - 0.8), F + 6, dMid, st.shelf:Lerp(RGB(0, 0, 0), 0.25), st.shelfMat)
-	for _, y in ipairs(LEVELS) do
-		D(r, "ShelfBoard", V(4.4, 0.4, len), x, F + y, dMid, st.shelf, st.shelfMat)
-		D(r, "ShelfEdge", V(0.2, 0.5, len), x - side * 2.2, F + y + 0.1, dMid, st.post, (st.post.R + st.post.G + st.post.B > 2.2) and M.SmoothPlastic or M.Neon, FX)
-	end
-	for _, d in ipairs({SHELF_D[1], dMid, SHELF_D[2]}) do
-		for _, ox in ipairs({-2.1, 2.1}) do
-			D(r, "ShelfPost", V(0.4, 12.4, 0.4), x + ox, F + 6.2, d, st.post, M.SmoothPlastic)
-		end
-	end
-	-- diagonal cross braces on the back + label strips
-	for _, sgn in ipairs({-1, 1}) do
-		D(r, "Brace", V(0.25, math.sqrt(len * len + 100), 0.25), side * (HW - 1.1), F + 6, dMid, st.post, M.SmoothPlastic, nil, CFrame.Angles(math.atan2(len, 10) * sgn, 0, 0))
-	end
-	for _, y in ipairs(LEVELS) do
-		D(r, "Label", V(0.1, 0.35, len * 0.6), x - side * 2.32, F + y + 0.1, dMid, RGB(250, 250, 250), M.SmoothPlastic, FX)
-	end
-	-- box spawns on this shelf
-	for _, sp in ipairs(spots) do
-		local p = D(r, "Spawn", V(2, 0.2, 2), x, F + LEVELS[sp[1]] + 0.2, sp[2], RGB(255, 255, 0), nil, GHOST)
-		p:SetAttribute("Area", r.index)
-		p:SetAttribute("Shelf", true)
-		p.Parent = spawns
-	end
-end
-
--- each room has its own mood: lamp colour, brightness, reach (dusty = dim, toy factory = bright, galaxy = dark)
-local MOOD = {
-	{RGB(255, 200, 140), 0.7, 26},  -- Dusty Storage: dim, old bulbs
-	{RGB(255, 210, 150), 0.9, 30},  -- Farm Barn: warm lanterns
-	{RGB(255, 250, 235), 1.3, 34},  -- Toy Factory: bright
-	{RGB(255, 190, 230), 1.1, 32},  -- Candy Shop: pink glow
-	{RGB(150, 200, 255), 0.75, 28}, -- Pirate Cove: under-water blue
-	{RGB(255, 225, 170), 1.0, 30},  -- Dino Museum: museum spotlights
-	{RGB(190, 235, 255), 1.0, 32},  -- Frozen Lab: cold light
-	{RGB(120, 220, 255), 0.85, 28}, -- Tech Lab: cyan
-	{RGB(140, 255, 140), 0.7, 26},  -- Alien Hangar: eerie green
-	{RGB(190, 130, 255), 0.6, 24},  -- Galaxy Vault: dark purple
-	{RGB(255, 140, 60), 0.9, 30},   -- Lava Forge: forge-fire orange
-	{RGB(175, 130, 255), 0.6, 24},  -- Haunted Manor: ghostly purple
-	{RGB(130, 240, 255), 0.85, 28}, -- Crystal Caverns: crystal cyan
-	{RGB(255, 242, 205), 1.3, 34},  -- Sky Kingdom: bright heavenly gold
-	{RGB(255, 165, 80), 0.85, 30},  -- Dragon's Hoard: treasure glow
-}
-
-------------------------------------------------------------------
--- THE CEILING: a roof over the lane of every area - beams, a glowing strip down the middle,
--- neon trims and swinging lamps (+ a starry ceiling in the Galaxy Vault). It sits high up
--- (above everything that flies around) and the sides stay open, so you still see the islands.
-------------------------------------------------------------------
-local CEIL_MAT = {M.WoodPlanks, M.WoodPlanks, M.SmoothPlastic, M.SmoothPlastic, M.WoodPlanks, M.Marble, M.Ice, M.DiamondPlate, M.Metal, M.SmoothPlastic,
-	M.Slate, M.WoodPlanks, M.Slate, M.SmoothPlastic, M.Slate}
-local function buildCeiling(r, st, acc)
-	local idx = r.index
-	local mood = MOOD[idx] or MOOD[1]
-	local roofCol = st.roof or st.wallA:Lerp(RGB(0, 0, 0), 0.3)
-	local beamCol = st.shelf:Lerp(RGB(0, 0, 0), 0.15)
-	D(r, "Ceiling", V(HW * 2 + 6, 1.2, SL + 0.2), 0, WH + 0.6, SL / 2, roofCol, CEIL_MAT[idx] or M.SmoothPlastic)
-	for k = 0, 5 do
-		D(r, "CeilingBeam", V(HW * 2 + 6, 1.4, 1.4), 0, WH - 0.3, 4 + k * 8.4, beamCol, st.shelfMat, FX)
-	end
-	for _, side in ipairs({-1, 1}) do
-		D(r, "CeilingSideBeam", V(1.8, 2, SL + 0.2), side * (HW + 0.6), WH - 0.5, SL / 2, beamCol, st.shelfMat, FX)
-		D(r, "CeilingTrim", V(0.4, 0.4, SL), side * (HW - 0.4), WH - 1.4, SL / 2, acc, M.Neon, FX)
-	end
-	-- a glowing strip down the middle (it breathes slowly)
-	local glow = D(r, "CeilingGlow", V(5, 0.25, SL - 6), 0, WH - 0.05, SL / 2, acc:Lerp(RGB(255, 255, 255), 0.4), M.Neon, FX)
-	glow.Transparency = 0.15
-	animate(glow, "pulse", {Speed = 1.2, Amp = 0.25, Phase = idx})
-	-- swinging lamps hanging from the beams
-	for _, pos in ipairs({{-20, 12.4}, {20, 12.4}, {-20, 37.6}, {20, 37.6}}) do
-		local top = SCF(r, pos[1], WH - 1, pos[2])
-		local m = newThing(r, "HangingLamp")
-		CP(m, "Chain", V(0.15, 4, 0.15) * SC, top, V(0, -2 * SC, 0), RGB(50, 50, 60), M.Metal)
-		CP(m, "Shade", V(1.2, 3, 3) * SC, top, V(0, -4.4 * SC, 0), beamCol, M.SmoothPlastic, "cyl", CFrame.Angles(0, 0, math.rad(90)))
-		local bulb = CP(m, "Bulb", V(1.4, 1.4, 1.4) * SC, top, V(0, -5.3 * SC, 0), mood[1], M.Neon, "ball")
-		local l = Instance.new("PointLight")
-		l.Color = mood[1]
-		l.Range = 26
-		l.Brightness = 1.2
-		l.Parent = bulb
-		finish(m, top, "sway", {Axis = Vector3.new(1, 0, 0.5).Unit, Speed = 0.9 + math.random() * 0.4, Amp = 0.08, Phase = math.random() * 6})
-	end
-	-- the galaxy vault gets a starry ceiling that twinkles
-	if idx == #Config.Areas then
-		for k = 1, 28 do
-			local star = ball(r, "CeilingStar", 0.4 + math.random() * 0.4, -HW + math.random() * HW * 2, WH - 0.1, 2 + math.random() * (SL - 4), RGB(255, 255, 255), M.Neon, FX)
-			animate(star, "pulse", {Speed = 1 + math.random() * 2, Amp = 0.7, Phase = math.random() * 6})
-		end
-	end
-end
-
-for areaIndex, area in ipairs(Config.Areas) do
-	SL = Config.AreaLen(areaIndex) / SC -- (this area's length: harder areas are longer)
-	local r = {index = areaIndex, z0 = Config.AreaStartZ(areaIndex), folder = Instance.new("Model")}
-	r.folder.Name = "Area" .. areaIndex .. "_" .. area.name:gsub(" ", "")
-	r.folder.Parent = wh
-	local st = STYLE[areaIndex]
-	local acc = area.accent
-	local bio = BIOMES[areaIndex]
-
-	-- floor (studded, like the classic Roblox look) + accent border
-	D(r, "Floor", V(HW * 2, 0.4, SL), 0, 0.3, SL / 2, bio.lane, M.SmoothPlastic).TopSurface = Enum.SurfaceType.Studs
-	-- big cartoon checker tiles
-	local TS = HW * 2 / 6
-	local tileCol = bio.lane:Lerp(RGB(255, 255, 255), 0.2)
-	for j = 0, math.ceil(SL / TS) - 1 do
-		local len = math.min(TS, SL - j * TS)
-		for i = 0, 5 do
-			if (i + j) % 2 == 0 then
-				D(r, "FloorTile", V(TS, 0.04, len), -HW + TS * (i + 0.5), F + 0.02, j * TS + len / 2, tileCol, M.SmoothPlastic, FX).TopSurface = Enum.SurfaceType.Studs
-			end
-		end
-	end
-	-- glowing line where this area starts
-	D(r, "AreaLine", V(HW * 2, 0.06, 1.6), 0, F + 0.03, 0.8, acc, M.Neon, FX)
-	D(r, "AreaLineCore", V(HW * 2, 0.08, 0.5), 0, F + 0.05, 0.8, RGB(255, 255, 255), M.Neon, FX)
-	-- solid walls on both sides, with a coloured band in the area's colour
-	for _, side in ipairs({-1, 1}) do
-		D(r, "Wall", V(2, WH, SL), side * (HW + 1), WH / 2, SL / 2, st.wallA, M.SmoothPlastic)
-		D(r, "WallBase", V(0.4, 4, SL), side * (HW - 0.1), F + 2, SL / 2, st.wallA:Lerp(RGB(0, 0, 0), 0.3), M.SmoothPlastic, FX)
-		D(r, "WallBand", V(0.4, 1.2, SL), side * (HW - 0.1), F + 9, SL / 2, acc, M.Neon, FX)
-		-- a low glowing curb shows where the lane ends
-		D(r, "LaneCurb", V(1.2, 0.8, SL), side * (HW - 0.2), F + 0.4, SL / 2, bio.ground:Lerp(RGB(255, 255, 255), 0.5), M.SmoothPlastic)
-		D(r, "LaneCurbGlow", V(1.25, 0.15, SL), side * (HW - 0.2), F + 0.85, SL / 2, acc, M.Neon, FX)
-		D(r, "WallBumper", V(SL, 0.9, 0.9), side * (HW - 0.3), F + 4.2, SL / 2, st.wallA:Lerp(RGB(255, 255, 255), 0.45), M.SmoothPlastic, FX, CFrame.Angles(0, math.rad(90), 0)).Shape = Enum.PartType.Cylinder
-		for d = 7, SL - 4, 14 do
-			disc(r, "WallDot", 0.3, 4.4, side * (HW - 0.25), F + 16, d, ((d // 14) % 2 == 0) and acc or st.wallA:Lerp(RGB(255, 255, 255), 0.6), M.SmoothPlastic, FX, CFrame.new())
-		end
-		for _, d in ipairs({25, 47}) do
-			local x = side * (HW - 4)
-			D(r, "LampPost", V(0.6, 10, 0.6), x, F + 5, d, RGB(40, 42, 55), M.Metal)
-			D(r, "LampArm", V(2.6, 0.4, 0.4), x - side * 1.1, F + 10, d, RGB(40, 42, 55), M.Metal)
-			local mood = MOOD[areaIndex]
-			ball(r, "LampBulb", 1.4, x - side * 2.2, F + 9.4, d, mood[1], M.Neon, FX)
-		end
-	end
-
-	-- glowing gate posts + the floating zone name
-	for _, side in ipairs({-1, 1}) do
-		local gx = side * (HW - 1.5)
-		pillar(r, "GatePost", 12, 3, gx, F, 0, acc:Lerp(RGB(255, 255, 255), 0.25), M.SmoothPlastic)
-		disc(r, "GateGlow", 0.5, 3.4, gx, F + 0.3, 0, acc, M.Neon, FX)
-		disc(r, "GateBand", 0.6, 3.3, gx, F + 8, 0, RGB(255, 255, 255), M.SmoothPlastic, FX)
-		ball(r, "GateTop", 3.8, gx, F + 13.2, 0, acc, M.Neon, FX)
-	end
-	-- (no floating area title in the sky any more: it piled up with the other areas' titles;
-	--  the area banner on your screen shows where you are)
-	-- recommended speed sign (like the video!)
-	local rec = D(r, "SpeedSign", V(7, 3.2, 0.4), -26, F + 4, 1.2, RGB(150, 95, 50), M.WoodPlanks)
-	D(r, "SpeedSignPost", V(0.5, 3, 0.5), -26, F + 1.5, 1.2, RGB(110, 70, 40), M.WoodPlanks)
-	surfaceText(rec, Enum.NormalId.Back, (areaIndex > 1) and (Config.FormatNum(Config.RecommendedPoints(areaIndex)) .. " SPEED\nrecommended") or "START HERE!", RGB(255, 60, 40))
-
-	-- shelves with boxes on both walls
-	buildShelf(r, -1, st, 6, 20, {{1, 9}, {1, 17}, {2, 13}})
-	buildShelf(r, 1, st, 6, 20, {{1, 9}, {1, 17}, {2, 13}})
-	buildShelf(r, -1, st, 30, 42, {{1, 33}, {1, 39}})
-	buildShelf(r, 1, st, 30, 42, {{1, 33}, {1, 39}})
-	-- longer areas get more shelves at the back
-	for d0 = 54, SL - 16, 26 do
-		buildShelf(r, -1, st, d0, d0 + 12, {{1, d0 + 3}, {2, d0 + 9}})
-		buildShelf(r, 1, st, d0, d0 + 12, {{1, d0 + 3}, {2, d0 + 9}})
-	end
-
-	-- 2 pallets in the open for the big ones (Huge / Giant boxes can only spawn here)
-	for _, x in ipairs({-12, 12}) do
-		for k = -1, 1 do
-			D(r, "PalletBlock", V(6, 0.35, 0.8), x, F + 0.18, 30 + k * 2.4, RGB(140, 100, 60), M.WoodPlanks)
-		end
-		for k = -2, 2 do
-			D(r, "PalletSlat", V(1, 0.25, 6), x + k * 1.25, F + 0.48, 30, RGB(185, 140, 85), M.WoodPlanks)
-		end
-		local p = D(r, "Spawn", V(2, 0.2, 2), x, F + 0.62, 30, RGB(255, 255, 0), nil, GHOST)
-		p:SetAttribute("Area", areaIndex)
-		p.Parent = spawns
-	end
-
-	-- theme decorations + effects
-	if THEMES[areaIndex] then THEMES[areaIndex](r) end
-	-- the lane has a roof again: the hanging bulbs, lanterns, cobwebs and spotlights are back.
-	-- Only things that were stuck on the (now invisible) side walls are removed.
-	-- the roof over the lane
-	buildCeiling(r, st, acc)
-	for d = 25, SL - 8, 25 do laneBunting(r, d) end
-	-- critters + moving set pieces (animated by the clients)
-	bringToLife(r)
-
-	-- the guardian sleeps at the back, facing the entrance
-	makeGuardian(areaIndex, SCF(r, 0, 0, SL * 0.45).Position, acc)
-end
-
-
+WAREHOUSE_BAYS()
 
 
 ------------------------------------------------------------------
@@ -3228,7 +2044,6 @@ do
 	local LEAVES = {RGB(70, 190, 60), RGB(95, 210, 70), RGB(55, 165, 75), RGB(125, 220, 80)}
 	local BLOSSOM = RGB(255, 170, 205)
 	local FLOWERS = {RGB(255, 120, 170), RGB(255, 220, 60), RGB(255, 255, 255), RGB(180, 120, 255), RGB(255, 140, 60)}
-	local FLAGS = {RGB(255, 85, 85), RGB(255, 205, 50), RGB(80, 190, 255), RGB(120, 220, 90), RGB(200, 120, 255)}
 	local function pick(t) return t[math.random(1, #t)] end
 
 	local function tree(x, z, s, simple)
@@ -3270,28 +2085,13 @@ do
 			l.Parent = globe
 		end
 	end
-	-- a string of little flags that sags in the middle
-	local function bunting(a, b, n, sag)
-		local mid = a:Lerp(b, 0.5) - V(0, sag, 0)
-		for k = 1, n do
-			local t = (k - 0.5) / n
-			local pos = a:Lerp(b, t) - V(0, sag * (1 - math.abs(2 * t - 1)), 0)
-			local cf = CFrame.lookAt(pos, pos + (b - a))
-			D("Flag", V(0.15, 1.8, 1.8), cf * CFrame.new(0, -1.27, 0) * CFrame.Angles(math.rad(45), 0, 0), FLAGS[(k - 1) % #FLAGS + 1])
-		end
-		for _, seg in ipairs({{a, mid}, {mid, b}}) do
-			D("FlagString", V(0.2, 0.2, (seg[2] - seg[1]).Magnitude), CFrame.lookAt((seg[1] + seg[2]) / 2, seg[2]), WHITE)
-		end
-	end
-
-	-- lamps on both sides of the street with bunting across it
+	-- lamps on both sides of the street
 	local GAP1 = (PLOT_Z[1] + PLOT_Z[2]) / 2
 	local GAP2 = (PLOT_Z[2] + PLOT_Z[3]) / 2
 	local PLOTS_END = PLOT_Z[3] + CW / 2
 	for i, z in ipairs({SQUARE - 4, GAP1, GAP2, PLOTS_END + 3}) do
 		lamp(-18, z, i % 2 == 1)
 		lamp(18, z, i % 2 == 0)
-		bunting(V(-18, 15.2, z), V(18, 15.2, z), 14, 2.2)
 	end
 
 	-- bushes in the alleys between the bases
@@ -3301,29 +2101,7 @@ do
 		end
 	end
 
-	-- THE WAREHOUSE DOOR: a striped awning, barrels and crates, hanging banners
-	local WZ = FRONT_Z + 2 -- the outside face of the warehouse wall
-	for k = 0, 10 do
-		local x = -22 + (k + 0.5) * 4
-		local c = (k % 2 == 0) and RGB(235, 60, 60) or WHITE
-		D("DoorAwning", V(4, 0.4, 7), C(x, 28.6, WZ + 3) * CFrame.Angles(math.rad(20), 0, 0), c)
-		D("DoorAwningEdge", V(4, 1.3, 0.3), C(x, 26.8, WZ + 6.4), (k % 2 == 0) and WHITE or RGB(235, 60, 60))
-	end
-	local WOOD, BAND = RGB(170, 110, 60), RGB(90, 70, 60)
-	for _, sx in ipairs({-1, 1}) do
-		D("Barrel", V(4.4, 4, 4), C(sx * 24, 2.2, WZ + 3) * UP, WOOD, CYL, M.WoodPlanks)
-		D("BarrelBand", V(0.5, 4.2, 4.2), C(sx * 24, 3.4, WZ + 3) * UP, BAND, CYL)
-		D("Crate", V(4, 4, 4), C(sx * 27.6, 2, WZ + 6.5) * CFrame.Angles(0, math.rad(15 * sx), 0), RGB(200, 145, 80), nil, M.WoodPlanks)
-		D("Crate", V(3, 3, 3), C(sx * 27.4, 5.5, WZ + 6.4) * CFrame.Angles(0, math.rad(-20 * sx), 0), RGB(215, 160, 95), nil, M.WoodPlanks)
-	end
-	for i, x in ipairs({40, 74, 104}) do
-		local c = FLAGS[i]
-		D("BannerPole", V(8, 0.5, 0.5), C(x, 39, WZ + 0.6), LAMP, CYL)
-		D("Banner", V(6, 14, 0.3), C(x, 31.5, WZ + 0.6), c)
-		D("BannerTip", V(4.24, 4.24, 0.3), C(x, 24.5, WZ + 0.6) * CFrame.Angles(0, 0, math.rad(45)), c)
-		D("BannerStar", V(0.4, 3, 3), C(x, 33, WZ + 0.85) * CFrame.Angles(0, math.rad(90), 0), WHITE, CYL)
-	end
-
+	local WOOD = RGB(170, 110, 60) -- (benches)
 	-- THE BACK (behind the spawn): a fountain at the end of the street, trees, benches, flowers
 	do
 		local fz = COURT_LEN - 11

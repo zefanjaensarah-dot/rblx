@@ -1266,6 +1266,8 @@ Config.BossAbilities = {
 	[14] = {name = "Thunder Call", kind = "storm", color = rgb(255, 225, 80), every = 7, windup = 1.0, radius = 7, strikes = 5, chase = "fly"},
 	[15] = {name = "Inferno Breath", kind = "line", color = rgb(255, 90, 30), every = 6.5, windup = 0.9, length = 60, width = 14, chase = "gallop"},
 }
+-- FRIEND BONUS: every friend (Roblox connection) in the same server gives you both +10% cash, up to +50%
+Config.FriendBonus = {perFriend = 0.1, max = 0.5}
 Config.BossSlowTime = 2.2 -- seconds a boss move slows you
 Config.BossSlowMult = 0.5 -- your speed while slowed
 

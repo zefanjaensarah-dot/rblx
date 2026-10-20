@@ -280,6 +280,7 @@ local function cashMultiplier(player)
 	if hasPass(player, "DoubleCash") then m = m * Config.PassEffects.DoubleCash end
 	if ReplicatedStorage:GetAttribute("EventId") == "DoubleCash" then m = m * 2 end -- (surprise event)
 	m = m * Config.PayoutMult(prof and prof.PayoutLevel) -- the Payouts upgrade
+	m = m * (1 + (player:GetAttribute("FriendBonus") or 0)) -- friends in the server (see FRIENDS_INIT)
 	return m
 end
 
@@ -421,12 +422,24 @@ local function styleBox(box, def, mutationId, scaleMult)
 	local rimCol, rimMat = dark, nil
 	if def.rarity == 2 then rimCol, rimMat = Color3.fromRGB(200, 205, 215), Enum.Material.Metal end
 	if def.rarity >= 3 then rimCol, rimMat = Color3.fromRGB(255, 200, 50), Enum.Material.Metal end
+	-- rounded corner posts (no sharp box edges)
 	for _, cx in ipairs({-1, 1}) do
 		for _, cz in ipairs({-1, 1}) do
-			local rim = deco("Rim", Vector3.new(X * 0.09, Y * 1.02, Z * 0.09), CFrame.new(cx * X * 0.48, 0, cz * Z * 0.48), rimCol, rimMat)
+			local rim = deco("Rim", Vector3.new(Y * 1.0, X * 0.1, X * 0.1), CFrame.new(cx * X * 0.48, 0, cz * Z * 0.48) * CFrame.Angles(0, 0, math.rad(90)), rimCol, rimMat)
+			rim.Shape = Enum.PartType.Cylinder
 			if def.rarity >= 2 then rim.Reflectance = 0.25 end
 		end
 	end
+	-- rolled edges round the lid and the bottom, and the seam where the two top flaps meet
+	for _, e in ipairs({{0, 0.5, true}, {0, -0.5, true}, {0.5, 0, false}, {-0.5, 0, false}}) do
+		local rot = e[3] and CFrame.new() or CFrame.Angles(0, math.rad(90), 0)
+		local len = e[3] and X or Z
+		local top = deco("LidEdge", Vector3.new(len * 1.02, Y * 0.12, Y * 0.12), CFrame.new(e[1] * X * 1.02, Y * 0.44, e[2] * Z * 1.02) * rot, dark, box.Material)
+		top.Shape = Enum.PartType.Cylinder
+		local bottom = deco("BaseEdge", Vector3.new(len * 0.98, Y * 0.08, Y * 0.08), CFrame.new(e[1] * X * 0.98, -Y * 0.47, e[2] * Z * 0.98) * rot, dark, box.Material)
+		bottom.Shape = Enum.PartType.Cylinder
+	end
+	deco("FlapSeam", Vector3.new(X * 1.02, Y * 0.135, Z * 0.025), CFrame.new(0, Y * 0.445, 0), dark:Lerp(Color3.new(0, 0, 0), 0.3))
 	-- rare + epic: a metal band around the middle; epic: it glows, and a gold gem sits on the lid
 	if def.rarity >= 2 then
 		local glow = def.rarity >= 3
@@ -4704,4 +4717,54 @@ function ADMIN_INIT()
 		return result
 	end
 end
+
+------------------------------------------------------------------
+-- FRIEND BONUS: play in the same server as your friends and you all earn more cash
+-- (+10% per friend here, up to +50%; Config.FriendBonus). Everyone gets told when a friend joins.
+------------------------------------------------------------------
+function FRIENDS_INIT()
+	local friendsHere = {} -- [player] = {[friend] = true}
+	local function isFriend(a, b)
+		local ok, res = pcall(function() return a:IsFriendsWith(b.UserId) end)
+		return ok and res == true
+	end
+	local function refresh(p)
+		local n = 0
+		for o in pairs(friendsHere[p] or {}) do if o.Parent then n = n + 1 end end
+		local bonus = math.min(Config.FriendBonus.max, n * Config.FriendBonus.perFriend)
+		p:SetAttribute("FriendBonus", (bonus > 0) and bonus or nil)
+		p:SetAttribute("FriendsHere", n)
+		return n, bonus
+	end
+	local function pct(b) return tostring(math.floor(b * 100 + 0.5)) .. "%" end
+	Players.PlayerAdded:Connect(function(p)
+		friendsHere[p] = friendsHere[p] or {}
+		for _, o in ipairs(Players:GetPlayers()) do
+			if o ~= p and isFriend(p, o) and p.Parent then
+				friendsHere[p][o] = true
+				friendsHere[o] = friendsHere[o] or {}
+				friendsHere[o][p] = true
+				local _, b = refresh(o)
+				notify(o, "Your friend " .. p.DisplayName .. " joined! Friend bonus: +" .. pct(b) .. " cash", GREEN)
+			end
+		end
+		local n, b = refresh(p)
+		if n > 0 then
+			task.delay(8, function() -- (after the loading screen)
+				if p.Parent then notify(p, "You're playing with " .. n .. (n == 1 and " friend" or " friends") .. ": +" .. pct(b) .. " cash!", GREEN) end
+			end)
+		end
+	end)
+	Players.PlayerRemoving:Connect(function(p)
+		for o in pairs(friendsHere[p] or {}) do
+			if friendsHere[o] then
+				friendsHere[o][p] = nil
+				refresh(o)
+			end
+		end
+		friendsHere[p] = nil
+	end)
+end
+FRIENDS_INIT()
+
 ADMIN_INIT()

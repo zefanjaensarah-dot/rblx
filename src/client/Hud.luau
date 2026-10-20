@@ -688,9 +688,11 @@ function Hud.init(ctx)
 	end
 	hud.onCash = onCash
 	local function onIncome()
-		UI.setText(cashC.sub, "+$" .. fmt(player:GetAttribute("Income") or 0) .. "/s")
+		local fb = player:GetAttribute("FriendBonus") or 0
+		UI.setText(cashC.sub, "+$" .. fmt(player:GetAttribute("Income") or 0) .. "/s" .. ((fb > 0) and ("  (+" .. math.floor(fb * 100 + 0.5) .. "% friends)") or ""))
 	end
 	player:GetAttributeChangedSignal("Income"):Connect(onIncome)
+	player:GetAttributeChangedSignal("FriendBonus"):Connect(onIncome)
 	onIncome()
 	local lastSpeed = nil
 	local function onSpeed()
