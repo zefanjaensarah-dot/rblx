@@ -1266,6 +1266,11 @@ Config.BossAbilities = {
 	[14] = {name = "Thunder Call", kind = "storm", color = rgb(255, 225, 80), every = 7, windup = 1.0, radius = 7, strikes = 5, chase = "fly"},
 	[15] = {name = "Inferno Breath", kind = "line", color = rgb(255, 90, 30), every = 6.5, windup = 0.9, length = 60, width = 14, chase = "gallop"},
 }
+-- BOXTOK (the video app on the phone): real Roblox videos to mix into the feed. Upload a video
+-- (Creator Dashboard, needs an ID-verified account) or use one from the Creator Store, then add it:
+--   {id = "rbxassetid://123456789", user = "thisgenerationbruh", caption = "new update!!"}
+Config.BoxTokVideos = {}
+
 -- FRIEND BONUS: every friend (Roblox connection) in the same server gives you both +10% cash, up to +50%
 Config.FriendBonus = {perFriend = 0.1, max = 0.5}
 Config.BossSlowTime = 2.2 -- seconds a boss move slows you

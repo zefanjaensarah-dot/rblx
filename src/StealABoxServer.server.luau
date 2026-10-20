@@ -694,6 +694,10 @@ pickUp = function(player, box)
 	-- wake up the guardian of the area this box belongs to (not the area it was dropped in)
 	local area = (def and def.area) or Config.ZoneAt(hrp.Position)
 	if area and Config.ZoneAt(hrp.Position) then alertGuard(area, player) end
+	-- a big / rare / mutated steal goes on BoxTok
+	if BOXTOK_POST and (def.rarity >= 3 or c.mutation ~= "Normal" or Config.GetSize(c.size).scale >= 1.5) then
+		BOXTOK_POST(player, "steal", {box = c.id, mutation = c.mutation, size = c.size, area = area or 1})
+	end
 end
 
 local boxSpawns = {}
@@ -1167,6 +1171,9 @@ openBox = function(player, slot)
 		refreshPads(player)
 		sync(player)
 		RevealEvent:FireClient(player, item, s ~= nil)
+		if BOXTOK_POST and (tier >= 3 or item.mutation ~= "Normal") then
+			BOXTOK_POST(player, "unbox", {item = {id = item.id, mutation = item.mutation, size = item.size}})
+		end
 		-- the shelf shows the product once the flying model has landed
 		task.delay(Config.RevealTime(tier), function() if player.Parent then refreshStands(player) end end)
 		local def = Config.Items[item.id]
@@ -2960,6 +2967,7 @@ local function flingPlayer(player, guardPos, areaIndex)
 	playSound(hrp, "rbxasset://sounds/collide.wav", 1, 0.7)
 	FlingEvent:FireClient(player, velocity, RAGDOLL_TIME, area.guard)
 	FXEvent:FireAllClients("Bonk", hrp.Position, areaIndex)
+	if BOXTOK_POST then BOXTOK_POST(player, "bonk", {area = areaIndex}) end
 	notify(player, "BONK! The " .. area.guard .. " flung you across the warehouse!", RED)
 
 	task.delay(RAGDOLL_TIME, function()
@@ -4765,6 +4773,58 @@ function FRIENDS_INIT()
 		friendsHere[p] = nil
 	end)
 end
+
+------------------------------------------------------------------
+-- BOXTOK: the video app on the phone. Big moments in this server (a rare unbox, a big steal,
+-- getting bonked by a boss) are posted to everyone's feed; players can like posts.
+-- Likes are just for fun: they never give cash, so there's nothing to farm.
+------------------------------------------------------------------
+function BOXTOK_INIT()
+	local ev = remotes:FindFirstChild("BoxTok") or Instance.new("RemoteEvent")
+	ev.Name = "BoxTok"
+	ev.Parent = remotes
+	local posts, nextId = {}, 0 -- the newest 30 posts, oldest first
+	local likedBy, lastPost, lastLike = {}, {}, {}
+	function BOXTOK_POST(player, kind, data)
+		if not player or not player.Parent then return end
+		local now = os.clock()
+		local mine = lastPost[player] or {}
+		lastPost[player] = mine
+		if (mine[kind] or 0) > now - 20 then return end -- each kind of post at most once per player every 20 seconds
+		mine[kind] = now
+		nextId = nextId + 1
+		local post = {id = nextId, user = player.DisplayName, userId = player.UserId, kind = kind, likes = 0}
+		for k, v in pairs(data) do post[k] = v end
+		table.insert(posts, post)
+		likedBy[post.id] = {}
+		if #posts > 30 then likedBy[table.remove(posts, 1).id] = nil end
+		ev:FireAllClients("post", post)
+	end
+	ev.OnServerEvent:Connect(function(player, action, id)
+		if action == "feed" then
+			ev:FireClient(player, "feed", posts)
+			return
+		end
+		if action ~= "like" or type(id) ~= "number" then return end
+		local now = os.clock()
+		if (lastLike[player] or 0) > now - 0.25 then return end
+		lastLike[player] = now
+		local set = likedBy[id]
+		if not set or set[player.UserId] then return end -- one like per player per post
+		for _, post in ipairs(posts) do
+			if post.id == id then
+				set[player.UserId] = true
+				post.likes = post.likes + 1
+				ev:FireAllClients("likes", id, post.likes)
+				local owner = (post.userId ~= player.UserId) and Players:GetPlayerByUserId(post.userId)
+				if owner then notify(owner, player.DisplayName .. " liked your BoxTok!", Color3.fromRGB(255, 110, 170)) end
+				return
+			end
+		end
+	end)
+	Players.PlayerRemoving:Connect(function(p) lastPost[p], lastLike[p] = nil, nil end)
+end
+BOXTOK_INIT()
 FRIENDS_INIT()
 
 ADMIN_INIT()

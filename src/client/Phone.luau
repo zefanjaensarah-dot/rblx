@@ -2367,6 +2367,8 @@ local APPS = {
 	moduleApp("Whack", "Whack-a-Thief", rgb(255, 140, 110), rgb(200, 50, 50), "🔨"),
 	moduleApp("Catch", "Box Catcher", rgb(120, 240, 210), rgb(20, 150, 140), "🧺"),
 }
+-- the dock at the bottom of the home screen (apps that aren't games)
+local DOCK = {moduleApp("BoxTok", "BoxTok", rgb(70, 70, 90), rgb(18, 18, 26), "TV")}
 
 function Phone.init(ctx)
 	UI = ctx.UI
@@ -2450,7 +2452,7 @@ function Phone.init(ctx)
 	local icons = {}
 	for i, a in ipairs(APPS) do
 		-- (a 4 x 2 grid of app icons)
-		local slot = frame(home, {AnchorPoint = V2(0.5, 0), Position = S2(0.14 + ((i - 1) % 4) * 0.24, 0.47 + math.floor((i - 1) / 4) * 0.21), Size = S2(0.21, 0.2), BackgroundTransparency = 1, ZIndex = 2})
+		local slot = frame(home, {AnchorPoint = V2(0.5, 0), Position = S2(0.14 + ((i - 1) % 4) * 0.24, 0.45 + math.floor((i - 1) / 4) * 0.2), Size = S2(0.21, 0.19), BackgroundTransparency = 1, ZIndex = 2})
 		local btn = new("TextButton", {Name = a.key, Text = "", AutoButtonColor = false, AnchorPoint = V2(0.5, 0), Position = S2(0.5, 0), Size = S2(1, 0.74),
 			BackgroundColor3 = WHITE, BorderSizePixel = 0, ZIndex = 3}, slot)
 		square(btn)
@@ -2465,8 +2467,28 @@ function Phone.init(ctx)
 		icons[a.key] = btn
 		btn.Activated:Connect(function() env.openApp(a.key) end)
 	end
-	text(home, "Tap an app to play!", {AnchorPoint = V2(0.5, 1), Position = UDim2.new(0.5, 0, 1, -28), Size = UDim2.new(0.7, 0, 0.04, 0), Stroke = 0, MaxSize = 18,
-		TextColor3 = rgb(225, 225, 255), TextTransparency = 0.15, ZIndex = 2})
+	-- THE DOCK: BoxTok, the video app
+	do
+		local dock = frame(home, {Name = "Dock", AnchorPoint = V2(0.5, 1), Position = UDim2.new(0.5, 0, 1, -18), Size = UDim2.new(0.92, 0, 0.09, 0), BackgroundColor3 = WHITE,
+			BackgroundTransparency = 0.8, ZIndex = 2})
+		round(dock, 20)
+		UI.stroke(dock, 1.5, WHITE, 0.6)
+		for _, a in ipairs(DOCK) do
+			local btn = new("TextButton", {Name = a.key, Text = "", AutoButtonColor = false, AnchorPoint = V2(0, 0.5), Position = S2(0.03, 0.5), Size = S2(0.84, 0.84),
+				BackgroundColor3 = WHITE, BorderSizePixel = 0, ZIndex = 3}, dock)
+			new("UIAspectRatioConstraint", {AspectRatio = 1, DominantAxis = Enum.DominantAxis.Height}, btn)
+			round(btn, 0.26)
+			UI.stroke(btn, 2.5, C.ink)
+			grad(btn, a.c0, a.c1, 100)
+			a.draw(btn)
+			UI.pressable(btn)
+			icons[a.key] = btn
+			btn.Activated:Connect(function() env.openApp(a.key) end)
+			text(dock, a.label, {Position = S2(0.22, 0.1), Size = S2(0.74, 0.45), TextXAlignment = Enum.TextXAlignment.Left, Stroke = 2, MaxSize = 22, ZIndex = 3})
+			text(dock, "Watch the best moments in your server", {Position = S2(0.22, 0.55), Size = S2(0.74, 0.34), TextXAlignment = Enum.TextXAlignment.Left, Stroke = 0,
+				MaxSize = 14, TextColor3 = rgb(230, 230, 255), ZIndex = 3})
+		end
+	end
 
 	-- STATUS BAR: time, the camera "island", signal and battery
 	local status = frame(screen, {Name = "StatusBar", Size = UDim2.new(1, 0, 0, 28), BackgroundTransparency = 1, ZIndex = 50})
@@ -2581,6 +2603,7 @@ function Phone.init(ctx)
 		if current == key then return end
 		local spec
 		for _, a in ipairs(APPS) do if a.key == key then spec = a end end
+		for _, a in ipairs(DOCK) do if a.key == key then spec = a end end
 		if not spec then return end
 		if current ~= "Home" then
 			local old = apps[current]
