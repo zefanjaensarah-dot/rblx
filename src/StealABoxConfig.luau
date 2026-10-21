@@ -1283,21 +1283,6 @@ function Config.PhoneGame(key)
 	return nil
 end
 
--- MOVEMENT (src/client/Movement.luau): dash, double jump, wall run / wall jump, slide
-Config.Movement = {
-	dashCharges = 3,       -- dashes you can chain
-	dashRecharge = 1.6,    -- seconds to refill one dash
-	dashSpeed = 70,        -- studs/s of a dash (at least 2.2x your walk speed)
-	dashTime = 0.18,       -- how long a dash pushes
-	doubleJumpPower = 46,
-	wallRunTime = 1.1,     -- seconds you can run along a wall
-	wallJumpUp = 44, wallJumpOut = 38,
-	slideSpeed = 52, slideTime = 0.55,
-	landImpactSpeed = 55,  -- falling faster than this makes a landing impact
-	carryMult = 0.55,      -- carrying a box: weaker dashes / slides and slower refills
-	carryAllowance = 12,   -- extra studs/s the anti-teleport check allows for dashing with a box
-}
-
 -- FRIEND BONUS: every friend (Roblox connection) in the same server gives you both +10% cash, up to +50%
 Config.FriendBonus = {perFriend = 0.1, max = 0.5}
 Config.BossSlowTime = 2.2 -- seconds a boss move slows you

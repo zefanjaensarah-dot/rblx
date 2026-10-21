@@ -8,8 +8,7 @@
        Phone       the big phone on your base with mini games (Snake, Block Blast, Archery)
        Tutorial    the step-by-step tutorial for new players
        WorldFX     everything that happens in the 3D world on your screen
-       BossFX      boss title cards, special moves (warning + effect) and chase trails
-       Movement    dash, double jump, wall run / wall jump and slide ]]
+       BossFX      boss title cards, special moves (warning + effect) and chase trails ]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -71,7 +70,6 @@ local ShopWindow = require(script:WaitForChild("ShopWindow"))
 local Phone = require(script:WaitForChild("Phone"))
 local Tutorial = require(script:WaitForChild("Tutorial"))
 local WorldFX = require(script:WaitForChild("WorldFX"))
-local Movement = require(script:WaitForChild("Movement"))
 local BossFX = require(script:WaitForChild("BossFX"))
 
 ------------------------------------------------------------------
@@ -204,7 +202,6 @@ task.delay(3, function()
 	end
 end)
 task.spawn(WorldFX.init, ctx) -- waits for the map, so it starts on its own
-task.spawn(Movement.init, ctx) -- dash, double jump, wall run, slide
 task.spawn(BossFX.init, ctx) -- boss title cards, special moves and chase trails
 
 ctx.remotes.Notify.OnClientEvent:Connect(function(text, color)

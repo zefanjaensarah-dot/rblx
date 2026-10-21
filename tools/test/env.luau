@@ -164,8 +164,6 @@ end
 local NOOP = {"ChangeState", "Move", "MoveTo", "Emit", "Play", "Stop", "Pause", "Resume", "AdjustSpeed", "AddAccessory", "ApplyDescription",
 	"BreakJoints", "SetNetworkOwner", "Capture", "CaptureFocus", "ReleaseFocus", "TakeDamage", "LoadCharacter", "Kick"}
 for _, n in ipairs(NOOP) do OV[n] = function() return nil end end
--- a humanoid in the test is always standing on the ground (H.humanoidState changes it)
-function OV.GetState(self) return H.humanoidState or roblox.Enum.HumanoidStateType.Running end
 function OV.LoadAnimation(self, anim)
 	local t = {Looped = false, IsPlaying = false, Length = 1, Speed = 1}
 	function t.Play() t.IsPlaying = true end
