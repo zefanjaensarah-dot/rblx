@@ -445,6 +445,19 @@ do
 	check(invoke(player, "GetData").data.PhoneBest.Snake == 42, "phone best is in the save")
 end
 
+-- movement effects are relayed to everyone; unknown kinds are ignored
+do
+	local mv = remotes:FindFirstChild("MoveFX")
+	check(mv ~= nil, "MoveFX remote exists")
+	local relayed = {}
+	H.onFireClient = function(name, plr, kind) if name == "MoveFX" then table.insert(relayed, kind) end end
+	H.signalFor(mv, "OnServerEvent"):Fire(player, "dash", roblox.Vector3.new(0, 0, -1))
+	task.wait(0.15)
+	H.signalFor(mv, "OnServerEvent"):Fire(player, "teleport")
+	check(#relayed == 1 and relayed[1] == "dash", "a dash is relayed, junk is not")
+	H.onFireClient = nil
+end
+
 -- leave -> saved (session released)
 local store = S.DataStoreService.stores["StealABox_v5"]
 S.Players.PlayerRemoving:Fire(player)

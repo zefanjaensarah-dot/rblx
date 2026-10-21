@@ -1189,7 +1189,7 @@ local function placeBoxAt(player, worldPos)
 	if c.pickedPos then
 		local elapsed = os.clock() - (c.pickedAt or 0)
 		local flat = Vector3.new(hrp.Position.X - c.pickedPos.X, 0, hrp.Position.Z - c.pickedPos.Z).Magnitude
-		local topSpeed = Config.PointsToWalk(prof.SpeedPoints) + 8 -- ignores Slow Mode on purpose
+		local topSpeed = Config.PointsToWalk(prof.SpeedPoints) + 8 + Config.Movement.carryAllowance -- ignores Slow Mode on purpose; dashes allowed
 		if flat > topSpeed * elapsed * 1.6 + 60 then
 			warn("[Steal a Box] " .. player.Name .. " moved a box too fast (" .. math.floor(flat) .. " studs in " .. string.format("%.1f", elapsed) .. "s)")
 			releaseCarry(player)
@@ -4861,5 +4861,27 @@ function PHONE_INIT()
 	Players.PlayerRemoving:Connect(function(p) lastScore[p] = nil end)
 end
 PHONE_INIT()
+
+------------------------------------------------------------------
+-- MOVEMENT EFFECTS: your dash / double jump / wall jump / slide / landing bursts are shown to the
+-- other players too (the moves themselves are physics, which Roblox already replicates).
+------------------------------------------------------------------
+function MOVE_INIT()
+	local ev = remotes:FindFirstChild("MoveFX") or Instance.new("RemoteEvent")
+	ev.Name = "MoveFX"
+	ev.Parent = remotes
+	local KINDS = {dash = true, djump = true, wjump = true, slide = true, land = true}
+	local last = {}
+	ev.OnServerEvent:Connect(function(player, kind, dir)
+		if not KINDS[kind] then return end
+		local now = os.clock()
+		if (last[player] or 0) > now - 0.1 then return end -- (10 a second at most)
+		last[player] = now
+		if typeof(dir) ~= "Vector3" or dir.Magnitude > 2 or dir.Magnitude ~= dir.Magnitude then dir = nil end
+		ev:FireAllClients(kind, player, dir)
+	end)
+	Players.PlayerRemoving:Connect(function(p) last[p] = nil end)
+end
+MOVE_INIT()
 
 ADMIN_INIT()

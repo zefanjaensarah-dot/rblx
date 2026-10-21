@@ -67,6 +67,11 @@ hrp.CFrame = roblox.CFrame.new(0, 3, 150)
 hrp.Parent = char
 local hum = H.newInstance("Humanoid")
 hum.Parent = char
+-- (the fake Humanoid has no defaults for these: give it a normal standing player)
+for k, v in pairs({Sit = false, PlatformStand = false, Health = 100, WalkSpeed = 16, JumpPower = 50,
+	MoveDirection = roblox.Vector3.new(0, 0, 0), CameraOffset = roblox.Vector3.new(0, 0, 0)}) do
+	H.setValue(hum, k, v)
+end
 char.Parent = ws
 H.setValue(localPlayer, "Character", char)
 
@@ -121,6 +126,42 @@ fireClient("FX", "Sale", roblox.Vector3.new(0, 3, -20), 1)
 fireClient("FX", "Ready", roblox.Vector3.new(0, 3, -20), 1)
 fireClient("FX", "LevelUp", roblox.Vector3.new(0, 3, -20), 1)
 fireClient("FX", "Wake", roblox.Vector3.new(0, 3, -20), 1.5)
+-- movement: a dash pushes you and uses a charge, a second jump in the air is a double jump, a slide pushes
+do
+	local function check(ok, msg)
+		print((ok and "ok: " or "FAIL: ") .. msg)
+		if not ok then table.insert(H.errors, "check failed: " .. msg) end
+	end
+	local client = game:GetService("StarterPlayer"):FindFirstChildOfClass("StarterPlayerScripts"):FindFirstChild("StealABoxClient")
+	local Movement = H.requireModule(client:FindFirstChild("Movement"))
+	local Config = H.requireModule(game:GetService("ReplicatedStorage"):FindFirstChild("StealABoxConfig"))
+	local mv = Movement.init({Config = Config, player = localPlayer, settings = {}})
+	task.wait(0.3)
+	local carrying = localPlayer:GetAttribute("Carrying")
+	localPlayer:SetAttribute("Carrying", nil) -- (a full-power dash: not carrying a box)
+	H.setValue(hum, "MoveDirection", roblox.Vector3.new(0, 0, -1))
+	hrp.AssemblyLinearVelocity = roblox.Vector3.new(0, 0, 0)
+	mv.dash()
+	local v = hrp.AssemblyLinearVelocity
+	check(v.Magnitude > 50 and mv.charges() == Config.Movement.dashCharges - 1, "dash pushes you and uses a charge: " .. math.floor(v.Magnitude))
+	H.step(3, 0.05)
+	task.wait(0.3)
+	H.humanoidState = Enum.HumanoidStateType.Freefall
+	mv.jump()
+	task.wait(0.25)
+	mv.jump()
+	check(math.abs(hrp.AssemblyLinearVelocity.Y - Config.Movement.doubleJumpPower) < 0.01, "double jump in the air")
+	H.step(10, 0.05)
+	H.humanoidState = nil
+	hrp.AssemblyLinearVelocity = roblox.Vector3.new(0, 0, 0)
+	task.wait(0.3)
+	mv.slide()
+	H.step(1, 0.02)
+	check(hrp.AssemblyLinearVelocity.Magnitude > 20, "slide pushes you")
+	H.setValue(hum, "MoveDirection", roblox.Vector3.new(0, 0, 0))
+	H.step(20, 0.05)
+	localPlayer:SetAttribute("Carrying", carrying)
+end
 -- boss title card, special-move warnings + effects for every boss, and getting hit by one
 do
 	local at = hrp.Position

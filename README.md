@@ -2,6 +2,8 @@
 
 Steal boxes from a guarded warehouse, unbox them at your base, sell the items in your shop and get faster on your treadmill.
 
+**v65:** a movement system: **dash** (Q / gamepad X / DASH button, 3 charges that refill), **double jump** with a front flip, **wall run** (jump at a wall from the side while moving) and **wall jump**, **slide** (C / Ctrl / gamepad B / SLIDE button), landing impacts, speed lines, FOV kicks, camera tilt on walls and a dash bar at the bottom. Carrying a box makes dashes and slides weaker. The numbers are in `Config.Movement`.
+
 **v64:** a Leaderboard app in the phone's dock: the top 10 scores of every phone game in this server and of all time (Global). Your best phone scores are saved now (they used to reset when you left). Scores come from the client, so the server only takes known games, whole numbers up to each game's cap (`Config.PhoneGames`) and one score every 2 seconds; players removed from the boards in the admin panel are hidden here too. (BoxTok from v63 was removed.)
 
 **v62:** the warehouse looks like a real warehouse: polished concrete with yellow aisle lines, steel columns, cladded walls, roof trusses with skylights and high-bay lamps, orange/blue pallet racking with wrapped stock, pallets, forklifts and a department sign for every area (the party bunting, polka dots and floor clutter are gone). The front is an industrial facade with a canopy, loading docks and flood lights, shadows are on, the boxes have rounded edges, and every friend in your server gives you both +10% cash (up to +50%). `tools/render` draws the built map in a browser for quick looks.
