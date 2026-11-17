@@ -1,0 +1,73 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Map Preview</title>
+<style>html,body{margin:0;height:100%;background:#9cc8f0;overflow:hidden}canvas{display:block}</style></head>
+<body>
+<!-- Draws the parts written by dump_map.luau. URL options:
+     ?data=map.json  &three=<folder with three.min.js>  &cam=x,y,z,tx,ty,tz  &fov=55
+     A rough preview (no textures, text or avatars), good enough to judge layout, colour and detail. -->
+<script>
+const Q = new URLSearchParams(location.search);
+const THREE_DIR = Q.get("three") || "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128";
+document.write('<script src="' + THREE_DIR + '/three.min.js"><\/script>');
+</script>
+<script>
+(async function () {
+  const data = await (await fetch(Q.get("data") || "map.json")).json();
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(1); renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  document.body.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x9cc8f0);
+  scene.fog = new THREE.Fog(0x9cc8f0, 500, 1400);
+  const cam = (Q.get("cam") || "0,120,260,0,0,0").split(",").map(Number);
+  const camera = new THREE.PerspectiveCamera(Number(Q.get("fov") || 55), innerWidth / innerHeight, 0.5, 3000);
+  camera.position.set(cam[0], cam[1], cam[2]); camera.lookAt(cam[3], cam[4], cam[5]);
+  scene.add(new THREE.HemisphereLight(0xeaf4ff, 0x6a6458, 0.75));
+  const sun = new THREE.DirectionalLight(0xfff4e0, 0.85);
+  sun.position.set(cam[3] + 120, cam[4] + 260, cam[5] + 90); sun.target.position.set(cam[3], cam[4], cam[5]);
+  sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
+  const sc = sun.shadow.camera; sc.left = sc.bottom = -260; sc.right = sc.top = 260; sc.near = 1; sc.far = 900; sun.shadow.bias = -0.0006;
+  scene.add(sun, sun.target);
+
+  const wedge = (() => { const g = new THREE.BufferGeometry(); const v = [];
+    const P = [[-.5,-.5,-.5],[.5,-.5,-.5],[.5,-.5,.5],[-.5,-.5,.5],[-.5,.5,.5],[.5,.5,.5]];
+    const F = [[0,2,1],[0,3,2],[3,4,5],[3,5,2],[0,1,5],[0,5,4],[0,4,3],[1,2,5]];
+    F.forEach(f => f.forEach(i => v.push(...P[i]))); g.setAttribute("position", new THREE.Float32BufferAttribute(v, 3)); g.computeVertexNormals(); return g; })();
+  const geos = { Block: new THREE.BoxGeometry(1, 1, 1), Ball: new THREE.SphereGeometry(0.5, 20, 14),
+    Cylinder: new THREE.CylinderGeometry(0.5, 0.5, 1, 20).rotateZ(Math.PI / 2), Wedge: wedge };
+  const mats = {};
+  const mat = (c, m, t) => {
+    const key = c.join(",") + m + t;
+    if (mats[key]) return mats[key];
+    const col = new THREE.Color(c[0] / 255, c[1] / 255, c[2] / 255).convertSRGBToLinear();
+    let M;
+    if (m === "Neon") M = new THREE.MeshBasicMaterial({ color: col.clone().multiplyScalar(1.6) });
+    else M = new THREE.MeshStandardMaterial({ color: col, roughness: m === "Glass" || m === "SmoothPlastic" ? 0.45 : m === "Metal" || m === "DiamondPlate" ? 0.5 : 0.85, metalness: m === "Metal" || m === "DiamondPlate" ? 0.35 : 0 });
+    const tt = m === "Glass" ? Math.max(t, 0.5) : t;
+    if (tt > 0.01) { M.transparent = true; M.opacity = 1 - tt; M.depthWrite = false; }
+    return (mats[key] = M);
+  };
+  const m4 = new THREE.Matrix4();
+  for (const d of data) {
+    if (d.k === "Terrain") continue;
+    let g, sx = d.s[0], sy = d.s[1], sz = d.s[2];
+    const k = d.k;
+    if (k === "Ball" || k === "MeshSphere") g = geos.Ball;
+    else if (k === "Cylinder" || k === "MeshCylinder") { g = geos.Cylinder; if (k === "Cylinder") { const r = Math.min(sy, sz); sy = sz = r; } }
+    else if (k === "WedgePart" || k === "Wedge" || k === "MeshWedge") g = geos.Wedge;
+    else g = geos.Block;
+    if (d.ms) { sx *= d.ms[0]; sy *= d.ms[1]; sz *= d.ms[2]; }
+    const mesh = new THREE.Mesh(g, mat(d.c, d.m, d.t));
+    const r = d.r;
+    m4.set(r[0] * sx, r[1] * sy, r[2] * sz, d.p[0], r[3] * sx, r[4] * sy, r[5] * sz, d.p[1], r[6] * sx, r[7] * sy, r[8] * sz, d.p[2], 0, 0, 0, 1);
+    mesh.matrixAutoUpdate = false; mesh.matrix.copy(m4);
+    mesh.castShadow = d.t < 0.3 && d.m !== "Neon"; mesh.receiveShadow = true;
+    scene.add(mesh);
+  }
+  renderer.render(scene, camera);
+  document.title = "done";
+})();
+</script>
+</body></html>
